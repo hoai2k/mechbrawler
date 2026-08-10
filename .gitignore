@@ -1,0 +1,14 @@
+# Processed intermediates only. `assets/intake/<char>/` itself IS tracked —
+# that is where delivered art is uploaded, so it has to survive a git push —
+# but `_processed/` is derived output that tools/intake.py regenerates, and
+# tools/intake_import.py copies the approved frames into assets/sprites/.
+assets/intake/_processed/
+
+# Generated review boards (size/facing contact sheets) — regenerate on demand
+# with tools/size_board.py, tools/size_review.py, tools/facing_review.py.
+tools/debug/
+tools/__pycache__/
+
+# Local dev
+node_modules/
+package-lock.json

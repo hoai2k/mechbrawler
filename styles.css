@@ -1,0 +1,1315 @@
+:root {
+  --bg: #05060d;
+  --panel: rgba(10, 14, 26, 0.92);
+  --panel-soft: rgba(16, 22, 40, 0.85);
+  --line: rgba(120, 140, 200, 0.22);
+  --text: #e8ecf8;
+  --text-dim: #9aa4c0;
+  --accent: #62dcff;
+  --accent-2: #ff4c55;
+  --p1-theme: #62dcff;
+  --p2-theme: #ff4c55;
+  --p3-theme: #8cff65;
+  --p4-theme: #ffd35a;
+  font-size: 16px;
+
+  /* Scrollbars, wherever one turns up — the move list, the controls screen,
+     any overlay a short window makes too tall. The browser default is a bright
+     grey slab with arrow buttons that sits on top of the panels rather than in
+     them, so it takes the panels' own palette instead. `scrollbar-color`
+     inherits, so declaring it here covers every scroller on the page. */
+  scrollbar-color: rgba(120, 140, 200, 0.34) transparent;
+}
+
+/* `scrollbar-width`, unlike the colour above, does not inherit — a panel of its
+   own would go back to the wide default. */
+* { box-sizing: border-box; scrollbar-width: thin; }
+
+/* The same scrollbar for engines that predate the standard properties above:
+   thin, no arrow buttons, a rounded thumb inset from a transparent track. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 140, 200, 0.34);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 180, 245, 0.55);
+  background-clip: content-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: radial-gradient(120% 90% at 50% 0%, #101830 0%, var(--bg) 58%, #020308 100%);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+.game-shell {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.arena-wrap {
+  position: relative;
+  width: min(100%, calc((100vh - 24px) * 16 / 9));
+  aspect-ratio: 16 / 9;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65), 0 0 0 1px var(--line);
+  background: #05070f;
+}
+
+#gameCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- Persistent utility controls ---------- */
+
+/* Bottom right, not top right. The top of every screen is where the content
+   starts — the select screen's title and hero cards, the stage grid's heading,
+   the match HUD's damage readouts — so a row of chrome up there competes with
+   the thing the player is actually looking at. Down here it is out of the way
+   and still in the corner the hand goes to.
+
+   `bottom`/`right` rather than a transform, so it stays clear of the safe area
+   on a notched phone. */
+.utility-actions {
+  position: absolute;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  z-index: 30;
+  display: flex;
+  gap: 7px;
+}
+
+.icon-button {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(160, 190, 255, 0.35);
+  border-radius: 11px;
+  background: rgba(7, 11, 23, 0.82);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.icon-button:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.icon-button svg { pointer-events: none; width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* Filled-path icons (speaker, gear) vs stroked ones (fullscreen). Keyed off a
+   class rather than position, so inserting a button cannot flip an icon's fill. */
+.icon-button--filled svg { fill: currentColor; stroke: none; }
+
+/* Muted reads at a glance without needing the tooltip. */
+.icon-button.is-muted { color: var(--accent-2); border-color: rgba(255, 76, 85, 0.55); }
+.icon-button--info { font: 900 1.25rem/1 Georgia, serif; }
+
+/* ---------- HUD ---------- */
+
+.hud {
+  position: absolute;
+  top: 44px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 14px 18px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.fighter-status {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(8, 12, 24, 0.88), rgba(8, 12, 24, 0.55));
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 8px 12px;
+  min-width: 250px;
+}
+
+/* Each panel publishes its fighter's colour as --panel-theme (ui.js), so one
+   pair of rules dresses every seat from two fighters up to eight. */
+.fighter-status { border-left: 3px solid var(--panel-theme, var(--line)); }
+.fighter-status--mirror {
+  border-left: 1px solid var(--line);
+  border-right: 3px solid var(--panel-theme, var(--line));
+}
+
+.hud-portrait {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--line);
+}
+
+.hud-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+
+.hud-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.fighter-name {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.fighter-status .fighter-name { color: var(--panel-theme, var(--text-dim)); }
+
+.damage {
+  font-size: 1.5rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.stocks { display: flex; gap: 5px; }
+.stocks--right { justify-content: flex-end; }
+
+.stock-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.stock-dot--lost {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+}
+
+.fighter-status .stocks { color: var(--panel-theme, var(--text-dim)); }
+
+/* Team match only: which side this fighter is on. Hidden in a free-for-all,
+   where there are no sides to tell apart. */
+.team-tag {
+  font-size: 8px;
+  font-weight: 900;
+  font-style: normal;
+  letter-spacing: 0.16em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(98, 220, 255, 0.16);
+  border: 1px solid rgba(98, 220, 255, 0.55);
+  color: #bdefff;
+}
+
+.fighter-status--cpu-side .team-tag {
+  background: rgba(255, 76, 85, 0.16);
+  border-color: rgba(255, 76, 85, 0.6);
+  color: #ffc2c5;
+}
+
+.meter {
+  position: relative;
+  height: 9px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #7d58d8, #b56cff);
+  transition: width 0.12s linear;
+}
+
+/* No half-bar mark any more: both supers cost the whole bar, so the only
+   threshold worth drawing is the end of the track itself. */
+
+.meter--full .meter-fill {
+  background: linear-gradient(90deg, #ffd35a, #ff62cf, #62dcff);
+  animation: meterPulse 0.8s ease-in-out infinite;
+}
+
+@keyframes meterPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.6); }
+}
+
+.meter-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  color: #fff;
+  text-shadow: 0 1px 3px #000;
+}
+
+.round-actions {
+  pointer-events: auto;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.hud--multiplayer { gap: 7px; padding-inline: 10px; }
+.hud--multiplayer .round-actions { top: 92px; }
+.hud--multiplayer .fighter-status { min-width: 0; flex: 1; padding: 6px 8px; gap: 7px; }
+.hud--multiplayer .hud-portrait { width: 42px; height: 42px; }
+.hud--multiplayer .damage { font-size: 1.12rem; }
+.hud--multiplayer .fighter-name { font-size: 0.7rem; }
+.hud--multiplayer .hud-row { gap: 5px; }
+
+/* Five to eight fighters. The portraits are the first thing to go — at this
+   width they are thumbnails of thumbnails, and the name, damage and stocks are
+   what a player actually reads mid-match. */
+.hud--crowd { gap: 4px; padding-inline: 8px; }
+.hud--crowd .hud-portrait { display: none; }
+.hud--crowd .fighter-status { padding: 5px 7px; border-radius: 10px; }
+.hud--crowd .damage { font-size: 0.95rem; }
+.hud--crowd .fighter-name { font-size: 0.58rem; letter-spacing: 0.02em; }
+.hud--crowd .stock-dot { width: 8px; height: 8px; }
+.hud--crowd .meter { height: 7px; }
+.hud--crowd .meter-label { font-size: 7px; letter-spacing: 0.12em; }
+
+/* A hanging plaque naming the arena, where the pause button used to sit.
+   Purely informational — pausing lives on Esc / Space / Start. */
+.arena-sign {
+  position: relative;
+  background: linear-gradient(180deg, rgba(24, 20, 14, 0.92), rgba(10, 9, 8, 0.92));
+  border: 1px solid rgba(196, 158, 92, 0.55);
+  border-radius: 8px;
+  padding: 5px 16px;
+  margin-top: 7px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 226, 170, 0.16);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #f0dcb0;
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+}
+
+/* the little peg the sign hangs from */
+.arena-sign::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  width: 2px;
+  height: 7px;
+  transform: translateX(-50%);
+  background: rgba(196, 158, 92, 0.55);
+}
+
+/* ---------- Overlays ---------- */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 22px;
+  background:
+    radial-gradient(90% 70% at 50% 10%, rgba(35, 52, 105, 0.5) 0%, transparent 60%),
+    rgba(4, 6, 13, 0.93);
+  /* Last-resort guard so a very short window can still reach the buttons
+     instead of clipping them off the bottom. */
+  overflow-y: auto;
+}
+
+.overlay--compact { background: rgba(4, 6, 13, 0.82); backdrop-filter: blur(6px); }
+
+#roundOverlay {
+  background:
+    linear-gradient(rgba(3, 5, 13, 0.38), rgba(3, 5, 13, 0.76)),
+    url("assets/backgrounds/victory.jpg") center / cover no-repeat;
+}
+
+#menuOverlay {
+  background:
+    linear-gradient(rgba(3, 5, 13, 0.68), rgba(3, 5, 13, 0.86)),
+    url("assets/backgrounds/menu.jpg") center / cover no-repeat;
+  gap: 10px;
+}
+
+/* The menu packs hero cards + roster grid; keep the lockup compact. */
+#menuOverlay .game-logo { width: clamp(150px, 16vw, 210px); max-height: 80px; }
+#menuOverlay .eyebrow { margin-bottom: 2px; }
+
+.title-lockup { text-align: center; }
+
+.game-logo {
+  display: block;
+  /* A block element with an explicit width does not centre itself, so without
+     this the logo sat left of the page centre while the eyebrow above it (plain
+     centred text) looked correct — and it no longer lined up with the VS badge
+     between the hero cards. */
+  margin-inline: auto;
+  width: clamp(190px, 24vw, 310px);
+  max-height: 118px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 20px rgba(98, 220, 255, 0.32));
+}
+
+.eyebrow {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.title-lockup h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 4.6vw, 3rem);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 34px rgba(98, 220, 255, 0.45);
+}
+
+.title-lockup h1 .mark { color: var(--accent-2); text-shadow: 0 0 30px rgba(255, 76, 85, 0.65); }
+
+.title-lockup h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 3.2vw, 2.1rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+/* ---------- Loading ---------- */
+
+.load-bar {
+  position: relative;
+  width: min(80%, 420px);
+  height: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.load-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #1d5fd8, #62dcff);
+  box-shadow: 0 0 18px rgba(98, 220, 255, 0.55);
+  transition: width 0.18s ease-out;
+}
+
+/* ---------- Character select ---------- */
+
+/* The roster lays itself out from the group list alone: one grid holds every
+   card, and each category is a block of columns inside it with its title over
+   the top. Adding a fighter or a whole new category needs no layout change
+   here — layoutCharacterGrid() places every child and fits `--rows` (how deep
+   the roster stacks, which decides how wide each block has to be), `--cols`
+   (the total that comes out of it) and `--card-aspect` (how hard the art is
+   cropped when the window is short). */
+.character-grid {
+  --card-aspect: 3 / 4;
+  /* The space between one category and the next, on top of the 7px gap either
+     side of it. A category boundary should read as a boundary — at the plain
+     gap the last card of one block and the first of the next sat as close
+     together as two cards within a block. */
+  --group-gap: clamp(5px, 0.6vw, 12px);
+  position: relative;
+  /* One grid for the whole roster, so rows line up end to end across every
+     category instead of each block sizing its own cards. Row 1 holds the
+     titles; the card rows below it are equal, hence 1fr. */
+  display: grid;
+  /* placeRosterBlocks() writes the real track list — one per card column, with
+     a --group-gap track between categories. This is the pre-layout fallback. */
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  grid-template-rows: auto repeat(var(--rows, 2), 1fr);
+  align-content: start;
+  gap: 7px;
+  width: 100%;
+  /* Held steady once fitted, so nothing reflows while a player is choosing. */
+  min-height: var(--grid-height, auto);
+}
+
+/* A category name is a TITLE over its own block, spanning exactly the columns
+   that block occupies — the 7px column gap is what separates one category's
+   underline from the next one's. */
+.char-group-title {
+  margin: 0;
+  display: flex;
+  align-items: end;
+  font-size: clamp(0.5rem, 0.7vw, 0.72rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  line-height: 1.25;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+.char-card {
+  position: relative;
+  width: 100%;
+  /* The name label sizes off the card's own width (11cqw), which is what keeps
+     the longest single-word name — GAKUGANJI — inside the tile at every column
+     count instead of being clipped to "GAKUGA". */
+  container-type: inline-size;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--panel-soft);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  aspect-ratio: var(--card-aspect, 3 / 4);
+}
+
+.char-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+/* Most of the card art is painted low-key, and at tile size against a dark
+   menu it reads as murky. A lift on the select screen evens the roster out
+   without touching the files. The art was not all painted at the same key, so
+   the lift is per card: 1.18 is the house default, the tiers below carry the
+   cards that need more, and Panda — already bright, but flat — takes the
+   saturation only. Keyed off the file name, so every use of the same painting
+   agrees with itself.
+
+   With USE_SIMPLE_CARDS on — the default — this table is the picker and the
+   matchup panel only: the grid draws the simplified tiles, which are exempt
+   below. It still has to be right, because those are the two places the
+   paintings are shown at size. */
+.char-card img,
+.matchup-side img {
+  filter: brightness(var(--card-lift, 1.18)) saturate(1.04);
+}
+
+/* Dim art: a stronger lift to bring it level with the rest of the roster. */
+:is(.char-card, .matchup-side) img[src$="nanami_card.jpg"],
+:is(.char-card, .matchup-side) img[src$="toji_card.jpg"],
+:is(.char-card, .matchup-side) img[src$="geto_card.jpg"],
+:is(.char-card, .matchup-side) img[src$="reggie_card.jpg"],
+:is(.char-card, .matchup-side) img[src$="meimei_card.jpg"],
+:is(.char-card, .matchup-side) img[src$="gakuganji_card.jpg"] {
+  --card-lift: 1.38;
+}
+
+/* Darkest art: near-black backgrounds that stay murky at anything less. */
+:is(.char-card, .matchup-side) img[src$="mahito_card.jpg"],
+:is(.char-card, .matchup-side) img[src$="sukuna_card.jpg"],
+:is(.char-card, .matchup-side) img[src$="choso_card.jpg"] {
+  --card-lift: 1.58;
+}
+
+/* Panda is already bright enough; only the saturation applies. */
+:is(.char-card, .matchup-side) img[src$="panda_card.jpg"] {
+  --card-lift: 1;
+}
+
+/* The simplified roster tiles take no correction at all. The whole table above
+   exists because the hero cards are painted scenes at two dozen different keys;
+   the tiles were drawn for this job, evenly front-lit, at one key across the
+   set (17D). Lifting them would only blow them out — and none of the per-card
+   rules would have caught them anyway, since every one of those matches a
+   `_card.jpg` suffix and a tile is a `_tile.jpg`. Stated rather than left to
+   that coincidence, because the coincidence is the reason the tiles are named
+   differently and a reader should not have to work that out. */
+.char-card img[src*="/cards/simple/"] {
+  filter: none;
+}
+
+/* Uro and Hakari are bright enough as drawn — no filter at all. */
+:is(.char-card, .matchup-side) img[src$="uro_card.jpg"],
+:is(.char-card, .matchup-side) img[src$="hakari_card.jpg"] {
+  filter: none;
+}
+
+.char-card span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 2px 4px;
+  /* Scales with the portrait rather than sitting at a fixed size, because the
+     longest single-word name on the roster (GAKUGANJI, 9 characters) has to
+     fit the tile at every responsive card size — at a fixed 0.62rem it ran
+     past the edge and `overflow: hidden` clipped it to "GAKUGA". Multi-word
+     names (REGGIE STAR) still wrap to two lines, which is why this scales the
+     text instead of forcing `nowrap`. */
+  font-size: clamp(0.36rem, 11cqw, 0.62rem);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(180deg, transparent, rgba(2, 4, 10, 0.92));
+  text-shadow: 0 1px 3px #000;
+}
+
+.char-card:hover { transform: translateY(-3px); border-color: rgba(160, 190, 255, 0.6); }
+
+/* The wildcard is one card spanning every card row at the far right, so it
+   takes its height from the rows it covers rather than from the card aspect. */
+.char-card--random {
+  aspect-ratio: auto;
+  height: 100%;
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(98, 220, 255, 0.24), transparent 65%),
+    linear-gradient(160deg, #1b2545, #0a0f1f);
+  border-style: dashed;
+  border-color: rgba(160, 190, 255, 0.45);
+}
+
+.random-glyph {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-bottom: 12px;
+  font-size: 2.1rem;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 18px rgba(98, 220, 255, 0.7);
+}
+
+.char-card.is-p1 { border-color: var(--p1-theme); box-shadow: 0 0 0 2px var(--p1-theme), 0 0 18px rgba(98, 220, 255, 0.4); }
+.char-card.is-p2 { border-color: var(--p2-theme); box-shadow: 0 0 0 2px var(--p2-theme), 0 0 18px rgba(255, 76, 85, 0.4); }
+.char-card.is-p3 { border-color: var(--p3-theme); box-shadow: 0 0 0 2px var(--p3-theme), 0 0 18px rgba(140, 255, 101, 0.4); }
+.char-card.is-p4 { border-color: var(--p4-theme); box-shadow: 0 0 0 2px var(--p4-theme), 0 0 18px rgba(255, 211, 90, 0.4); }
+.char-card.is-p1.is-p2 {
+  box-shadow: 0 0 0 2px var(--p1-theme), 0 0 0 4px var(--p2-theme), 0 0 20px rgba(180, 140, 255, 0.5);
+}
+
+.char-card .pick-tag {
+  position: absolute;
+  top: 5px;
+  font-size: 0.56rem;
+  font-weight: 900;
+  padding: 2px 7px;
+  border-radius: 20px;
+  color: #04060d;
+}
+
+.char-card .pick-tag--p1 { left: 5px; background: var(--p1-theme); }
+.char-card .pick-tag--p2 { right: 5px; background: var(--p2-theme); }
+.char-card .pick-tag--p3 { left: 5px; top: 25px; background: var(--p3-theme); }
+.char-card .pick-tag--p4 { right: 5px; top: 25px; background: var(--p4-theme); }
+
+/* ---------- Matchup bar (hero cards) ---------- */
+
+.matchup-bar {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  gap: 14px;
+  width: min(96%, 900px);
+}
+
+.matchup-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 10px 14px 9px;
+  cursor: pointer;
+  color: var(--text);
+  width: 220px;
+  /* Height depends on the window only, never on what the card is showing: an
+     empty, browsing and locked-in card are identical in size, so the screen
+     cannot reflow mid-selection. The constant is the fixed furniture below the
+     portrait — name, three lines of description, stat bars, ultimate — each of
+     which clips to its own line budget. */
+  --hero-art-h: clamp(84px, 14vh, 118px);
+  --hero-art-w: calc(var(--hero-art-h) * 1.42);
+  --hero-furniture: 190px; /* name + 3 description lines + stats + ultimate */
+  height: calc(var(--hero-art-h) + var(--hero-furniture));
+  justify-content: flex-start;
+  overflow: hidden;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+}
+
+.matchup-side span {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 800;
+  color: var(--text-dim);
+}
+
+.matchup-side img {
+  width: var(--hero-art-w);
+  height: var(--hero-art-h);
+  object-fit: cover;
+  object-position: top;
+  border-radius: 10px;
+}
+
+/* The hero card carries the character's FULL name (roster tiles stay short), so
+   this has to hold "Megumi Fushiguro" as readily as "Panda". The card height is
+   a fixed budget (--hero-furniture) that assumes a one-line name, so the size
+   scales with the viewport instead of wrapping — the ellipsis is a guard for a
+   future name longer than anything on the roster, not an expected state. */
+.matchup-side strong {
+  font-size: clamp(0.72rem, 0.9vw + 0.25rem, 1.05rem);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Three or four players put that many hero cards in one bar, so each is far
+   narrower than in a 1v1 at the same viewport width. Sized so the longest name
+   on the roster still fits without reaching the ellipsis. */
+.matchup-bar[data-slots="3"] .matchup-side strong,
+.matchup-bar[data-slots="4"] .matchup-side strong {
+  font-size: clamp(0.68rem, 0.55vw + 0.2rem, 0.82rem);
+}
+
+/* Every seat carries its own colour, so a slot is identifiable at a glance
+   whether it is currently choosing OR already locked in. Previously only the
+   ACTIVE card was tinted, so the moment a player committed, their card fell
+   back to neutral grey and the screen stopped saying who was who. */
+#p1PickCard { --seat: var(--p1-theme); }
+#p2PickCard { --seat: var(--p2-theme); }
+#p3PickCard { --seat: var(--p3-theme); }
+#p4PickCard { --seat: var(--p4-theme); }
+
+.matchup-side.is-active {
+  border-color: var(--seat);
+  box-shadow: 0 0 16px color-mix(in srgb, var(--seat) 45%, transparent);
+}
+.matchup-side .hero-slot-label { color: var(--seat); }
+
+/* Unselected slot: no portrait yet, so the name line draws a dashed
+   placeholder tile the same size as the art it will be replaced by. */
+.matchup-side.is-empty img { display: none; }
+
+.matchup-side.is-empty strong { color: var(--text-dim); font-size: 0.8rem; }
+
+.matchup-side.is-empty strong::before {
+  content: "?";
+  width: var(--hero-art-w);
+  height: var(--hero-art-h);
+  margin: 0 auto 4px;
+  border: 1px dashed rgba(160, 190, 255, 0.35);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: rgba(160, 190, 255, 0.55);
+}
+
+/* Browsing: nothing is committed yet, so the whole card reads as provisional —
+   greyed down, no badge. Locking in restores it to full colour. */
+.matchup-side.is-browsing img,
+.matchup-side.is-browsing .hero-random-art {
+  filter: grayscale(0.55) brightness(0.82);
+}
+
+.matchup-side.is-browsing strong,
+.matchup-side.is-browsing .hero-info { opacity: 0.6; }
+
+/* Locked in. This used to paint every ready card the same green, which meant
+   the instant a player committed their slot stopped being identifiable as
+   theirs. It now holds the seat colour; "ready" still reads distinctly because
+   of the lift and the heavier ring, not because of a different hue. */
+.matchup-side.is-ready {
+  border-color: var(--seat);
+  box-shadow: 0 0 0 2px var(--seat), 0 0 22px color-mix(in srgb, var(--seat) 45%, transparent);
+  transform: translateY(-2px);
+}
+.matchup-side.is-ready .hero-ready { background: var(--seat); color: #04060d; }
+
+/* The commit itself: a quick snap and flare so locking in is unmistakable. */
+.matchup-side.is-locking { animation: lockIn 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+
+@keyframes lockIn {
+  0% { transform: scale(1.06) translateY(-6px); box-shadow: 0 0 0 6px rgba(114, 229, 150, 0), 0 0 44px rgba(114, 229, 150, 0.9); filter: brightness(1.5); }
+  45% { transform: scale(0.985) translateY(0); }
+  100% { transform: translateY(-2px); box-shadow: 0 0 0 2px rgba(114, 229, 150, 0.75), 0 0 22px rgba(114, 229, 150, 0.4); filter: brightness(1); }
+}
+
+.hero-ready {
+  position: absolute;
+  top: 34px;
+  right: 16px;
+  z-index: 2;
+  font: 900 0.58rem/1 inherit;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #04170b;
+  background: #72e596;
+  border-radius: 20px;
+  padding: 4px 9px;
+  box-shadow: 0 2px 10px rgba(114, 229, 150, 0.5);
+}
+
+.hero-random-art {
+  display: grid;
+  place-items: center;
+  width: var(--hero-art-w);
+  height: var(--hero-art-h);
+  border-radius: 10px;
+  border: 1px dashed rgba(160, 190, 255, 0.45);
+  background:
+    radial-gradient(120% 100% at 50% 0%, rgba(98, 220, 255, 0.22), transparent 65%),
+    linear-gradient(160deg, #1b2545, #0a0f1f);
+  font-size: 2.6rem;
+  font-weight: 900;
+  color: var(--accent);
+  text-shadow: 0 0 22px rgba(98, 220, 255, 0.7);
+}
+
+.hero-ready--random {
+  color: #04121e;
+  background: var(--accent);
+  box-shadow: 0 2px 10px rgba(98, 220, 255, 0.5);
+}
+
+.hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+  margin-top: auto;
+}
+
+.hero-epithet {
+  font-size: 0.66rem;
+  font-style: italic;
+  line-height: 1.32;
+  color: var(--text-dim);
+  text-align: center;
+  /* Three lines budgeted, always reserved so the card cannot change height.
+     Longer text ellipses; the full string is on the element's title. */
+  height: calc(3 * 1.32em);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hero-stats { display: flex; flex-direction: column; gap: 3px; }
+
+.hero-stat {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero-stat i {
+  font-style: normal;
+  font-size: 0.54rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  text-align: left;
+}
+
+.hero-stat b {
+  display: block;
+  height: 5px;
+  border-radius: 4px;
+  background: rgba(120, 140, 200, 0.18);
+  overflow: hidden;
+}
+
+.hero-stat u {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #1d5fd8, var(--accent));
+}
+
+.hero-ult {
+  font-size: 0.6rem;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.3;
+  /* Label line plus two lines of name; longer names ellipse and carry the full
+     text on hover. */
+  height: calc(3 * 1.3em);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hero-ult i {
+  font-style: normal;
+  font-weight: 900;
+  font-size: 0.52rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  display: block;
+}
+
+.matchup-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+}
+
+.primary-action:disabled {
+  background: var(--panel-soft) !important;
+  color: var(--text-dim) !important;
+  box-shadow: none;
+  cursor: default;
+}
+
+.matchup-center strong {
+  font-size: 1.5rem;
+  font-style: italic;
+  font-weight: 900;
+  color: var(--accent-2);
+  text-shadow: 0 0 18px rgba(255, 76, 85, 0.6);
+}
+
+.vs-badge {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 14px rgba(255, 76, 85, 0.62));
+}
+
+/* ---------- Match mode ---------- */
+
+/* The VS badge is the button that opens the mode picker, and its caption is
+   what the screen shows for the mode in force. */
+.vs-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 8px 4px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--text-dim);
+}
+
+.vs-mode:hover { border-color: rgba(160, 190, 255, 0.45); color: var(--text); }
+
+.vs-mode-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Anything but a plain Vs Battle is a deliberate change to how the match is
+   fought, so the badge itself says so rather than leaving it to the note. */
+.vs-mode.is-alternate {
+  border-color: rgba(255, 211, 90, 0.5);
+  color: #ffd35a;
+  background: rgba(255, 211, 90, 0.08);
+}
+
+.mode-menu {
+  position: absolute;
+  z-index: 20;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid rgba(160, 190, 255, 0.4);
+  border-radius: 14px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.6);
+}
+
+.mode-menu-title {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-style: normal;
+  padding: 0 4px 2px;
+}
+
+.mode-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 7px 9px;
+  text-align: left;
+  background: var(--panel-soft);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mode-option b { font-size: 0.78rem; font-weight: 800; }
+.mode-option em { font-size: 0.63rem; font-style: normal; color: var(--text-dim); }
+.mode-option:hover { border-color: rgba(160, 190, 255, 0.55); }
+.mode-option.is-current { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(98, 220, 255, 0.35) inset; }
+
+/* The standing reminder of what the chosen mode adds, under the roster. */
+.mode-note { color: #ffd35a; font-weight: 700; }
+
+/* ---------- Buttons ---------- */
+
+.menu-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  justify-content: center;
+}
+
+.menu-actions button,
+.settings-panel button {
+  background: var(--panel-soft);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 9px 16px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.12s ease, transform 0.12s ease;
+}
+
+.menu-actions button:hover,
+.settings-panel button:hover { border-color: rgba(160, 190, 255, 0.55); transform: translateY(-1px); }
+
+.primary-action {
+  background: linear-gradient(135deg, #1d5fd8, #62dcff) !important;
+  border: none !important;
+  color: #03101f !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.04em;
+  box-shadow: 0 6px 20px rgba(52, 130, 240, 0.4);
+}
+
+.controller-status { color: var(--text-dim); font-size: 0.72rem; margin: 0; }
+
+/* Roster streaming in behind the select screen. Deliberately quiet — nothing
+   is blocked while it shows, so it must not read as a warning. */
+.load-hint { opacity: 0.7; font-variant-numeric: tabular-nums; }
+
+/* ---------- Stage select ---------- */
+
+.stage-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  width: min(96%, 1040px);
+}
+
+.stage-card {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  background: var(--panel-soft);
+  transition: transform 0.12s ease, border-color 0.12s ease;
+}
+
+.stage-card img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stage-card span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 6px 5px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-align: center;
+  color: #fff;
+  background: linear-gradient(180deg, transparent, rgba(2, 4, 10, 0.95));
+  text-shadow: 0 1px 3px #000;
+}
+
+.stage-card:hover { transform: translateY(-3px) scale(1.02); border-color: rgba(160, 190, 255, 0.6); }
+
+/* The Random Stage draw sweeping the grid. Reads like the pad cursor so the
+   sweep looks like the selector running, not a new kind of highlight. */
+.stage-card--rolling {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(98, 220, 255, 0.25), 0 0 22px rgba(98, 220, 255, 0.55);
+  transform: scale(1.03);
+  z-index: 2;
+}
+
+/* the stage it lands on */
+.stage-card--drawn {
+  outline-color: #ffd97a;
+  box-shadow: 0 0 0 6px rgba(255, 217, 122, 0.3), 0 0 34px rgba(255, 217, 122, 0.7);
+  transform: translateY(-4px) scale(1.06);
+}
+
+/* ---------- Move list ---------- */
+
+.moves-panel {
+  width: min(96%, 960px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 67vh;
+  overflow-y: auto;
+}
+
+.moves-blurb { color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; margin: 0; }
+
+.controller-guide { display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); gap: 18px; align-items: center; }
+.xbox-controller { width: 100%; max-height: 265px; overflow: visible; }
+.controller-shell { fill: #151b2d; stroke: #526080; stroke-width: 4; }
+.controller-bumper { fill: #27314b; stroke: #7181a6; stroke-width: 2; }
+.controller-stick { fill: #0b0f1c; stroke: #7181a6; stroke-width: 3; }
+.controller-stick-cap { fill: #27314b; stroke: #99a7c7; stroke-width: 2; }
+.controller-dpad { fill: #303b58; }
+.controller-menu { fill: #657291; }
+.controller-face circle { stroke-width: 3; }
+.controller-face text, .controller-bumper + text, .controller-bumper + text + text { fill: #fff; font-size: 13px; font-weight: 900; text-anchor: middle; }
+.controller-face .button-y { fill: #725f11; stroke: #ffd35a; }
+.controller-face .button-x { fill: #174f72; stroke: #62dcff; }
+.controller-face .button-b { fill: #6f2028; stroke: #ff6570; }
+.controller-face .button-a { fill: #226333; stroke: #72e596; }
+.controller-callout, .face-label, .controller-trigger { fill: #cbd4ec; font-size: 13px; font-weight: 800; text-anchor: middle; }
+.face-label { text-anchor: start; }
+.controller-tips { display: grid; gap: 9px; }
+.controller-tips span { display: flex; flex-direction: column; padding: 8px 10px; border-left: 2px solid var(--accent); background: rgba(98, 220, 255, 0.06); color: var(--text-dim); font-size: 0.72rem; }
+.controller-tips strong { color: var(--text); font-size: 0.76rem; }
+.keyboard-hint { margin: 0; color: var(--text-dim); font-size: 0.68rem; text-align: center; }
+
+.moves-table { display: grid; grid-template-columns: 150px 1fr; gap: 7px 16px; font-size: 0.8rem; }
+/* ---------- Move list: multi-player split ---------- */
+
+/* One column per human player, so everyone reads their own fighter at the same
+   time instead of passing the screen around. The panel is wider here because
+   it is carrying two to four kits rather than one. */
+.moves-panel--split { width: min(98%, 1500px); max-height: 78vh; }
+
+/* The button map is identical for everyone and already familiar, so in the
+   split view it yields vertical space to the thing players actually came for:
+   their own fighter's techniques and domain. Without this the Domain
+   Expansion block starts below the fold. */
+.moves-panel--split .controller-guide { gap: 12px; }
+.moves-panel--split .xbox-controller { max-height: 150px; }
+.moves-panel--split .controller-tips { gap: 4px; }
+/* Three or four kits cannot share a screen with the diagram as well. The tips
+   row survives because it is the part that is not already on the pad itself. */
+.moves-panel--split[data-players="3"] .xbox-controller,
+.moves-panel--split[data-players="4"] .xbox-controller { display: none; }
+.moves-panel--split[data-players="3"] .controller-guide,
+.moves-panel--split[data-players="4"] .controller-guide { grid-template-columns: 1fr; }
+.moves-panel--split[data-players="3"] .controller-tips,
+.moves-panel--split[data-players="4"] .controller-tips { grid-template-columns: repeat(5, 1fr); }
+.moves-panel--split .controller-tips span { padding: 4px 8px; font-size: 0.72rem; }
+
+.moves-players {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(var(--player-cols, 2), minmax(0, 1fr));
+}
+.moves-players[data-count="3"] { --player-cols: 3; }
+.moves-players[data-count="4"] { --player-cols: 4; }
+
+.moves-player {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(8, 12, 24, 0.55);
+  border-top: 3px solid var(--seat, var(--accent));
+  min-width: 0;
+}
+.moves-player[data-player="1"] { --seat: var(--p1-theme); }
+.moves-player[data-player="2"] { --seat: var(--p2-theme); }
+.moves-player[data-player="3"] { --seat: var(--p3-theme); }
+.moves-player[data-player="4"] { --seat: var(--p4-theme); }
+
+.moves-player-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.moves-player-badge {
+  font-weight: 900;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: #05060d;
+  background: var(--seat);
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+.moves-player-name { font-weight: 800; font-size: 1rem; }
+.moves-player-epithet { color: var(--text-dim); font-size: 0.78rem; font-style: italic; }
+.moves-player-keys { color: var(--text-dim); font-size: 0.7rem; line-height: 1.45; margin: 8px 0 0; }
+
+/* Columns are narrow, so the label/description grid becomes a stack rather
+   than squeezing a 150px gutter out of a quarter-width column. */
+.moves-player .moves-table { grid-template-columns: 1fr; gap: 2px 0; font-size: 0.74rem; }
+.moves-player .moves-table dt { color: var(--accent); font-weight: 800; font-size: 0.66rem; letter-spacing: 0.05em; }
+.moves-player .moves-table dd { margin: 0 0 6px; }
+.moves-player .moves-blurb { font-size: 0.74rem; }
+.moves-player .moves-section { margin-top: 8px; }
+.moves-player .domain-howto { font-size: 0.95em; }
+
+@media (max-width: 1100px) {
+  .moves-players { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* The domain block earns extra room: its "how it plays" line is an actual
+   instruction the player has to read, not flavour text. */
+/* The d-pad is the domain pad, so it reads as a live control rather than the
+   greyed-out movement duplicate it used to be. */
+.controller-dpad--domain rect { fill: var(--accent); opacity: 0.85; }
+
+.domain-howto {
+  display: block;
+  margin-top: 4px;
+  color: var(--accent);
+  font-size: 0.95em;
+  line-height: 1.4;
+}
+.moves-blurb--muted { color: var(--text-dim); font-style: italic; }
+
+.moves-table dt {
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  align-self: center;
+}
+
+.moves-table dd { margin: 0; color: var(--text); line-height: 1.4; }
+.moves-table dd em { color: var(--text-dim); font-style: normal; font-size: 0.72rem; }
+
+.moves-section {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ---------- Settings ---------- */
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(90%, 380px);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.settings-field { display: flex; flex-direction: column; gap: 7px; font-size: 0.8rem; font-weight: 700; }
+
+.settings-field input[type="range"] { accent-color: var(--accent); }
+
+/* gamepad / keyboard menu focus cursor */
+.pad-focus {
+  outline: 3px solid var(--accent) !important;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px rgba(98, 220, 255, 0.25), 0 0 22px rgba(98, 220, 255, 0.55) !important;
+  z-index: 2;
+  position: relative;
+}
+
+.pad-focus-p1 { outline: 3px solid var(--p1-theme); outline-offset: 2px; z-index: 3; }
+.pad-focus-p2 { outline: 3px solid var(--p2-theme); outline-offset: 2px; z-index: 3; }
+.pad-focus-p3 { outline: 3px solid var(--p3-theme); outline-offset: 2px; z-index: 3; }
+.pad-focus-p4 { outline: 3px solid var(--p4-theme); outline-offset: 2px; z-index: 3; }
+
+/* Short windows: crop the portraits to their upper bodies and let the columns
+   get narrower, rather than pushing the matchup bar off the bottom. */
+@media (max-height: 820px) {
+  .character-grid { --card-aspect: 1 / 1; }
+  #menuOverlay .game-logo { max-height: 66px; }
+}
+
+@media (max-height: 700px) {
+  .character-grid { --card-aspect: 5 / 4; gap: 5px; }
+  #menuOverlay .game-logo { max-height: 52px; }
+  /* The hero cards give ground too, so the roster doesn't carry the whole cut:
+     two description lines instead of three, and a shorter portrait. */
+  .matchup-side { width: 172px; padding: 7px 10px 6px; --hero-furniture: 156px; }
+  .hero-epithet { height: calc(2 * 1.32em); -webkit-line-clamp: 2; }
+  .hero-ult { height: calc(2 * 1.3em); -webkit-line-clamp: 2; }
+}
+
+@media (max-width: 900px) {
+  .stage-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .matchup-bar { flex-wrap: wrap; }
+  .matchup-side { width: 160px; padding: 7px; }
+  .controller-guide { grid-template-columns: 1fr; }
+  .controller-tips { grid-template-columns: repeat(2, 1fr); }
+}

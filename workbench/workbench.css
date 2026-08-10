@@ -1,0 +1,1164 @@
+:root {
+  --bg: #0b0d14;
+  --panel: #151926;
+  --line: rgba(130, 150, 205, 0.22);
+  --text: #e8ecf8;
+  --dim: #9aa4c0;
+  --accent: #62dcff;
+  --warn: #ffb95f;
+}
+
+* { box-sizing: border-box; }
+
+/* The page itself never scrolls. The header is fixed height and the two
+   columns below each scroll on their own, so reaching a control at the bottom
+   of the panel cannot push the canvas off screen. */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 "Inter", "Segoe UI", system-ui, sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.bar {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 16px;
+  background: #10131e;
+  border-bottom: 1px solid var(--line);
+}
+.bar strong { letter-spacing: 0.04em; }
+.hint { color: var(--dim); font-size: 12px; }
+.loading { margin-left: auto; color: var(--warn); font-size: 12px; }
+.loading.done { color: #7fe0a0; }
+
+/* Sprite art streams in per character, so the status line spends most of its
+   life reporting a load rather than announcing one that finished. The dot
+   spins only while the pose on screen is still arriving. */
+.loading.spinning::before {
+  content: "";
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: wbSpin 0.7s linear infinite;
+}
+
+@keyframes wbSpin { to { transform: rotate(360deg); } }
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+  /* One row, exactly the height of the layout: the viewer column stretches into
+     it and fits its canvas to what is left, while the panel stays content-tall
+     (align-items: start) and scrolls only when it outgrows the row. */
+  grid-template-rows: 100%;
+  flex: 1;
+  min-height: 0;      /* lets the columns, not the page, own the overflow */
+  overflow: hidden;
+}
+
+.panel {
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;   /* a column at its end doesn't scroll the page */
+}
+
+/* The viewer column never scrolls. Its controls are a fixed amount of chrome,
+   so the canvas is what gives: it takes whatever height the rows below leave
+   and shrinks to fit, rather than pushing them out of the column and handing
+   the whole thing a scrollbar. */
+.stage-col {
+  height: 100%;
+  min-height: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* ---------------- stage ---------------- */
+
+/* Two boxes, because the canvas has to be centred *and* the frame tag has to
+   sit on its corner: .stage-fit takes the height the controls leave, and
+   .stage-wrap shrink-wraps the canvas inside it so the tag's corner is the
+   canvas's corner. The wrapper is positioned out of flow so that the canvas
+   contributes nothing to the height of the box that sizes it — the scaling
+   itself is arithmetic, in fit_stage.js. */
+.stage-fit {
+  flex: 0 0 auto;          /* its height is measured and written by fit_stage.js */
+  min-height: 0;
+  position: relative;
+}
+.stage-wrap {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#stage {
+  /* No fixed width: the viewer takes the column up to the panel. The left-hand
+     comparison slot is what benefits — it used to be squeezed against the edge
+     of a 760px box while the column beside it sat empty. The CSS size is
+     written by fitStageCanvas(). */
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: block;
+  image-rendering: auto;
+}
+
+/* ---------------- scrollbars ---------------- */
+
+/* The panel is the one column that still scrolls, so its scrollbar should read
+   as part of the UI rather than an accident of it: thin, no arrow buttons, a
+   rounded thumb inset from a transparent track, in the panel's own palette.
+   Set page-wide so the pose list, the action list, the sprite picker and the
+   export boxes all match — `scrollbar-color` inherits from :root, but
+   `scrollbar-width` does not, hence the universal selector. */
+:root { scrollbar-color: rgba(130, 150, 205, 0.34) transparent; }
+* { scrollbar-width: thin; }
+
+/* The same, for engines that predate the standard properties above. */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(130, 150, 205, 0.34);
+  border: 2px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(160, 190, 245, 0.55);
+  background-clip: content-box;
+}
+
+.frame-tag {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(6, 9, 18, 0.82);
+  border: 1px solid var(--line);
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  font-size: 13px;
+}
+.frame-tag .state { color: var(--accent); font-weight: 700; }
+.frame-tag .flag { color: var(--warn); font-weight: 700; }
+
+.row { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 12px; }
+/* the column spaces its own children with `gap` */
+.stage-col > .row { margin-top: 0; }
+
+.swatches { display: flex; gap: 6px; }
+.swatches button {
+  width: 30px; height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+.swatches button.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+/* `display: flex` above beats the browser default for [hidden], the same way
+   it does for .group — a hidden chip row has to say so explicitly, or it shows
+   on every pose regardless of what the code asked for. */
+.chips[hidden] { display: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ---------------- panel ---------------- */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group { display: flex; flex-direction: column; gap: 7px; }
+/* `display: flex` above beats the browser default for [hidden], so a group the
+   panel hides for the current entry needs saying explicitly. */
+.group[hidden] { display: none; }
+.group > label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  font-weight: 800;
+}
+.sub { color: var(--accent); letter-spacing: 0; text-transform: none; font-weight: 700; }
+
+select, textarea {
+  background: #0e111b;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  width: 100%;
+}
+textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; resize: vertical; }
+
+input[type=range] { width: 100%; accent-color: var(--accent); }
+
+/* Slider plus the number it sets. The number is the precise control — it reads
+   out the exact value and can be typed into, which is what the old +/- nudge
+   buttons were approximating. */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slider-row input[type=range] { flex: 1; min-width: 0; }
+
+.slider-row .num {
+  width: 74px;
+  flex: none;
+  background: #0e111b;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 6px;
+  font: inherit;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+  text-align: right;
+}
+.slider-row .num:focus { outline: none; border-color: var(--accent); }
+.slider-row .num:disabled { opacity: 0.45; }
+.slider-row .unit { color: var(--dim); font-size: 11px; width: 14px; }
+
+.pose-list {
+  position: relative;      /* so a button's offsetTop is list-relative */
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.pose-list button {
+  position: relative;      /* the caution mark hangs off the top-right corner */
+  text-align: left;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  background: #0e111b;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.pose-list button:hover { border-color: var(--line); }
+/* room for the caution mark, so a long pose name does not run under it */
+.pose-list button.warned { padding-right: 16px; }
+
+/* A pose with more than one drawing: the cell still fills the grid slot, with
+   the chevron sitting inside its right edge rather than taking a slot of its
+   own — the grid must look the same whether a pose has variants or not. */
+.pose-cell { position: relative; display: flex; }
+.pose-cell > button:first-child { flex: 1; padding-right: 20px; min-width: 0; }
+/* A pose with more than one drawing is rare — a handful per fighter — and the
+   chevron is the only thing that says so, so it has to be findable without
+   being told it is there. In muted grey at 13px it read as part of the border
+   and went unnoticed entirely. Accent colour, a rule separating it from the
+   name, and a tint behind it: the same weight as any other control that says
+   "there is a choice here". */
+.pose-list .pose-variant {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 22px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  background: rgba(98, 220, 255, 0.10);
+  border: none;
+  border-left: 1px solid var(--line);
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+}
+.pose-list .pose-variant:hover { color: #06121a; background: var(--accent); }
+
+/* A drawing a delivery just added that nobody has opened. An alternate changes
+   nothing on screen by design, so without this the chevron looks exactly as it
+   did and the choice waiting behind it is invisible. Sits ABOVE the chevron
+   rather than replacing it, so the control still reads as a control. */
+.pose-list .pose-variant.has-fresh { background: rgba(255, 185, 95, 0.16); }
+.pose-list .pose-variant.has-fresh::before {
+  content: "●";
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--warn);
+  pointer-events: none;
+}
+.pose-list .pose-variant.has-fresh:hover::before { color: #06121a; }
+.variant-menu button.fresh .variant-label::before { content: "● "; color: var(--warn); }
+
+/* Free text beside a flag: what is actually wrong with this drawing. Only
+   shown once a flag is set, since it explains one. */
+.note-input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text);
+  background: #0d1421;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  resize: vertical;
+  min-height: 2.6em;
+}
+.note-input:focus { outline: none; border-color: var(--accent); }
+.note-input::placeholder { color: #5a6a80; }
+
+.variant-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 220px;
+  max-width: 300px;
+  padding: 4px;
+  background: #0e111b;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+.variant-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+}
+.variant-menu button:hover { background: #1a2030; }
+.variant-menu button.current { background: #1d3550; color: #fff; }
+.variant-menu button.current .variant-label::after { content: " ✓"; color: var(--accent); }
+/* Tagged for deletion at the next cleanup — struck through, because it is still
+   selectable until then and needs to read as on its way out rather than gone. */
+.variant-menu button.doomed .variant-label { text-decoration: line-through; }
+.variant-menu button.doomed .variant-label::before { content: "🗑 "; text-decoration: none; }
+.variant-label { font-size: 12px; }
+.variant-file {
+  display: block;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  font-style: normal;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.pose-list button.sel { background: #1d3550; border-color: var(--accent); color: #fff; }
+.pose-list button.dirty::after { content: " ●"; color: var(--warn); }
+/* A redraw request is a different thing from an unsaved change, so it reads
+   differently: the art is wrong, not the numbers. */
+.pose-list button.flagged { border-color: rgba(255, 120, 140, 0.5); }
+.pose-list button.flagged::before { content: "✂ "; color: #ff8898; }
+/* the mark says which kind, so "throw this drawing away" is not mistaken for
+   "the pose is wrong" */
+.pose-list button.flagged[data-kind="pose"]::before { content: "⤺ "; }
+.pose-list button.flagged[data-kind="character"]::before { content: "☺ "; }
+.pose-list button.flagged[data-kind="delete"]::before { content: "🗑 "; }
+/* Not a fault in the drawing — a fault in the FILE, fixable in-repo without
+   anyone redrawing anything. Marked distinctly so the two never end up in the
+   same queue by eye. */
+.pose-list button.wanted { border-color: rgba(120, 170, 255, 0.45); }
+.pose-list button.wanted::before { content: "◍ "; color: #8fb8ff; }
+.pose-list button.wanted[data-want="crop"]::before { content: "⬚ "; color: #8fb8ff; }
+.pose-list button.wanted[data-want="bleed"]::before { content: "◐ "; color: #8fb8ff; }
+.pose-list button.flagged.wanted::before { content: "✂◍ "; color: #ff8898; }
+/* New art is on order for this pose. The kind glyph in front of the label says
+   what was wrong with the drawing; this says the consequence — somebody is
+   drawing it again, so anything you place today is measured off art that is on
+   its way out. It sits in the corner rather than in the label so it does not
+   compete with the pose name, and it is the one red thing in the grid. */
+.pose-list button .pose-warn::before { content: "\26a0"; }
+.pose-list button .pose-warn {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1;
+  color: #ff5a6e;
+  pointer-events: none;    /* the cell behind it still selects the pose */
+}
+/* A pose already requested for redraw is dimmed: the replacement is measured
+   from scratch when it lands, so placing this drawing now is work that gets
+   thrown away. What is left bright is what is worth doing today.
+   Dimmed, not disabled — it still selects, still edits, still exports, because
+   a request can sit unanswered for rounds and the pose has to stay usable in
+   the meantime. Hovering or selecting brings it back to full strength so
+   nothing is hard to read while it is being worked on. */
+.pose-list button.flagged { opacity: 0.42; }
+.pose-list button.flagged:hover,
+.pose-list button.flagged.sel,
+.pose-list button.flagged.dirty { opacity: 1; }
+/* Ticked off the updated list this session. It stays in the grid — the manifest
+   marker cannot go until the export is applied — so it reads as done rather
+   than disappearing under the cursor. */
+.pose-list button.reviewed { opacity: 0.45; }
+.pose-list button.reviewed::after { content: " ✓"; color: #6edc96; }
+/* Both marks, so ticking a pose you also edited does not hide the yellow dot
+   that says the edit is still unexported. */
+.pose-list button.dirty.reviewed::after { content: " ●✓"; color: var(--warn); }
+
+.panel select {
+  background: #0e111b;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.nudge { display: flex; gap: 5px; }
+.nudge button {
+  flex: 1;
+  padding: 5px 0;
+  font-size: 11.5px;
+  background: #0e111b;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.nudge button:hover { border-color: var(--accent); }
+
+button.primary {
+  background: linear-gradient(135deg, #1d5fd8, #62dcff);
+  color: #03101f;
+  border: none;
+  border-radius: 8px;
+  padding: 9px;
+  font-weight: 800;
+  cursor: pointer;
+}
+button.ghost {
+  background: #0e111b;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px;
+  cursor: pointer;
+}
+button.ghost:hover { border-color: var(--accent); }
+
+.note { margin: 2px 0 0; font-size: 11px; color: var(--dim); }
+
+/* ---------------- hover help ---------------- */
+
+/* A control's explanation lives on its title as `data-help` and appears in a
+   bubble, rather than as a paragraph pushing the next control down the panel. */
+[data-help] { cursor: help; }
+[data-help].help-open { color: var(--accent); }
+
+.help-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  margin-left: 5px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--dim);
+  vertical-align: 1px;
+  cursor: help;
+}
+[data-help]:hover .help-badge,
+.help-badge:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+  outline: none;
+}
+
+/* On <body> and positioned `fixed`: the panel is 340px wide and scrolls, so a
+   bubble parented inside it would be clipped on both axes. */
+.help-bubble {
+  position: fixed;
+  z-index: 60;
+  max-width: 330px;
+  padding: 10px 12px;
+  background: #171c2b;
+  border: 1px solid rgba(130, 150, 205, 0.4);
+  border-radius: 9px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  pointer-events: none;   /* never eats the hover that opened it */
+}
+.help-bubble[hidden] { display: none; }
+.help-bubble code { font-size: 10.5px; color: var(--accent); }
+.help-bubble b { color: #fff; }
+
+.chips.tight { margin-bottom: 2px; }
+
+/* ---------------- anchors ---------------- */
+
+#anchorRows { display: grid; gap: 10px; }
+
+/* One block per anchor the pose carries. Every shown anchor is draggable on
+   the canvas, so nothing here selects — `active` just marks the one the arrow
+   keys will move, which follows whatever you touched last. */
+.anchor-row {
+  display: grid;
+  /* one column, and one that may shrink: an `auto` track is sized by its
+     max-content, which the number fields would push past the panel's width */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 5px;
+  padding: 8px;
+  background: #0e111b;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.anchor-row.active { border-color: #78ebbe; }
+.anchor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.anchor-val { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+
+/* Name, value, and the one thing the canvas cannot do: put it back. */
+.anchor-title { font-size: 11.5px; font-weight: 700; }
+.anchor-head .ghost { flex: none; margin-left: auto; }
+
+/* A locked control stays legible — it is still a useful readout, it just
+   cannot be edited for this pose. */
+.group.disabled { opacity: 0.5; }
+.group.disabled input[type="range"] { cursor: not-allowed; }
+
+/* the canvas is a direct-manipulation surface once anchors are on screen */
+#stage { touch-action: none; }
+
+@media (max-width: 980px) {
+  /* Stacked, there is no second column to scroll past — let the page scroll
+     normally so the panel is reachable below the canvas. */
+  body { height: auto; overflow: visible; }
+  .layout { grid-template-columns: 1fr; overflow: visible; }
+  .stage-col, .panel { max-height: none; overflow-y: visible; }
+  .stage-col { overflow: visible; }
+  /* Stacked, the canvas has the page's height to grow into, so it goes back to
+     filling the width rather than fitting into a column that no longer bounds it. */
+  .stage-fit { position: static; }
+  .stage-wrap { position: relative; left: auto; transform: none; }
+  #stage, #aStage { width: 100% !important; height: auto !important; }
+  .layout { grid-auto-rows: auto; }
+}
+
+.history { display: flex; gap: 6px; margin-left: 18px; }
+
+/* ---------------- mode switch ---------------- */
+
+.modes { display: flex; gap: 6px; margin-left: auto; }
+.modes a {
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--dim);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+.modes a:hover { border-color: var(--accent); color: var(--text); }
+.modes a.on { background: #1d3550; border-color: var(--accent); color: #fff; }
+.loading { margin-left: 14px; }
+
+/* ---------------- action workbench ---------------- */
+
+#aStage {
+  /* sized by fitStageCanvas(), like the sprite viewer */
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: block;
+}
+
+.mono { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; }
+.dim { color: var(--dim); }
+
+.transport { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.stage-col > .transport { margin-top: 0; }
+.transport .timeline { flex: 1; }
+
+.timeline {
+  position: relative;
+  height: 20px;
+  background: #0e111b;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.timeline .seg { position: absolute; top: 0; bottom: 0; }
+.timeline .seg.startup { background: rgba(255, 185, 95, 0.30); }
+.timeline .seg.active { background: rgba(255, 90, 120, 0.55); }
+.timeline .seg.recover { background: rgba(120, 150, 210, 0.22); }
+.timeline .seg.neutral { background: rgba(98, 220, 255, 0.18); }
+.timeline .tick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(232, 236, 248, 0.28); }
+.timeline .play-head { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+
+/* The action list is the panel — everything else in that column is a character
+   picker above it and the export box below. So it takes the height rather than
+   being given a slice of it: it grows into whatever the two of them leave, and
+   `min-height` stops the flex shrink from squeezing 30-odd actions into a slit
+   when the content is taller than the viewport. No `max-height` of its own —
+   the panel's height is the limit, and a second one only fought with it. */
+.actions-panel {
+  position: relative;      /* so a button's offsetTop is panel-relative */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+/* The panel is content-height everywhere else, which is right for a column of
+   controls; here it has to reach the bottom of the layout for the list to have
+   anything to grow into. */
+#actionsView.layout { align-items: stretch; }
+#actionsView .panel > .group { flex: 0 0 auto; }
+.actions-panel > label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  font-weight: 800;
+  margin-top: 8px;
+}
+.action-list { display: flex; flex-direction: column; gap: 4px; }
+.action-btn {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  background: #0e111b;
+  color: var(--text);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.action-btn:hover { border-color: var(--line); }
+.action-btn.sel { background: #1d3550; border-color: var(--accent); color: #fff; }
+.action-btn em {
+  font-style: normal;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  color: var(--dim);
+  flex: none;
+}
+
+/* ---------------- sprite drawer ---------------- */
+
+.drawer {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  max-height: 52vh;
+  overflow-y: auto;
+  background: #10131e;
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -14px 40px rgba(0, 0, 0, 0.55);
+  padding: 12px 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transform: translateY(105%);
+  transition: transform 0.18s ease-out;
+  z-index: 20;
+}
+.drawer.open { transform: none; }
+.drawer > label,
+.drawer #aExtrasWrap > label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  font-weight: 800;
+}
+.drawer-bar { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.drawer-bar strong { font-size: 15px; }
+.drawer-bar .dim { margin-left: 8px; font-size: 12px; }
+.drawer-bar button { margin-left: auto; }
+
+.facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.fact {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--dim);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+.sprite-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sprite-tile {
+  width: 118px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px;
+  background: #0e111b;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  text-decoration: none;
+  cursor: pointer;
+}
+.sprite-tile:hover { border-color: var(--accent); }
+/* A tile whose action has been re-pointed this session. Distinct from the old
+   `.now` playhead marker, which is gone: these tiles are a control surface, and
+   a highlight that chases the animation reads as a selection nobody made. */
+.sprite-tile.changed { border-color: var(--warn); background: #1a1a26; }
+.sprite-tile.changed strong::after { content: " ●"; color: var(--warn); }
+/* Which slot of the animation this tile is, for an anim with more than one. */
+.slot-badge {
+  position: absolute;
+  top: 4px;
+  left: 5px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(6, 9, 18, 0.78);
+  color: var(--muted);
+  font-size: 9.5px;
+  font-style: normal;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* ---- action tile context menu ---- */
+.tile-menu {
+  position: fixed;
+  z-index: 70;
+  min-width: 230px;
+  padding: 4px;
+  background: #0e111b;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+}
+.tile-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 9px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.tile-menu button:hover { background: #1a2030; }
+.tile-menu button i {
+  display: block;
+  font-style: normal;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+/* ---- action sprite picker ---- */
+.picker-actions { display: flex; gap: 8px; align-items: center; }
+.picker-sep {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.picker-tile.current { border-color: var(--accent); background: #1d3550; }
+.picker-tile .thumb {
+  width: 100%;
+  height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-conic-gradient(#191d2b 0% 25%, #12151f 0% 50%) 50% / 16px 16px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.picker-tile .thumb.missing { color: var(--muted); font-size: 11px; }
+.picker-tile .thumb img { max-width: 100%; max-height: 108px; object-fit: contain; }
+
+.export-out {
+  width: 100%;
+  margin-top: 6px;
+  background: #0b0e17;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+  resize: vertical;
+}
+.sprite-tile .thumb {
+  position: relative;      /* so the slot badge sits inside the thumbnail */
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    repeating-conic-gradient(#191d2b 0% 25%, #12151f 0% 50%) 50% / 16px 16px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.sprite-tile .thumb.missing { color: var(--warn); font-size: 11px; }
+.sprite-tile img { max-width: 100%; max-height: 96px; object-fit: contain; }
+.sprite-tile strong {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.sprite-tile span {
+  font-size: 10.5px;
+  color: var(--dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keep every control reachable by scrolling while the drawer is parked over
+   the bottom of the page. */
+#actionsView { padding-bottom: 60px; }
+/* The action drawer is fixed to the bottom of the viewport, so the column it
+   overlaps has to end above it rather than the page growing underneath. */
+body.drawer-open .stage-col,
+body.drawer-open #actionsView .panel { padding-bottom: 54vh; }
+button.sm { padding: 4px 10px; font-size: 11.5px; }
+button.ghost:disabled { opacity: 0.35; cursor: default; border-color: var(--line); }
+.group.grow { flex: 1; min-width: 220px; }
+
+/* A sheet cell is listed by the action it serves, with the file it lives in
+   underneath — the name on disk is still what an asset request cites. */
+.pose-list button .pose-file {
+  display: block;
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---- secondary actions: states that borrow another state's sprite ---- */
+.action-rows { display: flex; flex-direction: column; gap: 6px; }
+
+.action-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-row > span { font-size: 12px; color: var(--text); }
+.action-row select { max-width: 190px; }
+.action-row.overridden > span { color: var(--accent, #62dcff); font-weight: 700; }
+.action-row .reset-action {
+  background: none;
+  border: 0;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 4px;
+}
+.action-row .reset-action:hover { color: var(--text); }
+
+/* ---- secondary action rows: preview on the left, current sprite as the
+   button that opens the picker ---- */
+.action-row { grid-template-columns: 1fr auto auto; }
+
+.action-row .action-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.action-row .action-name:hover { color: var(--accent, #62dcff); }
+.action-row.active .action-name { color: var(--accent, #62dcff); font-weight: 800; }
+
+.action-row .action-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  max-width: 190px;
+  padding: 5px 9px;
+  border: 1px solid var(--line, rgba(120, 140, 200, 0.25));
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+}
+.action-row .action-pick:hover { border-color: var(--accent, #62dcff); }
+.action-row .action-pick i {
+  font-style: normal;
+  font-size: 9px;
+  opacity: 0.55;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ---- sprite picker ---- */
+.picker-modal { position: fixed; inset: 0; z-index: 60; }
+.picker-backdrop { position: absolute; inset: 0; background: rgba(3, 5, 12, 0.72); }
+
+.picker-panel {
+  position: relative;
+  margin: 4vh auto;
+  width: min(94vw, 1080px);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line, rgba(120, 140, 200, 0.25));
+  background: #0d1120;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+.picker-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.picker-panel header .sub { display: block; }
+
+/* A heading spans the grid: the sprites nearest the pose first, then the rest,
+   so the useful ones are on screen without the others being hidden. */
+.picker-head {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--dim);
+  font-weight: 800;
+}
+.picker-head:first-child { margin-top: 0; }
+
+/* The end of the laid-down catalogue. Scrolling it into view lays down the
+   next page — a character has a hundred-odd drawings and each tile costs a
+   fetch, so the ones nobody scrolls to are never asked for. */
+.picker-more {
+  grid-column: 1 / -1;
+  padding: 10px 0;
+  text-align: center;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+/* A drawing marked for deletion. Still choosable — the mark is a request to
+   the next cleanup, not a lock — but it should not be mistaken for one of the
+   candidates. */
+.picker-tile.doomed { opacity: 0.45; border-color: rgba(255, 120, 160, 0.55); }
+.picker-tile.doomed::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), rgba(255, 120, 160, 0.75) 50%, transparent calc(50% + 1px)),
+    linear-gradient(to bottom right, transparent calc(50% - 1px), rgba(255, 120, 160, 0.75) 50%, transparent calc(50% + 1px));
+  pointer-events: none;
+}
+
+/* Right-click on a tile: what can be done to THAT drawing. */
+.picker-menu {
+  position: fixed;
+  z-index: 60;
+  min-width: 178px;
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: #10131e;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+}
+.picker-menu button {
+  text-align: left;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  background: none;
+  color: var(--text);
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.picker-menu button:hover:not(:disabled) { background: #1d3550; }
+.picker-menu button:disabled { color: var(--dim); cursor: not-allowed; }
+
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.picker-tile {
+  position: relative;      /* the deletion cross is drawn over the tile */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 6px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--line, rgba(120, 140, 200, 0.25));
+  background: #12172a;
+  color: var(--text);
+  cursor: pointer;
+  /* A tile lifts under the pointer, so the one about to be chosen is obvious
+     in a grid of thirty similar silhouettes. */
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.picker-tile:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent, #62dcff);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45);
+}
+.picker-tile canvas { display: block; }
+.picker-tile span { font-size: 11px; text-align: center; line-height: 1.25; }
+.picker-tile span i {
+  display: block;
+  font-style: normal;
+  font-size: 9px;
+  opacity: 0.55;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.picker-tile.current {
+  border-color: var(--accent, #62dcff);
+  box-shadow: inset 0 0 0 1px var(--accent, #62dcff);
+}
+
+/* Right-click enlargement, floating wherever it was opened. */
+.picker-preview {
+  position: fixed;
+  z-index: 70;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid var(--accent, #62dcff);
+  background: #0b0f1c;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+  pointer-events: none;
+}
+.picker-preview canvas { display: block; }
+.picker-preview span { display: block; margin-top: 6px; font-size: 11px; text-align: center; }
+.picker-preview span i {
+  font-style: normal;
+  opacity: 0.6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* A chip that holds a dropdown rather than a checkbox. */
+.chip--select { gap: 8px; white-space: nowrap; }
+.chip--select select {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line, rgba(120, 140, 200, 0.25));
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+/* Collapsed by default: both of these explain how a pose got here, which is
+   worth reading once and then never again. As open panels they pushed the
+   controls that get used on every pose below the fold. */
+.expando > summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+.expando > summary::-webkit-details-marker { display: none; }
+.expando > summary::before {
+  content: "▸ ";
+  display: inline-block;
+  transition: transform 0.12s ease;
+}
+.expando[open] > summary::before { content: "▾ "; }
+.expando > summary:hover { color: var(--text); }
+.expando > .note { margin-top: 8px; }
+
+/* A replacement the game is NOT drawing yet. Warm border because it is the one
+   panel that means "the thing on screen is not what just arrived". */
+.group.approval {
+  border: 1px solid rgba(255, 185, 95, 0.55);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(255, 185, 95, 0.07);
+}
+.group.approval .chips { margin-top: 8px; }
+.group.approval button { flex: 1; }

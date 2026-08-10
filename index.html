@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>JJK Brawler II</title>
+    <link rel="icon" href="favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="arena-wrap" aria-label="JJK Brawler game">
+        <canvas id="gameCanvas" width="1280" height="720"></canvas>
+
+        <nav id="utilityActions" class="utility-actions hidden" aria-label="Game options">
+          <button id="movesButton" class="icon-button icon-button--filled icon-button--info" type="button" aria-label="Controls and move list" title="Controls and move list">i</button>
+          <button id="muteButton" class="icon-button icon-button--filled" type="button" aria-pressed="false" aria-label="Mute sound" title="Mute sound">
+            <svg class="icon-sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.4L12 5.2v13.6L7.4 14.5H4Zm12.4-1.2a5 5 0 0 1 0 7.4l1.4 1.5a7 7 0 0 0 0-10.4Zm2.7-2.9a9 9 0 0 1 0 13.2l1.4 1.5a11 11 0 0 0 0-16.2Z"/></svg>
+            <svg class="icon-sound-off hidden" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.4L12 5.2v13.6L7.4 14.5H4Zm12.3.6 1.4-1.4 2.1 2.1 2.1-2.1 1.4 1.4L21.2 12l2.1 2.1-1.4 1.4-2.1-2.1-2.1 2.1-1.4-1.4 2.1-2.1Z"/></svg>
+          </button>
+          <button id="settingsButton" class="icon-button icon-button--filled" type="button" aria-label="Settings" title="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm8.1 4.9.1-1.1-.1-1.1 2-1.5-2-3.5-2.4 1a8.5 8.5 0 0 0-1.9-1.1L15.5 3h-4l-.3 2.8a8.5 8.5 0 0 0-1.9 1.1l-2.4-1-2 3.5 2 1.5-.1 1.1.1 1.1-2 1.5 2 3.5 2.4-1a8.5 8.5 0 0 0 1.9 1.1l.3 2.8h4l.3-2.8a8.5 8.5 0 0 0 1.9-1.1l2.4 1 2-3.5-2-1.5Z"/></svg>
+          </button>
+          <button id="fullscreenButton" class="icon-button" type="button" aria-label="Toggle fullscreen" title="Toggle fullscreen">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+          </button>
+        </nav>
+
+        <!-- Fighter panels are built in ui.js (buildHud): a match can seat
+             anywhere from two to eight fighters, so the row is generated from
+             the roster rather than hand-written per slot. -->
+        <div class="hud hidden" id="hud" aria-live="polite">
+          <div class="round-actions">
+            <div id="arenaSign" class="arena-sign"><span id="arenaSignName">Training Bridge</span></div>
+          </div>
+        </div>
+
+        <div id="menuOverlay" class="overlay">
+          <div class="title-lockup">
+            <span class="eyebrow">Cursed energy platform fighter</span>
+            <img class="game-logo" src="assets/ui/logo.png" alt="JJK Brawler II">
+          </div>
+
+          <div id="matchupBar" class="matchup-bar">
+            <button id="p1PickCard" class="matchup-side is-active is-empty" type="button">
+              <span id="p1PickLabel" class="hero-slot-label">Player 1</span>
+              <img id="p1PickImage" alt="Player 1 fighter">
+              <b id="p1PickRandomArt" class="hero-random-art hidden">?</b>
+              <strong id="p1PickName">Choose a fighter</strong>
+              <div id="p1PickInfo" class="hero-info"></div>
+              <i id="p1PickReady" class="hero-ready hidden">Ready</i>
+            </button>
+            <button id="p3PickCard" class="matchup-side hidden" type="button">
+              <span id="p3PickLabel" class="hero-slot-label">Player 3</span>
+              <img id="p3PickImage" src="assets/cards/megumi_card.jpg" alt="Player 3 fighter">
+              <b id="p3PickRandomArt" class="hero-random-art hidden">?</b>
+              <strong id="p3PickName">Megumi</strong>
+              <div id="p3PickInfo" class="hero-info"></div>
+              <i id="p3PickReady" class="hero-ready hidden">Ready</i>
+            </button>
+            <div class="matchup-center">
+              <button id="vsModeButton" class="vs-mode" type="button" aria-haspopup="true" aria-expanded="false" title="Change match mode">
+                <img class="vs-badge" src="assets/ui/vs_badge.png" alt="Versus">
+                <span id="vsModeLabel" class="vs-mode-label">Vs Battle</span>
+              </button>
+              <div id="modeMenu" class="mode-menu hidden" role="menu" aria-label="Match mode"></div>
+              <button id="startButton" class="primary-action" type="button">Choose Stage</button>
+            </div>
+            <button id="p4PickCard" class="matchup-side hidden" type="button">
+              <span id="p4PickLabel" class="hero-slot-label">Player 4</span>
+              <img id="p4PickImage" src="assets/cards/nobara_card.jpg" alt="Player 4 fighter">
+              <b id="p4PickRandomArt" class="hero-random-art hidden">?</b>
+              <strong id="p4PickName">Nobara</strong>
+              <div id="p4PickInfo" class="hero-info"></div>
+              <i id="p4PickReady" class="hero-ready hidden">Ready</i>
+            </button>
+            <button id="p2PickCard" class="matchup-side" type="button">
+              <span id="p2PickLabel" class="hero-slot-label">CPU</span>
+              <img id="p2PickImage" src="assets/cards/sukuna_card.jpg" alt="Player 2 fighter">
+              <b id="p2PickRandomArt" class="hero-random-art hidden">?</b>
+              <strong id="p2PickName">Sukuna</strong>
+              <div id="p2PickInfo" class="hero-info"></div>
+              <i id="p2PickReady" class="hero-ready hidden">Ready</i>
+            </button>
+          </div>
+
+          <div id="characterGrid" class="character-grid" aria-label="Fighter select"></div>
+
+          <p id="modeNote" class="controller-status mode-note hidden"></p>
+          <p id="menuHint" class="controller-status">Pick a fighter to lock in — confirm again to start. B / Backspace un-readies.</p>
+          <p id="controllerStatus" class="controller-status hidden"></p>
+          <p id="loadHint" class="controller-status load-hint hidden"></p>
+        </div>
+
+        <div id="stageOverlay" class="overlay hidden">
+          <div class="title-lockup">
+            <span class="eyebrow">Choose arena</span>
+            <h2>Stages</h2>
+          </div>
+          <div id="stageGrid" class="stage-grid" aria-label="Stage select"></div>
+          <div class="menu-actions">
+            <button id="randomStageButton" class="primary-action" type="button">Random Stage</button>
+            <button id="stageBackButton" type="button">Back</button>
+          </div>
+        </div>
+
+        <div id="movesOverlay" class="overlay hidden">
+          <div class="title-lockup">
+            <span class="eyebrow" id="movesKicker">Move list</span>
+            <h2 id="movesTitle">Gojo</h2>
+          </div>
+          <div id="movesPanel" class="moves-panel"></div>
+          <div class="menu-actions">
+            <button id="movesModeButton" type="button">Browse all fighters</button>
+            <button id="movesPrevButton" type="button">&#9664; Prev</button>
+            <button id="movesNextButton" type="button">Next &#9654;</button>
+            <button id="movesBackButton" type="button">Back</button>
+          </div>
+        </div>
+
+        <div id="roundOverlay" class="overlay overlay--compact hidden">
+          <div class="title-lockup">
+            <span class="eyebrow" id="roundKicker">Match complete</span>
+            <h2 id="winnerText">Gojo wins</h2>
+          </div>
+          <div class="menu-actions">
+            <button id="rematchButton" class="primary-action" type="button">Rematch</button>
+            <button id="menuButton" type="button">Fighter Select</button>
+          </div>
+        </div>
+
+        <div id="pauseOverlay" class="overlay overlay--compact hidden">
+          <div class="title-lockup">
+            <span class="eyebrow">Match paused</span>
+            <h2>Paused</h2>
+          </div>
+          <div class="menu-actions">
+            <button id="resumeButton" class="primary-action" type="button">Resume</button>
+            <button id="pauseResetButton" type="button">Reset</button>
+            <button id="pauseMenuButton" type="button">Main Menu</button>
+          </div>
+        </div>
+
+        <div id="settingsOverlay" class="overlay overlay--compact hidden">
+          <div class="title-lockup">
+            <span class="eyebrow">Options</span>
+            <h2>Settings</h2>
+          </div>
+          <div class="settings-panel">
+            <label class="settings-field" for="musicVolumeRange">
+              <span id="musicVolumeLabel">Music Volume: 30%</span>
+              <input id="musicVolumeRange" type="range" min="0" max="100" value="30">
+            </label>
+            <label class="settings-field" for="sfxVolumeRange">
+              <span id="sfxVolumeLabel">Sound FX Volume: 20%</span>
+              <input id="sfxVolumeRange" type="range" min="0" max="100" value="20">
+            </label>
+            <button id="settingsSfxButton" type="button">Sound Effects: On</button>
+            <button id="settingsMusicButton" type="button">Music: Mix</button>
+            <button id="settingsCpuButton" type="button">CPU Difficulty: Normal</button>
+            <button id="settingsStocksButton" type="button">Lives per fighter: 3</button>
+            <button id="settingsSpritesButton" type="button">Sprites: Default</button>
+            <button id="settingsBoardsButton" type="button">Active Boards: On</button>
+          </div>
+          <div class="menu-actions">
+            <button id="settingsBackButton" type="button">Back</button>
+          </div>
+        </div>
+
+        <div id="loadOverlay" class="overlay">
+          <div class="title-lockup">
+            <span class="eyebrow">Summoning fighters</span>
+            <h2 id="loadStatus">Loading&hellip;</h2>
+          </div>
+          <div id="loadBar" class="load-bar" role="progressbar" aria-label="Loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="loadBarFill" class="load-bar-fill"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <audio id="musicTrack" preload="auto"></audio>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
