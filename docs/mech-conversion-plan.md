@@ -30,16 +30,16 @@ plays nothing like a platform fighter.
         moves with numbers, capabilities, geometry work) and what it suggests
         in a platform fighter. Sources: mechs/characters.{json,md},
         mechs/GEOMETRY.md, robotworld src/mechs/roster.js.
-- [ ] R2. Arena dossier: per arena/theme, its look, props, hazards and
+- [x] R2. Arena dossier: per arena/theme, its look, props, hazards and
         gimmicks upstream. Sources: robotworld src/arena/*, public/levels,
         docs; intake/arenas/*.png for what the paintings show.
-- [ ] R3. Presentation dossier: how the neon title flicker is done, the menu
+- [x] R3. Presentation dossier: how the neon title flicker is done, the menu
         palette, music inventory (src/music + public/sound), sfx, and what
         "brighter" should mean concretely in render3d's toon pass.
 - [x] D1. docs/characters.md — the NEW system of powers: per mech, the full
         brawler kit (lights/heavies/dash/air, ranged, special, ult, movement
         quirks), with the reasoning. This is the design source of truth.
-- [ ] D2. docs/arenas.md — the NEW arena set: per arena, platforms, hazard
+- [x] D2. docs/arenas.md — the NEW arena set: per arena, platforms, hazard
         design with timings/telegraphs, music pick, palette note.
 - [x] D3. docs/image-requests.md — REWRITTEN for this game: power effects,
         hazard effects, UI garnish we cannot source from robotworld. Old JJK
@@ -122,6 +122,41 @@ plays nothing like a platform fighter.
         Specials map to B + neutral/directions as needed. Flying mechs:
         flight is a double-jump with a different feel and control, not free
         flight.
+
+## Key research facts (distilled from the dossiers, for resume)
+
+- **Neon title technique (MM)**: per-WORD `<span class="tube">`, hollow via
+  `-webkit-text-stroke: 3px` + `color:transparent`, 3-layer text-shadow
+  (18px tight, 60px + 120px halos), two co-prime `steps(1,end)` flicker
+  keyframes (7.3s/9.1s, delay -2.4s), dips to 0.2-0.45 never 0, stutter
+  pairs. Buzz: JS reads getComputedStyle(tube).opacity each frame; crossing
+  <0.9 plays a slice of neon_buzz.mp3. Palette: cyan #38e8ff, magenta
+  #ff4dd8, amber #ffb43c, red #ff4d5e, green #62ff9a on #05070c; panels
+  rgba(8,14,24,.82) edge rgba(96,200,255,.35). JJK styles.css :root tokens
+  are the swap point; JJK lacks a magenta token (--accent-3). Keep JJK's
+  --slash skew + select-spotlight (its own voice). MM fonts are SYSTEM
+  stacks (Bahnschrift/DIN/Oswald 900 italic uppercase) — Barlow Condensed
+  900 italic is the match, no new font needed.
+- **Toon grade**: render3d uses NoToneMapping deliberately (two-band ramp);
+  chase MM's bright-neon in toon.js TOON (shadeThreshold .62, tint
+  [.52,.56,.74], rim .28) + stageLightTint boost, NOT tone mapping. MM
+  numbers: exposure 1.02-1.10, hemi .6-.75, neon stages = dim sun + HOT
+  colored rim 1.25-1.4 (magenta/violet/orange).
+- **Music (MM)**: per-arena tracks match by normalized filename ("Neon
+  District 2" -> neondistrict). 24 arena files (11 arenas, foundry none),
+  6 general battle loops, menu = "Bohemian Cello Flame Hybrid Suite.mp3"
+  (public/sound), neon_buzz.mp3 for the title. JJK equivalent: assets/music/
+  boards/<Stage Name>.mp3 keyed by exact stage name, config_music.js
+  hand-listed, check_music.mjs --write refreshes. No crossfades either side.
+- **MM hazards that exist**: lava/acid burn ticks (grounded-only, soft),
+  water/oil/mud drag, explosives (95 AoE + chain + fire crater), spikes,
+  campfires, building collapse (<45% chunks), bobbing floats, aurora prop.
+  NOT implemented upstream: wind, low-grav, ice slip (glacier ability only),
+  jump pads, ring-out. Arena ambience beds amb_<theme>.mp3 ×12 in
+  robotworld public/sfx.
+- **MM sfx bank**: public/sfx 122 files w/ manifest (generic camelCase +
+  <mech>_<event> overrides + amb_<arena> + step_<material>), sliced
+  multi-take detection, category mix table.
 
 ## Decisions taken
 
