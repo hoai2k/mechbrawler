@@ -399,6 +399,15 @@ export function poseToken(charKey, animKey, animTime, layers) {
   const rch = layers.reach && aimable(animKey)
     ? `~r${layers.reach.dx},${layers.reach.dy}` : "";
   const par = layers.parallaxDeg ? `~p${layers.parallaxDeg}` : "";
+  // The presentation pin (pose.PRESENT): the SIGNED target angle this state
+  // and phase is presented at, quantised to whole degrees by the backend. A
+  // different target is a different root yaw and different pixels, so it
+  // joins the key exactly as the parallax does. The measured clip-forward it
+  // is solved against (pose.measureClipForward) is a pure function of
+  // dimensions already in this key — character, clip, beat — so the pin adds
+  // ONE dimension with at most a handful of values (idle/profile/wind-up per
+  // facing, plus the turn sweep's steps), and the key stays dense.
+  const pres = layers.presentDeg ? `~P${layers.presentDeg}` : "";
   // Stance changes the silhouette, so it changes the pose, so it changes the
   // key — a cache that ignored it would keep serving the old stance.
   const st = layers.stanceDeg ? `~s${layers.stanceDeg}` : "";
@@ -415,7 +424,7 @@ export function poseToken(charKey, animKey, animTime, layers) {
   // from, and with the other rig check.
   const rc = layers.rigCheck ? `~C${layers.rigCheck}` : "";
   const orb = orbitKey();
-  return `${charKey}/${clipNameFor(animKey)}@${q}${bt}${bl}${aim}${look}${fl}${turn}${rch}${par}${st}${ed}${mq}${rc}`
+  return `${charKey}/${clipNameFor(animKey)}@${q}${bt}${bl}${aim}${look}${fl}${turn}${rch}${par}${pres}${st}${ed}${mq}${rc}`
     + `${orb ? `~o${orb}` : ""}~L${lightKey()}`;
 }
 
