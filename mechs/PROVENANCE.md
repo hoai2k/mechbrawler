@@ -25,7 +25,18 @@ PORT=5175 node tools/exportcheck.mjs --all   # verify before copying
 
 Then copy `public/models/export/.` over this directory.
 
-Generated from robotworld `ad1e65d`, and all 17 exports passed `exportcheck`
+`export-mech.mjs` also samples Mech Mayhem's PROCEDURAL jump/crouch layers into
+real clips (they are animator layers keyed off the frame context, not named
+clips — `src/mechs/animator.js`): every mech carries five sampled pose clips —
+`jumpRise` (airborne rising tuck, vy>0), `jumpFall` (falling spread, vy<0),
+`hover` (jet-flight pose at full speed ratio), `crouch` (the duck layer at
+that mech's own `stats.duck` depth), each 0.5s held — and `battleIdle` (1s):
+the ready combat stance, the readyK carriage layer fully engaged with the
+idle breath/sway alive on top. Per-mech personality is baked in (konga's
+`airReach` arms-up, frogger's deep squat).
+
+Generated from robotworld `ad1e65d` (+ the pose-clip sampling extension to
+`tools/export-mech.mjs`/`src/dev/export.js`), and all 17 exports passed `exportcheck`
 at that revision: 0.00% size difference against the game build, 0° facing,
 15/15 game joints present by name, every anchor on the right bone, and every
 clip moving bones rather than merely existing.

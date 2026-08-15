@@ -60,67 +60,12 @@ const spriteUrl = (file) =>
     ? `${SHARED_SPRITE_DIR}${file}`
     : `${CHAR_SPRITE_DIR}${file}`);
 
+// Effect art the ult directors draw by key. Just the flechette today: the
+// JJK effect bank went out with the conversion (plan task K4), and new mech
+// power-effect art (docs/image-requests.md) registers here as it lands.
 const EFFECT_KEYS = [
-  // (rainbow_dragon is NOT here: Geto's dragon is summon:rainbow_dragon, and
-  // the effects/ copy was a required fetch nothing ever drew.)
-  "blue", "red", "purple", "dismantle", "fuga", "sword_beam", "wind_scythe", "nail",
-  "cursed_spirit_orb", "ember", "cursed_bud", "chain", "shutter",
-  "lava_geyser", "root_spikes", "scissors_curse", "shrine", "triceratops",
-  "uzumaki", "meteor", "tempest", "nail_storm", "scream_wave",
-  "cursed_tool", "ratio_wave", "soul_isomer", "speech_word", "drum_burst", "soul_touch",
-  "aura_gold", "aura_pink", "aura_violet", "aura_orange", "aura_green",
-  "boogie_clap", "domain_gamble",
-  // Geto's summoned curses, cut out of his delivered art (tools/recut_curses.py)
-  "curse_a", "curse_b", "curse_c", "curse_d", "curse_dragon",
-  // Round 7 — Choso, Mei Mei, Uro, Yuji, Reggie, Gakuganji
-  "piercing_blood", "blood_orb", "aura_crimson", "crow", "crow_flock",
-  "sky_ripple", "sky_shard", "divergent_shock",
-  "receipt_blade", "spray_cloud", "drop_vending", "drop_bike", "drop_futon", "sedan",
-  "sound_wave", "feedback_wall", "concert_wave", "aura_amber",
+  "nail", // Titanus SIEGE PROTOCOL flechettes (nailstorm director, ultimates.js)
 ];
-
-// Effects for fighters whose art has not been delivered yet, keyed by fighter
-// so they are only fetched once that fighter joins CHARACTER_KEYS. These load
-// as OPTIONAL: a missing file stays silent instead of logging, and the
-// projectile/install renderers fall back to their procedural look, so a
-// fighter can ship ahead of their effects (Choso did, for one round).
-//
-// Two kinds live here. The first three are install auras the engine points at
-// but whose art has never been delivered (asset-requests round 13E) — until
-// the file lands the install draws its procedural ellipse aura exactly as
-// before. The last four are the round-15 staged fighters: nothing under their
-// keys is fetched at all today, because they are not in CHARACTER_KEYS, and
-// promoting one starts loading its effects with no change here.
-const STAGED_EFFECT_KEYS = {
-  maki: ["aura_jade"],
-  panda: ["aura_slate"],
-  yuji: ["aura_indigo"],
-  mechamaru: ["ultra_cannon", "pigeon_orb", "ultimate_cannon"],
-  yuki: ["star_rage_impact"],
-  dagon: ["tide_wave", "shikigami_fish"],
-  kurourushi: ["egg_shot", "blinding_sacs", "aura_chitin"],
-};
-
-// Summon minions belonging to a staged fighter. The delivered summons in the
-// "shared" group below are REQUIRED loads — a broken path there should be
-// reported — but a staged fighter's minion has no file yet by definition, so
-// these are optional and gated on the fighter actually being on the roster.
-// summons.js falls back through `sprites` to a procedural body, so a promoted
-// fighter whose summon art is still in flight plays correctly regardless.
-const STAGED_SUMMON_KEYS = {
-  yuki: [["summon:garuda", "summons/garuda.png"]],
-  dagon: [["summon:dagon_shikigami", "summons/dagon_shikigami.png"]],
-  kurourushi: [
-    ["summon:cockroach_swarm", "summons/cockroach_swarm.png"],
-    ["summon:kurourushi_child", "summons/kurourushi_child.png"],
-  ],
-};
-
-// Stage-hazard polish art (Active Boards — src/stage_fx.js), requested as
-// round 9D in docs/asset-requests.md. Optional: every hazard draws a
-// procedural canvas fallback, so a missing file changes nothing visible
-// except polish.
-const STAGE_FX_SPRITES = ["stage_lantern", "stage_fang", "stage_flower", "stage_weak_curse"];
 
 // Near-field cards for the 3D camera's garnish layer (round 18F). Optional in
 // the strongest sense: every one of them has a procedural drawing in
@@ -132,24 +77,6 @@ const GARNISH_SPRITES = [
   "rubble_a", "rubble_b", "rubble_c",
   "hoarding_a", "hoarding_b", "hoarding_c",
 ];
-
-// Domain Expansion backgrounds — a full-screen environment that replaces the
-// stage while a domain is open (src/domains.js, drawn by state.domainOverlay).
-// Optional: until the art lands the renderer just dims the stage and grades it
-// with the domain's colour, which reads fine, so a missing file is not an
-// error. Requested as round 9C in docs/asset-requests.md.
-const DOMAIN_BACKGROUNDS = {
-  unlimited_void: "gojo",
-  malevolent_shrine: "sukuna",
-  shadow_garden: "megumi",
-  self_embodiment: "mahito",
-  iron_mountain: "jogo",
-  idle_death_gamble: "hakari",
-  mutual_love: "yuta",
-  // Staged with Dagon (round 15). Gated on CHARACTER_KEYS like the rest, so it
-  // is not fetched until he is on the roster.
-  captivating_skandha: "dagon",
-};
 
 function loadImage(src) {
   return new Promise((resolve, reject) => {
@@ -469,24 +396,12 @@ function groupJobs(id) {
   // "shared" — art that belongs to no one fighter and could turn up in any
   // match. Every one of these has a procedural fallback in the renderer, which
   // is why the match gate does not wait on them.
-  // Summons whose art is not a creature standing on the stage: Mahoraga's is
-  // the fallback still for a set that fails its pose check (he animates
-  // through the actor sprite set), and Rika is drawn by Yuta's moves and his
-  // domain rather than by summons.js.
-  add("summon:mahoraga", "assets/sprites/summons/mahoraga.png");
-  add("summon:rika", "assets/sprites/summons/rika.png");
-  add("summon:nue", "assets/sprites/summons/nue.png");
 
-  // Every creature summons.js can put on the stage (config_summons.js). Art is
-  // fetched only where the flags say it exists: `delivered` for the single
-  // still, `poses` for the animation set (round 16). Both default off, which
-  // is what integrating a delivery flips — the same shape as a staged fighter
-  // or a switched-off transform, and it keeps the loader from firing a hundred
-  // requests at files nobody has drawn yet.
-  //
-  // A creature with no art at all is not a hole: its kit config names a
-  // borrowed `effect:*` stand-in, and failing that it draws the procedural
-  // glow (summons.js).
+  // Every creature summons.js can put on the stage (config_summons.js — empty
+  // until mech summon art is delivered). Art is fetched only where the flags
+  // say it exists: `delivered` for the single still, `poses` for the animation
+  // set. A creature with no art is not a hole: summons.js draws the procedural
+  // glow.
   for (const [key, art] of Object.entries(SUMMON_ART)) {
     if (art.delivered) add(`summon:${key}`, `assets/sprites/summons/${art.file}.png`);
     if (!art.poses) continue;
@@ -496,27 +411,6 @@ function groupJobs(id) {
   }
 
   for (const key of EFFECT_KEYS) add(`effect:${key}`, `assets/sprites/effects/${key}.png`);
-  // Round-7 effects load automatically the moment their fighter is promoted
-  // into CHARACTER_KEYS — no loader change needed at integration. Optional
-  // because a fighter may ship ahead of their effect art (see above).
-  for (const charKey of CHARACTER_KEYS) {
-    for (const key of STAGED_EFFECT_KEYS[charKey] || []) {
-      optional(`effect:${key}`, `assets/sprites/effects/${key}.png`);
-    }
-    for (const [key, file] of STAGED_SUMMON_KEYS[charKey] || []) {
-      // `file` here is a SHARED path ("summons/<name>.png"), not a manifest
-      // entry — a staged fighter's minion is creature art, not character art.
-      optional(key, `assets/sprites/${file}`);
-    }
-  }
-  for (const [name, charKey] of Object.entries(DOMAIN_BACKGROUNDS)) {
-    if (CHARACTER_KEYS.includes(charKey)) {
-      optional(`domain:${name}`, `assets/backgrounds/domains/${name}.jpg`);
-    }
-  }
-  for (const key of STAGE_FX_SPRITES) {
-    optional(`stagefx:${key}`, `assets/sprites/effects/${key}.png`);
-  }
   for (const key of GARNISH_SPRITES) {
     optional(`garnish:${key}`, `assets/sprites/garnish/${key}.png`);
   }

@@ -9,9 +9,8 @@ import { padsMenuState, padsMenuStates } from "./input.js";
 import { cameraMode } from "./camera_mode.js";
 import { preloadChar } from "./render_backend.js";
 import { previewCharacter, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
-import { CHARACTER_QUOTES, RANDOM_GROUP, TEXT, USE_SIMPLE_CARDS } from "./config_menus.js";
+import { CHARACTER_QUOTES, RANDOM_GROUP, TEXT } from "./config_menus.js";
 import { CONTROL_ROWS, rowAtPad } from "./config_controls.js";
-import { domainStickFor, charDomainSpecialSlot } from "./domains.js";
 import { MATCH_MODES, MAX_FIGHTERS, matchPlan, modeLabel, HUMAN_TEAM } from "./modes.js";
 
 const $ = (id) => document.getElementById(id);
@@ -165,8 +164,8 @@ function applyStaticText() {
   heading("pauseOverlay", TEXT.pause.eyebrow, TEXT.pause.title);
   heading("settingsOverlay", TEXT.settings.eyebrow, TEXT.settings.title);
   heading("loadOverlay", TEXT.loading.eyebrow, TEXT.loading.title);
-  const logo = els.menuOverlay?.querySelector(".game-logo");
-  if (logo) logo.alt = TEXT.menu.logoAlt;
+  els.menuOverlay?.querySelector(".neon-title")
+    ?.setAttribute("aria-label", TEXT.menu.logoAlt);
 }
 
 // The sliders start wherever config_audio.js says, so the markup never has to
@@ -340,26 +339,16 @@ function heroCardSrc(key) {
   return `assets/cards/${key}_card.jpg`;
 }
 
-/** A fighter's full-body victory pose, transparent PNG. The results screen
- *  stands the winner up at poster size with this instead of the framed card —
- *  a cut-out figure reads as a character, a cropped painting reads as a photo.
- *  Every fighter in sprites/assets/ ships one. */
-function victorySpriteSrc(key) {
-  return `sprites/assets/${key}/victory.png`;
-}
-
 /** A fighter's one spoken line — the VS splash and the results screen both say
  *  it. Falls back to the epithet so a fighter without a written line still
  *  speaks rather than standing under an empty quote mark. */
 function quoteFor(key) {
-  return CHARACTER_QUOTES[key] || CHARACTERS[key]?.epithet || "";
+  return CHARACTER_QUOTES[key] || CHARACTERS[key]?.quotes?.intro || CHARACTERS[key]?.epithet || "";
 }
 
-/** The art the roster GRID draws, which is a different question: at tile size,
- *  cropped from the top, twenty-odd at once. `USE_SIMPLE_CARDS` picks between
- *  the two sets; see the note on it in config_menus.js. */
+/** The art the roster GRID draws — the hero card, cropped by the grid. */
 function rosterTileSrc(key) {
-  return USE_SIMPLE_CARDS ? `assets/cards/simple/${key}_tile.jpg` : heroCardSrc(key);
+  return heroCardSrc(key);
 }
 
 function buildCharacterCard(key) {
@@ -1626,44 +1615,7 @@ function characterBody(c) {
       <dt>${TEXT.moves.specialDown}</dt><dd><strong>${s.down.name}</strong> — ${s.down.desc}</dd>
       <dt>${TEXT.moves.ultimate}</dt><dd><strong>${c.ultimate.name}</strong> — ${c.ultimate.desc} <em>${TEXT.moves.ultimateNote}</em></dd>
     </dl>
-    <div class="moves-section">${TEXT.moves.domainSectionTitle}</div>
-    ${domainRows(c)}
   `;
-}
-
-/** Domain Expansion rows for the moves screen. Most fighters have none at all,
- *  and saying so explicitly is better than an empty section the player has to
- *  interpret — but a fighter with a SIMPLE Domain has one this screen must
- *  name, because the domain button casts it.
- *
- *  How a domain is reached is asked of domains.js rather than written here: the
- *  button alone opens the one domain a fighter has, and only a fighter with
- *  more than one splits them across the left stick. A screen that stated a
- *  fixed mapping would be wrong for one of those cases with nothing to make it
- *  notice. */
-function domainRows(c) {
-  const list = c.domains || [];
-  const input = TEXT.moves.domainInput;
-  if (!list.length) {
-    const slot = charDomainSpecialSlot(c);
-    if (!slot) return `<p class="moves-blurb moves-blurb--muted">${TEXT.moves.domainNone}</p>`;
-    const move = c.specials[slot];
-    return `<dl class="moves-table">
-      <dt>${input}</dt>
-      <dd>
-        <strong>${move.name}</strong> — ${move.desc}
-        <em>${TEXT.moves.simpleDomainNote(TEXT.moves[`special${slot[0].toUpperCase()}${slot.slice(1)}`])}</em>
-      </dd></dl>`;
-  }
-  return `<dl class="moves-table">` + list.map((d, i) => {
-    const stick = domainStickFor(i, list.length);
-    return `
-      <dt>${stick ? TEXT.moves.domainInputAlt(input, stick.map((k) => TEXT.moves.domainSticks[k])) : input}</dt>
-      <dd>
-        <strong>${d.name}</strong> — ${d.desc} <em>${TEXT.moves.domainNote}</em>
-        <span class="domain-howto"><strong>${TEXT.moves.domainHowTo}</strong> ${d.howTo}</span>
-      </dd>`;
-  }).join("") + `</dl>`;
 }
 
 // -------------------------------------------------------------------- HUD
@@ -1776,13 +1728,8 @@ function renderMeter(fillEl, labelEl, f) {
   // One threshold: a full bar, spendable on either super. There is nothing to
   // signal below it, so the bar is either charging or ready.
   const full = f.meter >= METER_MAX;
-  const hasDomain = !!f.char.domains?.length;
   fillEl.parentElement.classList.toggle("meter--full", full);
-  // A fighter with no domain has only one thing to spend the bar on, so they
-  // are told that rather than offered a choice they cannot make.
-  labelEl.textContent = !full ? ""
-    : hasDomain ? TEXT.hud.superChoiceReady
-    : TEXT.hud.ultimateReady;
+  labelEl.textContent = full ? TEXT.hud.ultimateReady : "";
 }
 
 /** The inherent energy pool (constants.js INHERENT_ENERGY): a slim cyan bar
@@ -1830,8 +1777,7 @@ function renderPodium(winner, side = null) {
   if (!winner) { els.victoryPodium.innerHTML = ""; return; }
   const hero = (f) => `
     <figure class="victory-hero" style="--card-theme:${f.char.theme}">
-      <img class="victory-hero-art" src="${heroCardSrc(f.charKey)}" alt="">
-      <img class="victory-hero-sprite" src="${victorySpriteSrc(f.charKey)}" alt="${f.char.name}">
+      <img class="victory-hero-art" src="${heroCardSrc(f.charKey)}" alt="${f.char.name}">
       <figcaption class="victory-hero-plate">
         <i>${TEXT.roundOver.winnerBadge}</i>
         <b>${f.char.name}</b>

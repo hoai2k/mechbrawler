@@ -13,10 +13,16 @@
 //
 // CLIP RESOLUTION — identical inheritance to billboards, edited in the
 // render3d workbench. For character C in state S, first answer wins:
-//   1. manifest characters[C].clips[S].from   (hand-set override)
-//   2. C's own rig clip named S
-//   3. manifest characters[C].inheritClips    (whole-set fallback, no chains)
-//   4. the default pose set (the mannequin's clips)
+//   1. manifest characters[C].clips[S].glb    (the rig's OWN exported clip,
+//      by its export name; optional `.freeze: <s>` holds it at one time)
+//   2. the pose-library build (POSE_LIBRARY_CLIPS — OFF since K5, and always
+//      refused for a mech entry)
+//   3. manifest characters[C].clips[S].from   (hand-set override)
+//   4. C's own rig clip named S
+//   5. manifest characters[C].inheritClips    (whole-set fallback, no chains)
+//   6. the default pose set (the mannequin's clips) — NEVER for a mech: a
+//      mech state with no glb mapping resolves null and draws the
+//      placeholder loudly rather than a JJK pose silently.
 // ...then characters[C].clips[S].mirror / characters[C].mirrorClips may flip
 // the answer left-right (see finishClip below).
 //
@@ -41,17 +47,15 @@ const RIGS = new Map();
 /**
  * ANIMATE FROM THE POSE LIBRARIES rather than from delivered clips.
  *
- * The strategy `clip_schedule.js` opens by stating: a fighter's animation is
- * the interpolation between THEIR OWN SPRITE POSES, not a separate 3D
- * performance that happens to share a name with a sprite state. With the
- * libraries in place that is finally buildable, so it is on — and it is a dial
- * rather than a deletion because a delivered clip is still the ground truth
- * for whether the built one is any good, and `?edit=pose`'s **In Game** column
- * is how you compare them.
- *
- * Off, nothing changes: the resolution order below is exactly what it was.
+ * OFF since K5, by owner decision: every pose and animation on a mech must
+ * come from the mech's own exported MM GLB clips — the libraries are the
+ * JJK-era sprite poses and have no business posing this roster. The dial and
+ * the build machinery are still here only because deleting the library files
+ * is a separate follow-up task; nothing resolves through them while this is
+ * off, and resolveClip additionally refuses the library branch for any rig
+ * delivered with a glb clip table even if someone flips it back on.
  */
-export const POSE_LIBRARY_CLIPS = { on: true };
+export const POSE_LIBRARY_CLIPS = { on: false };
 
 /** charKey -> Map(clipName -> AnimationClip), built once per rig. */
 const BUILT = new Map();
@@ -96,24 +100,38 @@ export function resolveClip(charKey, state) {
   const own = RIGS.get(charKey);
   const answer = (clip, source) => finishClip(clip, source, name, entry);
 
-  // BUILT FROM THE POSE LIBRARIES, ahead of everything — including a delivered
-  // clip, which is the point: the whole exercise is to make the model do what
-  // the drawings do, and a delivered clip is a second opinion about the same
-  // question. A per-character `clips[name].from` override still wins below,
-  // because that is somebody deliberately borrowing another fighter's
-  // animation and the libraries have no business overruling it.
-  if (POSE_LIBRARY_CLIPS.on && !entry?.clips?.[name]?.from) {
-    const built = BUILT.get(charKey)?.get(name);
-    if (built) return answer(built, "library");
-  }
-
-  // The mech path: `clips[name].glb` names one of the rig's OWN exported
-  // animations (Mech Mayhem clip names — walk, clawSnap, viperSlash1 …).
-  // This is how the 26-state contract maps onto a GLB whose clips were named
-  // by a different game; tools/mech_intake.mjs writes the table.
+  // The mech path, FIRST: `clips[name].glb` names one of the rig's OWN
+  // exported animations (Mech Mayhem clip names — walk, clawSnap,
+  // viperSlash1 …). This is how the 26-state contract maps onto a GLB whose
+  // clips were named by a different game; tools/mech_intake.mjs writes the
+  // table. It beats the pose-library branch below on purpose (K5): a manifest
+  // glb mapping is an EXPLICIT decision about this rig, while the library
+  // cycles are Mixamo-boned and empty on the mech skeletons — resolving them
+  // first left walk/run/dash showing whatever carriage the previous clip had
+  // left in the untracked bones.
+  //
+  // `clips[name].freeze: <seconds>` freezes the named clip: the state holds
+  // the pose the clip has at that time (K5 — idle is the first frame of the
+  // mech's own heavy wind-up, charge its mid-wind-up). The frozen clip is a
+  // real AnimationClip with constant tracks, so the mixer, the pose cache and
+  // the additive breath layer all treat it exactly like any other clip.
   const glbName = entry?.clips?.[name]?.glb;
   if (glbName && own?.clips?.has(glbName)) {
-    return answer(own.clips.get(glbName), `glb:${glbName}`);
+    const src = own.clips.get(glbName);
+    const freezeT = Number(entry?.clips?.[name]?.freeze);
+    if (Number.isFinite(freezeT) && THREE) {
+      return answer(freezeClip(src, freezeT), `glb:${glbName}@${freezeT}s`);
+    }
+    return answer(src, `glb:${glbName}`);
+  }
+
+  // BUILT FROM THE POSE LIBRARIES — dead by default (POSE_LIBRARY_CLIPS is
+  // off since K5) and refused outright for a mech: those built clips are the
+  // JJK-era sprite poses, and a rig delivered with its own glb table animates
+  // from its own export only.
+  if (POSE_LIBRARY_CLIPS.on && !isMechEntry(entry) && !entry?.clips?.[name]?.from) {
+    const built = BUILT.get(charKey)?.get(name);
+    if (built) return answer(built, "library");
   }
 
   const override = entry?.clips?.[name]?.from;
@@ -132,8 +150,67 @@ export function resolveClip(charKey, state) {
     if (clip) return answer(clip, `inherit:${inherit}`);
   }
 
+  // MM CLIPS ONLY for mechs (K5): a rig delivered with a glb clip table never
+  // falls through to the default (JJK-era) pose set. A state the intake gave
+  // no mapping is a hole to fix in tools/mech_intake.mjs, and it should look
+  // like one — the fighter draws the placeholder body loudly (backend.js
+  // handles the null), not a JJK pose silently. A MANNEQUIN stand-in is
+  // exempt: it has no glb clips at all (it is the spec-built proof body the
+  // `?mannequin` workbenches pose), so it keeps the default pose set.
+  if (isMechEntry(entry) && !own?.isMannequin) {
+    warnNoMechClip(charKey, name);
+    return null;
+  }
+
   const fallback = DEFAULT_CLIPS?.get(name);
   return fallback ? answer(fallback, "default") : null;
+}
+
+/** A manifest entry whose clip table names the rig's own exported GLB
+ *  animations — the mech delivery shape. Such a rig animates from its export
+ *  ONLY: no pose-library build, no default pose set. */
+function isMechEntry(entry) {
+  const clips = entry?.clips;
+  if (!clips) return false;
+  for (const k in clips) if (clips[k]?.glb) return true;
+  return false;
+}
+
+const WARNED_NO_CLIP = new Set();
+function warnNoMechClip(charKey, name) {
+  const key = `${charKey}:${name}`;
+  if (WARNED_NO_CLIP.has(key)) return;
+  WARNED_NO_CLIP.add(key);
+  console.warn(`render3d: ${charKey} has no glb mapping for "${name}" — drawing the placeholder (mechs never fall back to the JJK pose sets; fix tools/mech_intake.mjs).`);
+}
+
+// FREEZE FRAMES (K5). A frozen state is the source clip sampled once, at
+// `freeze` seconds, and held: every track is collapsed to two identical keys
+// (t=0 and the source's duration, so loop math and one-shot clamps both stay
+// sane). Built by evaluating each track's own interpolant — never subclip,
+// whose frame-snapping misses a freeze time that sits between keyframes.
+// Cached per source clip AND per time, so repeat resolves hand back the SAME
+// AnimationClip object: the mixer's action cache (`action.getClip() !== clip`)
+// and the mirror cache above both key on object identity.
+/** srcClip -> Map(freezeT -> frozen AnimationClip) */
+const FROZEN = new WeakMap();
+
+function freezeClip(src, freezeT) {
+  let byT = FROZEN.get(src);
+  if (!byT) { byT = new Map(); FROZEN.set(src, byT); }
+  const held = byT.get(freezeT);
+  if (held) return held;
+  const t = Math.max(0, Math.min(freezeT, Math.max(src.duration - 1e-4, 0)));
+  const span = Math.max(src.duration, 1e-3);
+  const tracks = src.tracks.map((track) => {
+    // The interpolant clamps outside the track's own key range, so t=0 on a
+    // track whose first key is later still answers with that first key.
+    const value = Array.from(track.createInterpolant().evaluate(t));
+    return new track.constructor(track.name, [0, span], [...value, ...value]);
+  });
+  const frozen = new THREE.AnimationClip(`${src.name}@${freezeT}`, span, tracks);
+  byT.set(freezeT, frozen);
+  return frozen;
 }
 
 // Mirrored clips, same manifest keys:

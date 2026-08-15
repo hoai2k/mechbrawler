@@ -20,23 +20,8 @@ function padName(id) {
   return CONTROL_ROWS.find((row) => row.id === id)?.pad || "?";
 }
 
-/** Which art the character-select GRID uses.
- *
- *  Two different jobs were being done by one file. A hero card is a full-bleed
- *  painted scene — Gojo on a neon skyline, Panda outside a shrine at dusk —
- *  and at hero size, in the picker at the top of the screen, that is exactly
- *  right. Down in the grid the player is scanning two dozen thumbnails for the
- *  one they want, and the scene is noise; worse, `layoutCharacterGrid()` crops
- *  the tile from the top as the roster grows, so a big roster reduces each
- *  fighter to a letterbox strip of a painting.
- *
- *  So round 17D drew a second set for that job: chest-up portraits on a flat
- *  field in the fighter's theme colour, `assets/cards/simple/<key>_tile.jpg`.
- *  ON, this is what the grid draws — the picker and the in-match portrait go on
- *  using the hero card either way. OFF, the grid uses hero cards too, which is
- *  how the screen worked before the tiles existed.
- */
-export const USE_SIMPLE_CARDS = false;
+// (The JJK-era "simple cards" grid tile set was removed in the mech
+// conversion; the roster grid draws the hero cards.)
 
 // Fighter-select categories, in the order they appear on screen. Each group's
 // `members` are character keys from CHARACTERS in characters.js, shown left to
@@ -93,35 +78,11 @@ export const RANDOM_GROUP = {
 // panels slam in, and again under their name when they take the results
 // screen. Keyed by character key; a fighter without a line falls back to
 // their epithet, so adding a new fighter never breaks either screen.
-export const CHARACTER_QUOTES = {
-  yuji: "I'll take it from here.",
-  nobara: "I'm Nobara Kugisaki — like it or not.",
-  megumi: "I'll save people unfairly.",
-  yuta: "Let me borrow a little courage.",
-  maki: "I don't need cursed energy to beat you.",
-  inumaki: "Don't. Move.",
-  panda: "Panda isn't a panda.",
-  mechamaru: "This body feels no pain.",
-  todo: "My friend — let's make this a festival.",
-  momo: "The wind is on my side.",
-  gojo: "Throughout Heaven and Earth, I alone am the honored one.",
-  nanami: "It's overtime.",
-  meimei: "Nothing is free. Not even mercy.",
-  gakuganji: "Respect your elders, child.",
-  toji: "Bring your best jujutsu. I brought none.",
-  yuki: "So — what kind of curse ends you?",
-  hakari: "The reels are already spinning my way.",
-  uro: "The sky belongs to me.",
-  reggie: "Everything's a trump card if you play it right.",
-  mahito: "Your soul is mine to reshape.",
-  jogo: "Learn the fear of curses. Burn.",
-  hanami: "The earth cries out — I answer.",
-  dagon: "The tide swallows all.",
-  kurourushi: "Even curses fear me.",
-  geto: "Shall we usher in a new world?",
-  choso: "I fight for my brothers.",
-  sukuna: "Know your place, fool.",
-};
+// TODO(C4): per-mech VS-splash lines. Every mech already carries intro/win
+// lines in characters.js (`quotes`); ui.js falls back to `quotes.intro` and
+// then the epithet, so this override table is empty until C4 wires real
+// banter (and voice) properly.
+export const CHARACTER_QUOTES = {};
 
 // Every player-facing string in the game. Values that take an argument are
 // written as functions so word order stays translatable.
@@ -140,7 +101,7 @@ export const TEXT = {
 
   // Fighter select
   menu: {
-    eyebrow: "Cursed energy platform fighter",
+    eyebrow: "Neon mech platform fighter",
     logoAlt: "Mech Brawler",
     startReady: "Choose Stage",
     startWaiting: "Waiting for fighters…",
@@ -201,20 +162,7 @@ export const TEXT = {
     specialSide: `Side + ${padName("special")}`,
     specialDown: `Down + ${padName("special")}`,
     ultimate: padName("domain"),
-    ultimateNote: "Costs a FULL Cursed Energy bar.",
-    domainSectionTitle: "Ultimate",
-    domainInput: padName("domain"),
-    // Only ever used by a fighter with more than one domain, who picks between
-    // them with the left stick. Nobody has two — domains.js owns that rule and
-    // ui.js asks it (domainStickFor).
-    domainSticks: { up: "▲", neutral: "no direction", down: "▼" },
-    domainInputAlt: (button, dirs) => `${button} + ${dirs.join(" / ")}`,
-    domainNote: "Costs a FULL Cursed Energy bar.",
-    // A Simple Domain is a special that the domain button ALSO casts. It costs
-    // no bar, so the note has to say what it does cost instead.
-    simpleDomainNote: (alsoAs) => `Also ${alsoAs}. A Simple Domain, not an Expansion: no Cursed Energy — just its own cooldown.`,
-    domainHowTo: "How it plays:",
-    domainNone: "This fighter has no domain of any kind. Only sorcerers who have mastered one can open a domain — for everyone else a full bar means one thing: the ultimate.",
+    ultimateNote: "Costs a FULL Energy bar.",
     // Multi-player split view: every human player reads their own fighter at
     // the same time instead of taking turns paging through one shared list.
     splitKicker: "Move lists",
@@ -237,7 +185,6 @@ export const TEXT = {
         ["When grabbed", "Mash buttons to break free"],
       ] : []),
       ["Right stick, while a smash charges", "Angle the swing high or low"],
-      [`D-pad + ${padName("special")}`, "Aim and fly Nue / cursed spirits"],
     ],
     // The game is played on controllers: one pad per player, up to four.
     stickHint:
@@ -381,10 +328,6 @@ export const TEXT = {
     // hits up: "1 hit" is just a hit.
     combo: (n) => `${n} HITS`,
     ultimateReady: "ULTIMATE READY",
-    domainReady: "DOMAIN READY",
-    // A full bar buys either one, so a fighter with a domain is being offered a
-    // choice and the HUD has to say so.
-    superChoiceReady: "ULTIMATE / DOMAIN",
     // Only in a team match: which side a fighter's panel belongs to.
     playerSide: "TEAM",
     cpuSide: "CPU",

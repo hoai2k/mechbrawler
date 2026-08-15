@@ -605,24 +605,12 @@ html, body {
   gap: 10px;
 }
 
-/* The menu packs hero cards + roster grid; keep the lockup compact. */
-#menuOverlay .game-logo { width: clamp(150px, 16vw, 210px); max-height: 80px; }
+/* The menu packs hero cards + roster grid; keep the lockup compact. The
+   wordmark reuses the splash's neon tubes at a fraction of the size. */
+#menuOverlay .neon-title--menu { font-size: clamp(26px, 3.4vw, 44px); }
 #menuOverlay .eyebrow { margin-bottom: 2px; }
 
 .title-lockup { text-align: center; }
-
-.game-logo {
-  display: block;
-  /* A block element with an explicit width does not centre itself, so without
-     this the logo sat left of the page centre while the eyebrow above it (plain
-     centred text) looked correct — and it no longer lined up with the VS badge
-     between the hero cards. */
-  margin-inline: auto;
-  width: clamp(190px, 24vw, 310px);
-  max-height: 118px;
-  object-fit: contain;
-  filter: drop-shadow(0 0 20px rgba(98, 220, 255, 0.32));
-}
 
 /* The kicker over every screen title: a slash-cut chip rather than a floating
    whisper, so each screen opens with the same piece of broadcast furniture. */
@@ -968,62 +956,14 @@ html, body {
 }
 
 /* Most of the card art is painted low-key, and at tile size against a dark
-   menu it reads as murky. A lift on the select screen evens the roster out
-   without touching the files. The art was not all painted at the same key, so
-   the lift is per card: 1.18 is the house default, the tiers below carry the
-   cards that need more, and Panda — already bright, but flat — takes the
-   saturation only. Keyed off the file name, so every use of the same painting
-   agrees with itself.
-
-   With USE_SIMPLE_CARDS on — the default — this table is the picker and the
-   matchup panel only: the grid draws the simplified tiles, which are exempt
-   below. It still has to be right, because those are the two places the
-   paintings are shown at size. */
+   menu it reads as murky. A house lift on the select screen evens the roster
+   out without touching the files; a card that needs its own level can add a
+   per-file `--card-lift` rule keyed off the file name. */
 .char-card img,
 .matchup-side img,
 .victory-card--winner img,
 .intro-panel img {
   filter: brightness(var(--card-lift, 1.18)) saturate(1.04);
-}
-
-/* Dim art: a stronger lift to bring it level with the rest of the roster. */
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="nanami_card.jpg"],
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="toji_card.jpg"],
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="geto_card.jpg"],
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="reggie_card.jpg"],
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="meimei_card.jpg"],
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="gakuganji_card.jpg"] {
-  --card-lift: 1.38;
-}
-
-/* Darkest art: near-black backgrounds that stay murky at anything less. */
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="mahito_card.jpg"],
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="sukuna_card.jpg"],
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="choso_card.jpg"] {
-  --card-lift: 1.58;
-}
-
-/* Panda is already bright enough; only the saturation applies. */
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="panda_card.jpg"] {
-  --card-lift: 1;
-}
-
-/* The simplified roster tiles take no correction at all. The whole table above
-   exists because the hero cards are painted scenes at two dozen different keys;
-   the tiles were drawn for this job, evenly front-lit, at one key across the
-   set (17D). Lifting them would only blow them out — and none of the per-card
-   rules would have caught them anyway, since every one of those matches a
-   `_card.jpg` suffix and a tile is a `_tile.jpg`. Stated rather than left to
-   that coincidence, because the coincidence is the reason the tiles are named
-   differently and a reader should not have to work that out. */
-.char-card img[src*="/cards/simple/"] {
-  filter: none;
-}
-
-/* Uro and Hakari are bright enough as drawn — no filter at all. */
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="uro_card.jpg"],
-:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="hakari_card.jpg"] {
-  filter: none;
 }
 
 /* The name band: a slash-cut plate rising along the card's bottom edge, the
@@ -1866,12 +1806,12 @@ html, body {
    get narrower, rather than pushing the matchup bar off the bottom. */
 @media (max-height: 820px) {
   .character-grid { --card-aspect: 1 / 1; }
-  #menuOverlay .game-logo { max-height: 66px; }
+  #menuOverlay .neon-title--menu { font-size: 30px; }
 }
 
 @media (max-height: 700px) {
   .character-grid { --card-aspect: 5 / 4; gap: 5px; }
-  #menuOverlay .game-logo { max-height: 52px; }
+  #menuOverlay .neon-title--menu { font-size: 24px; }
   /* The hero cards give ground too, so the roster doesn't carry the whole cut:
      two description lines instead of three, and a shorter portrait. */
   .matchup-side { width: 172px; padding: 7px 10px 6px; --hero-furniture: 172px; }
@@ -2078,18 +2018,7 @@ html, body {
   background: linear-gradient(100deg, rgba(4, 6, 14, 0.88) 8%, rgba(4, 6, 14, 0.35) 48%, transparent 78%);
 }
 
-.victory-hero-sprite {
-  position: absolute;
-  right: 7%;
-  bottom: 0;
-  z-index: 2;
-  height: 94%;
-  width: auto;
-  transform: var(--unskew);
-  filter:
-    drop-shadow(0 14px 22px rgba(0, 0, 0, 0.65))
-    drop-shadow(0 0 20px color-mix(in srgb, var(--card-theme, #62dcff) 55%, transparent));
-}
+
 
 .victory-hero-plate {
   position: absolute;
@@ -2143,7 +2072,6 @@ html, body {
    narrower panels still hold a name and a line. */
 .victory-hero-row[data-count="2"] .victory-hero-plate b { font-size: clamp(1.3rem, 2.8vw, 2rem); }
 .victory-hero-row[data-count="2"] .victory-hero-plate em { font-size: 0.72rem; }
-.victory-hero-row:not([data-count="1"]) .victory-hero-sprite { right: 3%; }
 
 .victory-losers {
   display: flex;

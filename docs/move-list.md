@@ -1,6 +1,6 @@
-# JJK Brawler II — Move List
+# Mech Brawler — Move List
 
-Every fighter's three specials, their ultimate and their Domain Expansion.
+Every mech's ranged weapon, three specials and ultimate.
 
 **This file is generated** from `src/characters.js` by
 `tools/build_move_list.mjs` — do not edit it by hand, edit the kit and
@@ -8,36 +8,34 @@ re-run. Its companions are [characters.md](characters.md), which explains *why*
 each kit is the way it is, and [game-mechanics.md](game-mechanics.md), which
 explains the systems the moves are built from.
 
-**17 fighters** — every one with a ranged weapon (RB), three specials and an
-ultimate, and **0** of them with a Domain Expansion as well.
+**17 mechs** — every one with a ranged weapon (RB), three specials and an
+ultimate.
 
-An ultimate and a Domain Expansion each cost the **whole** meter bar, so a
-fighter who has both is choosing between them every time the bar fills. Ranged
-shots and specials spend the self-recovering INHERENT ENERGY pool (shots are
-priced per weapon; specials default to 30) and run on individual cooldowns on
-top of it.
+The ultimate costs the **whole** Energy bar. Ranged shots and specials spend
+the self-recovering INHERENT ENERGY pool (shots are priced per weapon;
+specials default to 30) and run on individual cooldowns on top of it.
 
 ## The whole roster
 
-| Fighter | Group | Ranged (RB) | Neutral special | Side special | Down special | Ultimate | Domain Expansion |
-|---|---|---|---|---|---|---|---|
-| [Titanus](#titanus) | Power | Rocket Fist | Breaker Fist | Skyline Slam | Bulwark Stomp | METEOR BREAKER | — |
-| [Colossus](#colossus) | Power | Mortar Lob | Fire Mission | Skyline Toss | Bunker Down | COLOSSAL FORM | — |
-| [Rhino](#rhino) | Power | Shoulder Cannon | Horn Break | Bull Rush | Bring a Wall | STAMPEDE | — |
-| [Konga](#konga) | Power | Shoulder Salvo | Armspan Sweep | Skull Driver | War Drums | APEX POUND | — |
-| [Tritone](#tritone) | Power | Flank Cannons | Seismic Bellow | Gore Charge | Frill Bulwark | SIEGE PROTOCOL | — |
-| [Viper](#viper) | Speed | Fang Throw | Serpent Feint | Blade Cyclone | Phantom Step | SERPENT STORM | — |
-| [Saurion](#saurion) | Speed | Quill Fan | Raptor Feint | Sickle Pounce | Tail Lash | RAPTOR PACK | — |
-| [Fenrir](#fenrir) | Speed | Rend Wave | Savage Flurry | Lunar Pounce | Howl | WILD HUNT | — |
-| [Tempest](#tempest) | Speed | Arc Bolt | Power Chord | Static Overload | Feedback Coil | THUNDERFALL | — |
-| [Wraith](#wraith) | Speed | Sniper Round | Deadman's Mark | Night Swarm | Ghost Protocol | DEATH SWARM | — |
-| [Frogger](#frogger) | Speed | Slime Slinger | Tongue Lash | Quad Gunk Barrage | Spring Coil | SONIC CROAK | — |
-| [Jerry](#jerry) | Speed | Bilge Spit | Breach | Brine Swarm | Anchor Drop | FLEA CIRCUS | — |
-| [Vulcan](#vulcan) | Tech | Gatling Burst | Frag Shell | Micro-Missile Volley | Flak Fan | BULLET HURRICANE | — |
-| [Inferno](#inferno) | Tech | Dragon's Breath | Backdraft Hook | Napalm Carpet | Vent Burst | FIRE TORNADO | — |
-| [Glacier](#glacier) | Tech | Icicle Barrage | Cold Snap | Cryo Beam | Ice Wall | ABSOLUTE ZERO | — |
-| [Cranky](#cranky) | Tech | Hydro Hose | Pincer Grip | Geyser | Shell Up | TSUNAMI | — |
-| [Nullbot](#nullbot) | Tech | Null Pointer | Exception Handler | SEGFAULT | Stack Overflow | SYSTEM CRASH | — |
+| Mech | Group | Ranged (RB) | Neutral special | Side special | Down special | Ultimate |
+|---|---|---|---|---|---|---|
+| [Titanus](#titanus) | Power | Rocket Fist | Breaker Fist | Skyline Slam | Bulwark Stomp | METEOR BREAKER |
+| [Colossus](#colossus) | Power | Mortar Lob | Fire Mission | Skyline Toss | Bunker Down | COLOSSAL FORM |
+| [Rhino](#rhino) | Power | Shoulder Cannon | Horn Break | Bull Rush | Bring a Wall | STAMPEDE |
+| [Konga](#konga) | Power | Shoulder Salvo | Armspan Sweep | Skull Driver | War Drums | APEX POUND |
+| [Tritone](#tritone) | Power | Flank Cannons | Seismic Bellow | Gore Charge | Frill Bulwark | SIEGE PROTOCOL |
+| [Viper](#viper) | Speed | Fang Throw | Serpent Feint | Blade Cyclone | Phantom Step | SERPENT STORM |
+| [Saurion](#saurion) | Speed | Quill Fan | Raptor Feint | Sickle Pounce | Tail Lash | RAPTOR PACK |
+| [Fenrir](#fenrir) | Speed | Rend Wave | Savage Flurry | Lunar Pounce | Howl | WILD HUNT |
+| [Tempest](#tempest) | Speed | Arc Bolt | Power Chord | Static Overload | Feedback Coil | THUNDERFALL |
+| [Wraith](#wraith) | Speed | Sniper Round | Deadman's Mark | Night Swarm | Ghost Protocol | DEATH SWARM |
+| [Frogger](#frogger) | Speed | Slime Slinger | Tongue Lash | Quad Gunk Barrage | Spring Coil | SONIC CROAK |
+| [Jerry](#jerry) | Speed | Bilge Spit | Breach | Brine Swarm | Anchor Drop | FLEA CIRCUS |
+| [Vulcan](#vulcan) | Tech | Gatling Burst | Frag Shell | Micro-Missile Volley | Flak Fan | BULLET HURRICANE |
+| [Inferno](#inferno) | Tech | Dragon's Breath | Backdraft Hook | Napalm Carpet | Vent Burst | FIRE TORNADO |
+| [Glacier](#glacier) | Tech | Icicle Barrage | Cold Snap | Cryo Beam | Ice Wall | ABSOLUTE ZERO |
+| [Cranky](#cranky) | Tech | Hydro Hose | Pincer Grip | Geyser | Shell Up | TSUNAMI |
+| [Nullbot](#nullbot) | Tech | Null Pointer | Exception Handler | SEGFAULT | Stack Overflow | SYSTEM CRASH |
 
 ## Every kit in full
 

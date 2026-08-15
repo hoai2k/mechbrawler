@@ -16,7 +16,7 @@ import {
   DASH_MULT, ACTION_BUFFER, AERIAL_LAND_LAG_MULT, AERIAL_LAND_LAG_MIN, SHIELD_MAX, SHIELD_DRAIN, SHIELD_REGEN, ROLL_TIME, ROLL_DIST,
   SPOT_DODGE_TIME, AIR_DODGE_TIME, DODGE_STALE_WINDOW, METER_MAX, METER_PASSIVE,
   RUN_TILT, WALK_MIN, WALK_MAX, MOVE_DEADZONE, LUNGE_DRAG,
-  ULT_METER_COST, DOMAIN_METER_COST,
+  ULT_METER_COST,
   LEDGE_GRAB_X, LEDGE_GRAB_Y_ABOVE, LEDGE_GRAB_Y_BELOW, LEDGE_HANG_X, LEDGE_HANG_Y,
   LEDGE_CLIMB_TIME, LEDGE_ROLL_TIME, LEDGE_ATTACK_TIME,
   LEDGE_CATCH_SPEED, LEDGE_CATCH_MIN, LEDGE_CATCH_MAX,
@@ -66,11 +66,10 @@ export function makeFighter(id, charKey, x, facing) {
     // on the held, `grabImmune` on anyone recently released.
     grab: null, grabbedBy: null, grabImmune: 0,
     counter: null, reflect: null, healing: null, installs: null, armorT: 0,
-    // New Shadow Style: Simple Domain — the anti-domain circle Mechamaru and
-    // Yuki both carry. Null unless one is held; domains.js asks about it before
-    // a sure-hit effect lands (see simpleDomainActive).
+    // A held protective circle (the simpleDomain special handler). Null unless
+    // one is held; no mech kit uses it today.
     simpleDomain: null,
-    // Set while an ultimate has this fighter wearing another actor's sprite set
+    // Set while an ultimate has this fighter wearing another actor's body
     // (config_transform.js); null means "draw my own body".
     spriteChar: null,
     cooldowns: { neutral: 0, side: 0, down: 0, ranged: 0 },
@@ -762,14 +761,14 @@ export function ringOut(f) {
   banner("KO!", "#ffffff", { y: 200, size: 84, life: 1.0 });
 
   // clear this fighter's combat objects — including scripted entities
-  // (domains, traps, summons), so a KO'd fighter's ultimate stops fighting
+  // (traps, summons, overlays), so a KO'd fighter's ultimate stops fighting
   for (let i = state.hitboxes.length - 1; i >= 0; i--) if (state.hitboxes[i].owner === f) state.hitboxes.splice(i, 1);
   for (let i = state.projectiles.length - 1; i >= 0; i--) if (state.projectiles[i].owner === f) state.projectiles.splice(i, 1);
   for (let i = state.entities.length - 1; i >= 0; i--) if (state.entities[i].owner === f) state.entities.splice(i, 1);
   if (state.domainOverlay && state.domainOverlay.ownerId === f.id) state.domainOverlay = null;
   if (state.domain && state.domain.owner === f) state.domain = null;
   // A fighter KO'd mid-call loses the action carrying the "open the barrier"
-  // event. domainOpen() would notice on its own — it checks the action is still
+  // event. The old domain machinery would notice on its own — it checked the action
   // theirs — but dropping the reference here keeps a dead fighter out of it.
   if (state.domainCasting?.f === f) state.domainCasting = null;
 
@@ -1088,12 +1087,11 @@ export function updateFighter(f, dt, input) {
   // input during hitstun or the tail of a move read as the game ignoring you.
   // A press is remembered for ACTION_BUFFER and fires the instant control
   // returns, which is most of what "responsive" means in a fighter.
-  // A Domain Expansion costs the entire bar, so silently eating the press
-  // because the fighter was two frames into a jab is the worst possible
-  // outcome. It buffers like everything else, ahead of the smaller actions.
-  // LB — the old Domain Expansion button — IS the Ultimate button now. Mechs
-  // have one full-bar super, played where a domain used to be, so both the
-  // dedicated ult input and LB land in the same place and buffer the same way.
+  // An ultimate costs the entire bar, so silently eating the press because
+  // the fighter was two frames into a jab is the worst possible outcome. It
+  // buffers like everything else, ahead of the smaller actions. LB is the
+  // ultimate button; the input is still named domainP in input.js for
+  // historical reasons, and both it and ultP land in the same place.
   if (input.domainP && f.meter >= ULT_METER_COST) {
     f.bufferedAction = { kind: "ult", t: ACTION_BUFFER };
   } else if (input.tiltDir) {
@@ -1218,9 +1216,8 @@ export function updateFighter(f, dt, input) {
 
   // ---- attacks & specials
   if (canAct && !f.shielding && !f.action) {
-    // A domain that is open owns SPECIAL (and, for Sukuna, LIGHT/HEAVY after a
-    // blade is taken) — that is the interaction the domain exists for, so it is
-    // checked before the normal action routing and swallows the press.
+    // An open domain would own SPECIAL. Stubbed — activeDomain is always
+    // null on the mech roster (src/domains.js) — kept as the routing seam.
     const domainAte = activeDomain(f) ? domainInput(f, input) : false;
 
     // Domain Expansion: LB, or U / ; on a keyboard. A fresh press wins;

@@ -24,10 +24,10 @@ export const state = {
   // resolves to a different fighter every match. The CPU defaults to random.
   // P1 starts empty on purpose: the player picks their own fighter rather than
   // inheriting one. The other slots keep defaults so a 1P game is one click.
-  selection: { 1: null, 2: "__random", 3: "megumi", 4: "nobara" },
+  selection: { 1: null, 2: "__random", 3: "fenrir", 4: "viper" },
   // Concrete fighter each slot is actually using this match, after RANDOM_KEY
   // has been resolved. This is what fighters are built from.
-  roster: { 1: "gojo", 2: "sukuna", 3: "megumi", 4: "nobara" },
+  roster: { 1: "titanus", 2: "wraith", 3: "fenrir", 4: "viper" },
   // The CPU's random draw, rolled the moment the humans lock in so the select
   // screen can show who they are about to face. Cleared once a match consumes
   // it, so every rematch faces a fresh opponent.

@@ -1,10 +1,10 @@
 {
-  "name": "jjk-brawler-2",
+  "name": "mech-brawler",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.mjs",
-    "check": "node tools/check_imports.mjs && node tools/check_voice.mjs && node tools/check_audio_mix.mjs && python3 tools/normalize_sfx.py --check && node tools/check_pose_reads.mjs && node tools/check_battle_poses.mjs && node tools/check_controls.mjs && node tools/check_kits.mjs && node tools/build_move_list.mjs --check && node tools/check_pointing.mjs && node tools/audit_stage_reach.mjs && node tools/audit_hitboxes.mjs && node tools/billboard_intake.mjs check && node tools/billboard_intake.mjs check --backend 3d && node tools/smoke_camera.mjs"
+    "check": "node tools/check_imports.mjs && node tools/check_kits.mjs && node tools/check_controls.mjs && node tools/check_music.mjs && node tools/check_voice.mjs && node tools/check_audio_mix.mjs && python3 tools/normalize_sfx.py --check && node tools/check_battle_poses.mjs && node tools/build_move_list.mjs --check && node tools/audit_stage_reach.mjs && node tools/audit_hitboxes.mjs && node tools/smoke_camera.mjs"
   },
   "dependencies": {
     "playwright": "^1.62.1"

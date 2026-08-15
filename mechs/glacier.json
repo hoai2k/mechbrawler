@@ -164,6 +164,31 @@
       "name": "run",
       "dur": 0.8,
       "tracks": 11
+    },
+    {
+      "name": "jumpRise",
+      "dur": 0.5,
+      "tracks": 42
+    },
+    {
+      "name": "jumpFall",
+      "dur": 0.5,
+      "tracks": 42
+    },
+    {
+      "name": "hover",
+      "dur": 0.5,
+      "tracks": 42
+    },
+    {
+      "name": "crouch",
+      "dur": 0.5,
+      "tracks": 42
+    },
+    {
+      "name": "battleIdle",
+      "dur": 1,
+      "tracks": 42
     }
   ],
   "failed": []

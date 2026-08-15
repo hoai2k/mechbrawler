@@ -42,13 +42,13 @@ Gamepads are the intended way to play. The full pad map (generated from
 | Light attack | X |
 | Heavy attack (hold = charge) | Y |
 | Ranged weapon (spends inherent energy) | RB |
-| Special | RT |
+| Special | RT or B |
 | Dash | Shove the stick, or double-tap |
 | Dash attack | Light or heavy, while running |
 | Ultimate (at full attack energy) | LB |
 | Shield / dodges | LT |
 | Taunt | D-pad ▼ |
-| Grab (direction throws · Light pummels) | B |
+| Grab (direction throws · Light pummels) | D-pad ▲ |
 | Tilt attacks (no run-up) | Right stick |
 | Steer summons / aim creature shots | D-pad |
 | Pause | Start |

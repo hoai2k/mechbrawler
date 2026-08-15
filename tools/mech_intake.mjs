@@ -15,12 +15,31 @@
 // be lost — put a preference change HERE, where it applies roster-wide and
 // the diff shows exactly which mechs it moved.
 //
-// STATES WITH NO PERFECT SOURCE (the compromises, made once, here):
-//   idle    <- intro   MM has no idle clip (idling is procedural upstream);
-//                      the intro's settle is the closest delivered stand.
-//   fall    <- landReach  the stretched pre-landing reach IS a falling pose.
-//   jump    <- ball    the air tuck; reads as the arcade rising somersault.
-//   crouch  <- land    the touchdown absorb is the deepest delivered crouch.
+// STATES WITH NO PERFECT SOURCE (the compromises, made once, here — K5;
+// jump/crouch/hover upgraded by K8):
+//   idle    <- battleIdle: K8 sampled MM's real ready/combat stance (the
+//              animator's readyK carriage layer, with the idle breath/sway
+//              alive in the clip) — retiring the K5 frozen-heavy-wind-up
+//              stopgap. render3d's own breath layer still animates on top.
+//   charge  <- the mech's own heavy wind-up, frozen mid-wind-up (freeze:
+//              0.35, K5) — except
+//              titanus/colossus, whose poundHold is a REAL hold loop and
+//              stays unfrozen.
+//   jump/fall/crouch <- jumpRise/jumpFall/crouch: K8 sampled Mech Mayhem's
+//              PROCEDURAL animator layers (the airborne rising-tuck/
+//              falling-spread + airReach, and the duck layer at each mech's
+//              own duckDepth) into real 0.5s held clips in the export, so
+//              the K5 freeze-frame stopgap (landReach@0.02 / land@0.14) is
+//              retired. Each mech's personality is baked in — konga jumps
+//              arms-up ready to grab, frogger squats to the floor. ball is
+//              the DODGE tuck and never the jump.
+//   hover   <- the MM jet-flight pose, exported alongside (K8). The 26-state
+//              contract has NO hover/air-jump state today (states.js), so
+//              the key is written but nothing resolves it yet — the jet-burn
+//              air-jump feature can consume it when it lands.
+//   dodge   <- ball, written under the dodge_roll AND dodge_air keys:
+//              render3d aliases the dodge state to those clip names
+//              (states.js STATE_ALIASES), so a plain `dodge` key is dead.
 import { readFileSync, writeFileSync, readdirSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
@@ -39,24 +58,45 @@ const HEIGHT_M = {
   konga: 6.52, tritone: 6.36,
 };
 
+// The heavy wind-up candidates, bespoke names first — shared by sideHeavy
+// (played) and charge (a frozen frame of the same clip, see below).
+const HEAVY_WINDUP = [
+  "clawSnap", "kongaSlam", "tritoneToss", "fenrirSpike", "viperDrill",
+  "tempestTornado", "wraithLasers", "jerryBarrage", "nullBackhand",
+  "saurionBite", "poundSlam", "heavy",
+];
+
+// How far into the heavy wind-up the charge freeze sits, seconds.
+const CHARGE_FREEZE_T = 0.35;
+
 // state -> exported clip candidates, first present in that mech's GLB wins.
 // Bespoke names lead so a mech with its own move animation always uses it.
+// charge is handled after the loop — its frozen frame needs the `freeze`
+// key, not just a name. idle/jump/fall/crouch are the K8-sampled MM
+// stance/procedural layers, real held clips now — no freeze. hover has no state in
+// the 26-state contract yet (see the compromises block); its key is written
+// for the jet-burn air-jump to consume later. The dodge tuck is written
+// under dodge_roll AND dodge_air: render3d resolves by CLIP name, and the
+// dodge state aliases to dodge_roll (states.js STATE_ALIASES), so a plain
+// `dodge` key would never be looked up.
 const PREFER = {
-  idle: ["intro"],
+  idle: ["battleIdle"],
   walk: ["walk"],
   run: ["run"],
   dash: ["run"],
-  jump: ["ball"],
-  fall: ["landReach"],
+  jump: ["jumpRise"],
+  fall: ["jumpFall"],
+  crouch: ["crouch"],
+  hover: ["hover"],
   land: ["land"],
   hurt: ["hitFlinch"],
   teeter: ["hitFlinch"],
   dizzy: ["hitFlinch"],
-  crouch: ["land"],
   crouchAttack: ["shootLow", "saurionClawL", "light3", "light1", "heavy"],
   shield: ["block"],
   ledge: ["hangGrab"],
-  dodge: ["ball"],
+  dodge_roll: ["ball"],
+  dodge_air: ["ball"],
   prone: ["knockdown"],
   getup: ["getup"],
   win: ["victory"],
@@ -65,16 +105,11 @@ const PREFER = {
     "punchHold1", "light1", "heavy",
   ],
   airLight: ["flurry", "viperSlash2", "saurionKick2", "jerryRakeL", "light2", "light1", "heavy"],
-  sideHeavy: [
-    "clawSnap", "kongaSlam", "tritoneToss", "fenrirSpike", "viperDrill",
-    "tempestTornado", "wraithLasers", "jerryBarrage", "nullBackhand",
-    "saurionBite", "poundSlam", "heavy",
-  ],
+  sideHeavy: HEAVY_WINDUP,
   upHeavy: ["tritoneToss", "viperStab", "heavy"],
   downHeavy: ["groundPound"],
   dashAttack: ["lunge", "pounceLeap", "chargeLean", "saurionClawR", "light3", "light1", "heavy"],
   dashAttackHeavy: ["lunge", "pounceLeap", "heavy"],
-  charge: ["poundHold", "castRaise", "chargeLean", "block"],
   specialNeutral: [
     "fistLaunch", "saurionQuillFan", "kongaLob", "tritoneBrace", "brace", "gatlingLoop",
     "vulcanSpray", "shootLoop", "shootLoopL", "shootL", "shootLow", "spray",
@@ -110,6 +145,12 @@ for (const id of ids) {
     if (hit) clips[state] = { glb: hit };
     else missing.push(state);
   }
+  // K5 freeze frame: charge = mid-wind-up of the mech's own heavy — unless
+  // this mech exported a real hold loop (poundHold: titanus, colossus),
+  // which plays unfrozen. (idle's freeze was retired by K8's battleIdle.)
+  if (have.has("poundHold")) clips.charge = { glb: "poundHold" };
+  else if (clips.sideHeavy) clips.charge = { glb: clips.sideHeavy.glb, freeze: CHARGE_FREEZE_T };
+  else missing.push("charge");
   if (missing.length) {
     console.warn(`${id}: no clip for ${missing.join(", ")} — state will use the default pose set`);
   }
@@ -126,7 +167,7 @@ for (const id of ids) {
 }
 
 const manifest = {
-  comment: "GENERATED by tools/mech_intake.mjs from the mechs/ export — do not hand-edit. clips.<state>.glb names the mech's OWN exported animation driving that state (resolveClip in render3d/src/loader.js).",
+  comment: "GENERATED by tools/mech_intake.mjs from the mechs/ export — do not hand-edit. clips.<state>.glb names the mech's OWN exported animation driving that state; clips.<state>.freeze holds it at that time in seconds (resolveClip in render3d/src/loader.js).",
   characters,
 };
 writeFileSync(OUT, JSON.stringify(manifest, null, 2) + "\n");

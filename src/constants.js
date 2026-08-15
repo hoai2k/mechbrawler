@@ -373,13 +373,9 @@ export const METER_PASSIVE = 1.1;
 export const METER_ON_DEAL = 0.5;
 export const METER_ON_TAKE = 0.85;
 
-// Both supers cost the WHOLE bar. Filling the meter is therefore a single
-// decision rather than a schedule: spend it on the ultimate everyone has, or
-// bank the same bar for a Domain Expansion if you are one of the seven
-// fighters who has one. Charging the ultimate less would make that choice
-// free — you would simply fire the ultimate on the way to the domain.
+// The ultimate costs the WHOLE bar: filling the meter buys exactly one
+// cinematic super, so WHEN to spend it is the decision.
 export const ULT_METER_COST = METER_MAX;
-export const DOMAIN_METER_COST = METER_MAX;
 
 export const RESPAWN_X = { 1: 250, 2: 500, 3: 780, 4: 1030 };
 export const DEFAULT_STOCKS = 3;

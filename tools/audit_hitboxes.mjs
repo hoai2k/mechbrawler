@@ -98,7 +98,9 @@ if (graceSpread > 2) {
 // workbench, and is worth knowing about before anyone tunes around it.
 const pending = [];
 for (const key of CHARACTER_KEYS) {
-  const frames = spriteManifest.characters[key] || {};
+  // No sprite manifest in the mech era — bodies are rigs, so there are no
+  // swing frames waiting on a placement pass.
+  const frames = spriteManifest?.characters?.[key] || {};
   const swing = ["attack_light_a", "attack_light_b", "attack_heavy_a", "attack_heavy_b"]
     .filter((k) => frames[k]);
   const unplaced = swing.filter((k) => {

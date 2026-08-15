@@ -13,7 +13,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Mech Brawler">
     <meta name="twitter:description" content="A neon mech platform fighter for one to four players — in your browser, no install.">
-    <meta name="twitter:image" content="assets/ui/logo.png">
+    <meta name="twitter:image" content="assets/backgrounds/menu.jpg">
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -26,7 +26,7 @@
   </head>
   <body>
     <main class="game-shell">
-      <section class="arena-wrap" aria-label="JJK Brawler game">
+      <section class="arena-wrap" aria-label="Mech Brawler game">
         <!-- The 3D scene, under the game canvas. Only drawn to in `?camera=3d`
              mode (src/render3d/); in flat mode it stays a blank layer the
              opaque backdrop above completely covers. -->
@@ -65,8 +65,8 @@
             <img alt=""><img alt="">
           </div>
           <div class="title-lockup">
-            <span class="eyebrow">Cursed energy platform fighter</span>
-            <img class="game-logo" src="assets/ui/logo.png" alt="JJK Brawler II">
+            <span class="eyebrow">Neon mech platform fighter</span>
+            <span class="neon-title neon-title--menu" aria-label="Mech Brawler"><span class="tube tube-0">MECH</span> <span class="tube tube-1">BRAWLER</span></span>
           </div>
 
           <div id="matchupBar" class="matchup-bar">
@@ -80,9 +80,9 @@
             </button>
             <button id="p3PickCard" class="matchup-side hidden" type="button">
               <span id="p3PickLabel" class="hero-slot-label">Player 3</span>
-              <img id="p3PickImage" src="assets/cards/megumi_card.jpg" alt="Player 3 fighter">
+              <img id="p3PickImage" alt="Player 3 fighter">
               <b id="p3PickRandomArt" class="hero-random-art hidden">?</b>
-              <strong id="p3PickName">Megumi</strong>
+              <strong id="p3PickName">Choose a fighter</strong>
               <div id="p3PickInfo" class="hero-info"></div>
               <i id="p3PickReady" class="hero-ready hidden">Ready</i>
             </button>
@@ -96,17 +96,17 @@
             </div>
             <button id="p4PickCard" class="matchup-side hidden" type="button">
               <span id="p4PickLabel" class="hero-slot-label">Player 4</span>
-              <img id="p4PickImage" src="assets/cards/nobara_card.jpg" alt="Player 4 fighter">
+              <img id="p4PickImage" alt="Player 4 fighter">
               <b id="p4PickRandomArt" class="hero-random-art hidden">?</b>
-              <strong id="p4PickName">Nobara</strong>
+              <strong id="p4PickName">Choose a fighter</strong>
               <div id="p4PickInfo" class="hero-info"></div>
               <i id="p4PickReady" class="hero-ready hidden">Ready</i>
             </button>
             <button id="p2PickCard" class="matchup-side" type="button">
               <span id="p2PickLabel" class="hero-slot-label">CPU</span>
-              <img id="p2PickImage" src="assets/cards/sukuna_card.jpg" alt="Player 2 fighter">
+              <img id="p2PickImage" alt="Player 2 fighter">
               <b id="p2PickRandomArt" class="hero-random-art hidden">?</b>
-              <strong id="p2PickName">Sukuna</strong>
+              <strong id="p2PickName">Choose a fighter</strong>
               <div id="p2PickInfo" class="hero-info"></div>
               <i id="p2PickReady" class="hero-ready hidden">Ready</i>
             </button>

@@ -31,9 +31,8 @@ const SLOTS = [
 /** Markdown-safe cell text: pipes would split the column, newlines the row. */
 const cell = (s) => String(s ?? "—").replace(/\|/g, "\\|").replace(/\s*\n\s*/g, " ").trim();
 
-/** The creatures a summon special can roll, where it rolls one
- *  (config_summons.js). Named in the detail block because "which creature"
- *  is the move for those four kits. */
+/** The creatures a summon special can roll, where it names a pool
+ *  (specials.js rolls one per cast). No mech kit does today. */
 function poolNames(move) {
   return (move?.p?.pool || []).map((entry) => entry.name).filter(Boolean);
 }
@@ -55,14 +54,12 @@ for (const group of CHARACTER_GROUPS) {
   for (const key of group.members) {
     const c = CHARACTERS[key];
     if (!c) continue;
-    const domain = c.domains?.[0];
     rows.push([
       `[${c.name}](#${key})`,
       group.label,
       c.ranged?.name ?? "—",
       ...SLOTS.map(([slot]) => c.specials[slot]?.name ?? "—"),
       c.ultimate?.name ?? "—",
-      domain?.name ?? "—",
     ]);
 
     const lines = [];
@@ -86,21 +83,16 @@ for (const group of CHARACTER_GROUPS) {
       }
     }
     lines.push(`- Ultimate — ${moveLine(c.ultimate)}`);
-    for (const d of c.domains || []) {
-      lines.push(`- Domain Expansion — ${moveLine(d)}`);
-      if (d.howTo) lines.push(`  - *How it plays:* ${d.howTo}`);
-    }
     lines.push(`- Passive — **${c.passive.name}** — ${c.passive.desc}`);
     blocks.push(lines.join("\n"));
   }
 }
 
-const withDomains = rows.filter((r) => r.at(-1) !== "—").length;
 const staged = STAGED_CHARACTER_KEYS.length;
 
-const head = `# JJK Brawler II — Move List
+const head = `# Mech Brawler — Move List
 
-Every fighter's three specials, their ultimate and their Domain Expansion.
+Every mech's ranged weapon, three specials and ultimate.
 
 **This file is generated** from \`src/characters.js\` by
 \`tools/build_move_list.mjs\` — do not edit it by hand, edit the kit and
@@ -108,19 +100,17 @@ re-run. Its companions are [characters.md](characters.md), which explains *why*
 each kit is the way it is, and [game-mechanics.md](game-mechanics.md), which
 explains the systems the moves are built from.
 
-**${rows.length} fighters**${staged ? `, ${staged} of them staged and not yet selectable` : ""} — every one with a ranged weapon (RB), three specials and an
-ultimate, and **${withDomains}** of them with a Domain Expansion as well.
+**${rows.length} mechs**${staged ? `, ${staged} of them staged and not yet selectable` : ""} — every one with a ranged weapon (RB), three specials and an
+ultimate.
 
-An ultimate and a Domain Expansion each cost the **whole** meter bar, so a
-fighter who has both is choosing between them every time the bar fills. Ranged
-shots and specials spend the self-recovering INHERENT ENERGY pool (shots are
-priced per weapon; specials default to 30) and run on individual cooldowns on
-top of it.
+The ultimate costs the **whole** Energy bar. Ranged shots and specials spend
+the self-recovering INHERENT ENERGY pool (shots are priced per weapon;
+specials default to 30) and run on individual cooldowns on top of it.
 
 ## The whole roster
 
-| Fighter | Group | Ranged (RB) | Neutral special | Side special | Down special | Ultimate | Domain Expansion |
-|---|---|---|---|---|---|---|---|
+| Mech | Group | Ranged (RB) | Neutral special | Side special | Down special | Ultimate |
+|---|---|---|---|---|---|---|
 ${rows.map((r) => `| ${r.map(cell).join(" | ")} |`).join("\n")}
 
 ## Every kit in full
@@ -137,5 +127,5 @@ if (process.argv.includes("--check")) {
   console.log(`docs/move-list.md is up to date (${rows.length} fighters)`);
 } else {
   writeFileSync(OUT, doc);
-  console.log(`wrote docs/move-list.md — ${rows.length} fighters, ${withDomains} domains`);
+  console.log(`wrote docs/move-list.md — ${rows.length} mechs`);
 }

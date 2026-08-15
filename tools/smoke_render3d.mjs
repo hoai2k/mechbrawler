@@ -227,6 +227,10 @@ async function bootAndFight(page, url) {
     await eval(ensureSrc)("titanus");
     const own = loader.resolveClip("titanus", "light");
     const idle = loader.resolveClip("titanus", "idle");
+    const charge = loader.resolveClip("titanus", "charge");
+    const jump = loader.resolveClip("titanus", "jump");
+    const crouch = loader.resolveClip("titanus", "crouch");
+    const dodge = loader.resolveClip("titanus", "dodge");
     const c = document.createElement("canvas");
     c.width = 300; c.height = 300;
     const ctx = c.getContext("2d");
@@ -239,7 +243,8 @@ async function bootAndFight(page, url) {
     for (let i = 3; i < d.length; i += 4) if (d[i] > 60) px++;
     return {
       registered: backend.hasModel("titanus"),
-      lightSrc: own?.source, idleSrc: idle?.source,
+      lightSrc: own?.source, idleSrc: idle?.source, chargeSrc: charge?.source,
+      jumpSrc: jump?.source, crouchSrc: crouch?.source, dodgeSrc: dodge?.source,
       token, drew, px, rendered,
     };
   }, ENSURE_RIG);
@@ -247,7 +252,22 @@ async function bootAndFight(page, url) {
   check(r.registered, "a delivered mech registers from the render3d manifest");
   check(r.token.startsWith("r3d:"), "rigged characters hand out render3d pose tokens", r.token);
   check(/^glb:/.test(r.lightSrc || ""), "an attack resolves to the mech's own GLB animation", r.lightSrc);
-  check(/^glb:/.test(r.idleSrc || ""), "the idle resolves to the mech's own GLB animation", r.idleSrc);
+  // K8: idle is MM's real ready stance, sampled as the battleIdle clip
+  // (K5's frozen heavy wind-up is retired); titanus's charge is his real
+  // poundHold loop, unfrozen.
+  check(r.idleSrc === "glb:battleIdle",
+    "the idle plays the sampled ready-stance clip", r.idleSrc);
+  check(r.chargeSrc === "glb:poundHold",
+    "the charge resolves to the mech's own hold loop, unfrozen", r.chargeSrc);
+  // MM clips only; K8 upgraded the K5 freeze-frame stopgap: jump/crouch play
+  // the export's SAMPLED procedural-layer clips (jumpRise = the rising tuck,
+  // crouch = the duck layer at the mech's own depth) — never the JJK pose
+  // sets, never the ball tuck — and the dodge tuck rides the dodge_roll alias.
+  check(r.jumpSrc === "glb:jumpRise",
+    "the jump plays the sampled rising-tuck clip", r.jumpSrc);
+  check(r.crouchSrc === "glb:crouch",
+    "the crouch plays the sampled duck-layer clip", r.crouchSrc);
+  check(r.dodgeSrc === "glb:ball", "the dodge keeps the ball tuck", r.dodgeSrc);
   check(r.drew === true && r.px > 100, "the delivered rig draws through drawCharFrame", `${r.px} px`);
   check(r.rendered, "and draws as a MODEL, not a cached or placeholder path");
   check(errors.length === 0, "no page errors on the mech clip path", errors.slice(0, 2).join(" | "));

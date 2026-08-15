@@ -82,8 +82,6 @@ export function aiInput(f) {
       input.jumpP = true;
       input.jumpHeld = true;
     }
-    // Momo's broom charge doubles as recovery
-    if (f.charKey === "momo" && f.y > plat.y && chance(0.05)) input.specialP = true;
     return finishPlan(f, input, opp);
   }
 
