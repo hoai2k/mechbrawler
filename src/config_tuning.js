@@ -29,7 +29,7 @@
 // the single global height control per character.
 
 // Whose height counts as 1.0. Every other fighter is measured against this one.
-export const HEIGHT_REFERENCE = "gojo";
+export const HEIGHT_REFERENCE = "titanus";
 
 // How much of the real height difference to keep. 0 makes everyone identical,
 // 1 renders the roster at true relative scale.

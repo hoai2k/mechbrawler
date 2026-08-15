@@ -40,8 +40,12 @@ import {
 
 /** The engine-side dials, each independently workbench-editable. */
 export const DIALS = {
-  onTwos: true,
-  sampleHz: 13,               // 12–15 per the plan; 13 splits the difference
+  // SMOOTH by default now. On-twos stepping was the anime-on-paper look the
+  // JJK roster was styled for; the mechs are Mech Mayhem's and Mech Mayhem
+  // animates smoothly — stepping a gatling spin at 13 Hz reads as lag, not
+  // style. The dial survives for anyone who wants the old look back.
+  onTwos: false,
+  sampleHz: 13,               // used only when onTwos is turned back on
   onOnesStates: new Set(),    // states that step at full rate (see above)
   aim: true,                  // strikes pitch toward the target
   reach: true,                // ...and the striking limb solves onto it (ik.js)
@@ -216,7 +220,7 @@ function presentRad(rig) {
 
 /** The camera yaw scene.js frames with. Stated here rather than imported
  *  because pose.js is deliberately free of the renderer. */
-const CAMERA_YAW_RAD = (-60 * Math.PI) / 180;
+const CAMERA_YAW_RAD = (-78 * Math.PI) / 180;
 
 /** The root yaw for this pose: the delivery's own correction, plus whatever
  *  it takes to present at the wanted angle and, facing left, to present at

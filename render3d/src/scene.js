@@ -273,7 +273,11 @@ function frameCamera(height, parallaxRad = 0) {
   camera.updateProjectionMatrix();
 }
 
-export const CAMERA_YAW_DEG = -60;
+// -78: closer to profile than the JJK roster's -60. A brawler reads its
+// fighters side-on — locomotion should look like TRAVEL — but a few degrees
+// short of 90 keeps the chest and far shoulder visible so attacks still
+// show a silhouette instead of a sliver.
+export const CAMERA_YAW_DEG = -78;
 const CAMERA_YAW_RAD = (CAMERA_YAW_DEG * Math.PI) / 180;
 
 /**

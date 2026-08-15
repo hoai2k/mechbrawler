@@ -62,7 +62,7 @@ plays nothing like a platform fighter.
 - [ ] C1. characters.js rebuilt from mechs/characters.json: 17 mechs,
         identity, stats mapped into this engine's terms, relative sizing from
         real export heights, select-screen bars, quotes.
-- [ ] C2. config_metrics.js filled: reach/width/crouch/air per mech from the
+- [x] C2. config_metrics.js filled (hand-derived first pass; derive tool refresh pending): reach/width/crouch/air per mech from the
         export's real geometry.
 - [ ] C3. Kits: moves.js/specials.js/ultimates.js/summons.js/domains.js
         replaced by the D1 design. JJK cursed-energy framing out; mech
@@ -72,15 +72,15 @@ plays nothing like a platform fighter.
 
 ## Phase 3 — the mechs on screen (render3d)
 
-- [ ] M1. Rig intake: mechs/*.glb into render3d's manifest with heightM from
+- [x] M1. Rig intake (tools/mech_intake.mjs; JJK rigs deleted): mechs/*.glb into render3d's manifest with heightM from
         the export, toon settings; JJK rigs + render3d/assets JJK content
         deleted.
-- [ ] M2. Clip mapping: MM clip names (light1, bigPunch1, walk, run, ball,
+- [x] M2. Clip mapping (clips.<state>.glb + resolveClip extension): MM clip names (light1, bigPunch1, walk, run, ball,
         getup, …) mapped onto the 26-state contract per mech.
-- [ ] M3. Smooth playback: on-twos stepping off; MM animation is smooth.
-- [ ] M4. Side-view presentation: blit camera turned toward profile so
+- [x] M3. Smooth playback (DIALS.onTwos false): on-twos stepping off; MM animation is smooth.
+- [x] M4. Side-view presentation (CAMERA_YAW -60 to -78, both copies): blit camera turned toward profile so
         locomotion reads as travel while attacks still show silhouette.
-- [ ] M5. Relative sizing: heightM per mech from the export feeding the
+- [~] M5. Relative sizing (heightM in manifest; characters.js heightCm pending): heightM per mech from the export feeding the
         existing height-compression curve, so the roster keeps its real
         ordering (a 4 m frog next to a 12+ m artillery walker).
 - [ ] M6. Anchors: muzzle/boost/core/overhead as FX attachment points for

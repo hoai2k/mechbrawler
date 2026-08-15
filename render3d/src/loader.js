@@ -107,6 +107,15 @@ export function resolveClip(charKey, state) {
     if (built) return answer(built, "library");
   }
 
+  // The mech path: `clips[name].glb` names one of the rig's OWN exported
+  // animations (Mech Mayhem clip names — walk, clawSnap, viperSlash1 …).
+  // This is how the 26-state contract maps onto a GLB whose clips were named
+  // by a different game; tools/mech_intake.mjs writes the table.
+  const glbName = entry?.clips?.[name]?.glb;
+  if (glbName && own?.clips?.has(glbName)) {
+    return answer(own.clips.get(glbName), `glb:${glbName}`);
+  }
+
   const override = entry?.clips?.[name]?.from;
   if (override) {
     const clip = override === "default"

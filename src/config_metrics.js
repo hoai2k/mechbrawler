@@ -72,12 +72,32 @@ export const ROSTER_DEFAULT = {
  * GENERATED — `node tools/derive_attack_envelopes.mjs` rewrites entries here
  * from the delivered rigs. Fields listed in `pinned` are preserved across runs.
  *
- * Empty until the first mech rigs land. That is not a stub: an empty table is
- * exactly the state where every fighter uses ROSTER_DEFAULT, which is the
- * behaviour the fallback exists to provide.
+ * A mech missing from the table falls back to ROSTER_DEFAULT — that is the
+ * intended behaviour for a rig delivered ahead of its numbers.
  */
 export const MECH_METRICS = {
-  // titanus: { reach: 0.71, width: 0.38, crouch: 0.74, air: 0.88 },
-  // viper:   { reach: 0.58, width: 0.24, crouch: 0.61, air: 0.82,
-  //            pinned: ["reach"] },  // measured 0.66 — shortened for balance
+  // First pass: derived by hand from the Mech Mayhem dossier — each mech's
+  // `range` allowance plus its measured limb character (konga 4.43u, titanus
+  // 3.17u, cranky 2.67u of real extension), over its real height. The
+  // derive tool should replace these with posed-geometry readings; treat
+  // every un-pinned number here as provisional.
+  titanus: { reach: 0.66, width: 0.36, crouch: 0.75, air: 0.80 },
+  vulcan: { reach: 0.58, width: 0.36, crouch: 0.75, air: 0.85 },
+  viper: { reach: 0.62, width: 0.22, crouch: 0.72, air: 0.85 },
+  rhino: { reach: 0.62, width: 0.34, crouch: 0.76, air: 0.80 },
+  tempest: { reach: 0.64, width: 0.24, crouch: 0.74, air: 0.85 },
+  fenrir: { reach: 0.62, width: 0.26, crouch: 0.68, air: 0.85 },
+  colossus: { reach: 0.66, width: 0.40, crouch: 0.78, air: 0.80 },
+  wraith: { reach: 0.56, width: 0.22, crouch: 0.72, air: 0.85 },
+  inferno: { reach: 0.61, width: 0.33, crouch: 0.75, air: 0.85 },
+  glacier: { reach: 0.62, width: 0.36, crouch: 0.78, air: 0.80 },
+  // The reach monster: pincers on a wide shell. The guard clamp in
+  // silhouette.js is expected to bite here — that is the clamp working.
+  cranky: { reach: 0.90, width: 0.48, crouch: 0.85, air: 0.80 },
+  saurion: { reach: 0.68, width: 0.30, crouch: 0.66, air: 0.85 },
+  frogger: { reach: 0.55, width: 0.30, crouch: 0.55, air: 0.85 },
+  jerry: { reach: 0.55, width: 0.34, crouch: 0.60, air: 0.78 },
+  nullbot: { reach: 0.64, width: 0.24, crouch: 0.74, air: 0.85 },
+  konga: { reach: 0.82, width: 0.40, crouch: 0.72, air: 0.80 },
+  tritone: { reach: 0.78, width: 0.46, crouch: 0.88, air: 0.80 },
 };
