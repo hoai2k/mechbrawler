@@ -167,6 +167,18 @@ plays nothing like a platform fighter.
         becomes conditional, scene tone mapping per style, outline pass
         gated, brightness X1 folds into this).
 
+- [ ] K7. DELETE THE OLD 3D POSE CODE (owner): no JJK pose data may drive
+        anything — all posing/animation from MM GLB clips only. K5 (amended
+        mid-flight) already stops RESOLUTION through the library (jump/
+        crouch become MM-clip freeze frames; POSE_LIBRARY_CLIPS off;
+        default-pose fallback warns + placeholder instead of JJK poses).
+        K7 then DELETES the files: render3d/src/pose_clips.js,
+        battle_poses.js, baseline_poses.js, pose_library.js, walk_cycle.js,
+        run_cycle.js, clip_schedule.js, pose_sheets.js, and the
+        DEFAULT_CLIPS/mannequin-pose machinery in loader.js (keep the
+        mannequin BODY if the placeholder needs it), plus their imports.
+        AFTER K5 + K6 land (same files).
+
 ## Phase 5 — polish and cleanup
 
 - [ ] X1. Brighter grade: toon ramp lift, stage light rigs per arena palette,
