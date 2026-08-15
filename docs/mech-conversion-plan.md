@@ -155,6 +155,18 @@ plays nothing like a platform fighter.
         freezeT carried to the sampler) + mech_intake PREFER updates +
         input remap. IMPLEMENT AFTER K3 lands (same render3d files).
 
+- [ ] K6. PBR RENDER (owner decision): fighters render with their NATIVE
+        baked PBR materials (the export's own metal/rough textures) under
+        per-arena lighting with an MM-style grade (ACES-ish exposure,
+        bloom-adjacent glow) — parity with how Mech Mayhem draws them. The
+        toon/ink pass is NOT deleted: it moves behind `?render=toon` as an
+        experiment flag. Root cause of the "wonky" facing screenshots was
+        the pose-library priority bug (fixed in K5) + toon re-materialing;
+        after K6, verify with side-by-side screenshots vs MM quality.
+        IMPLEMENT AFTER K5 (same render3d files: loader applyToonMaterials
+        becomes conditional, scene tone mapping per style, outline pass
+        gated, brightness X1 folds into this).
+
 ## Phase 5 — polish and cleanup
 
 - [ ] X1. Brighter grade: toon ramp lift, stage light rigs per arena palette,
