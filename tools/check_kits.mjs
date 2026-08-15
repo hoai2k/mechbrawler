@@ -37,20 +37,18 @@ function tableKeys(source, declaration) {
 
 const specialTypes = tableKeys(read("src/specials.js"), "const HANDLERS = {");
 const ultimateTypes = tableKeys(read("src/ultimates.js"), "const DIRECTORS = {");
-const domainTypes = tableKeys(read("src/domains.js"), "const HANDLERS = {");
 
 // A passive is not a table — it is a `passive.id === "…"` test wherever it acts.
 // Any kit whose id appears nowhere is a passive that does nothing at all, which
 // has happened and is invisible in play.
-const passiveSources = ["src/combat.js", "src/fighter.js", "src/specials.js", "src/ultimates.js", "src/domains.js"]
+const passiveSources = ["src/combat.js", "src/fighter.js", "src/specials.js", "src/ultimates.js"]
   .map(read).join("\n");
 
-// …except the passives that are implemented as DATA rather than as a branch:
-// Momo's third jump is `airJumps: 2` on her stats, Nanami's 7:3 is the
-// `critBand` on his light and heavy, and Mahito's soul marks are the `effect`
-// his moves already carry. Their ids are correctly read by nothing, so they are
-// named here rather than reported every run.
-const DATA_PASSIVES = new Set(["broomFlight", "sevenThree", "soulShaper"]);
+// …except the passives that are implemented as DATA rather than as a branch
+// (e.g. an extra `airJumps` on the stats, a `critBand` on a move). Their ids
+// are correctly read by nothing, so they are named here rather than reported
+// every run. None on the mech roster today.
+const DATA_PASSIVES = new Set([]);
 
 // …and the mech passives that are still owed to the engine. Each of these is a
 // `// TODO(engine):` in characters.js (docs/mech-conversion-plan.md): the id is
@@ -81,11 +79,6 @@ for (const [key, char] of Object.entries(CHARACTERS)) {
   if (char.ultimate && !ultimateTypes.has(char.ultimate.type)) {
     problems.push(`${where}: ultimate type "${char.ultimate.type}" has no director in ultimates.js`);
   }
-  for (const domain of char.domains || []) {
-    if (!domainTypes.has(domain.type)) {
-      problems.push(`${where}: domain type "${domain.type}" has no handler in domains.js`);
-    }
-  }
   const id = char.passive?.id;
   if (!id) problems.push(`${where}: no passive`);
   else if (!passiveSources.includes(`"${id}"`) && !DATA_PASSIVES.has(id) && !TODO_PASSIVES.has(id)) {
@@ -101,4 +94,4 @@ if (problems.length) {
 
 const total = Object.keys(CHARACTERS).length;
 console.log(`all kits resolve: ${total} fighters (${STAGED_CHARACTER_KEYS.length} staged), ` +
-  `${specialTypes.size} special types, ${ultimateTypes.size} ultimate types, ${domainTypes.size} domain types`);
+  `${specialTypes.size} special types, ${ultimateTypes.size} ultimate types`);

@@ -102,6 +102,8 @@ generate now, they will be used somewhere even if the mechanic moves.
 | `wordmark_mech_brawler.png` | OPTIONAL — the title is CSS neon text first; a painted neon-sign wordmark "MECH BRAWLER" (two-line, tube-letter style, cyan+magenta, unlit variant welcome as a pair) upgrades it if it looks better |
 | `vs_flash.png` | the VS splash slash: a diagonal neon energy tear |
 | `stock_chip.png` | a small mech-head silhouette chip for the stock counter, works at 24px |
+| `favicon_mech.png` | the site favicons + touch icons (favicon.ico, favicon-16/32, apple-touch-icon, android-chrome-192/512) still carry the old JJK logo mark — a square neon mech-head glyph on `#05070c`, readable at 16px, replaces the whole set |
+| `victory_backdrop.jpg` | `assets/backgrounds/victory.jpg` (the results-screen backdrop, 2048×1152) is still the JJK painting — a neon hangar / winner's podium scene in the arena palette replaces it |
 
 ## Notes for the generator
 

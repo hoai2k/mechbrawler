@@ -136,24 +136,45 @@ plays nothing like a platform fighter.
         away); alternating-strike chains may alternate toward/away, FIRST
         one toward. Implement as a per-state + per-phase (pre/post beat)
         yaw bias in render3d pose facing.
-- [ ] K4. DEEP CLEANUP (extends X2/X3): when new content is fully placed,
+- [x] K4. DEEP CLEANUP (extends X2/X3): when new content is fully placed,
         remove ALL assets, docs, history and testing rigs for characters
         and features no longer in the game (JJK sprites/effects/cards/
         backgrounds/voice files, JJK docs, JJK-specific tools).
+        DONE: JJK effect/summon sprites, cards (+simple tiles), flat/domain/
+        stage backgrounds, ui/logo and JJK docs deleted; domains.js stubbed
+        (TODO A4), config_transform/config_summons emptied to machinery,
+        shared_sprites' registry dropped, config_model_reach emptied (re-derive
+        pending vs mech rigs), dead JJK ult directors deleted; JJK-only tools
+        (voice audits, audio bench, hair/morph/twohand/simchain/staged smokes,
+        tripo/build_model pipeline) deleted; move-list regenerated,
+        game-mechanics rewritten to energy/ultimate terms; npm run check
+        repaired. KEPT: assets/sfx + JJK voice tables (K2 owns), victory.jpg +
+        favicons (replacements requested in image-requests.md), render3d/docs
+        + props.js JJK tables (K3/K5 owner's area), dead specials.js handlers
+        (C3/A4 sweep).
 
-- [ ] K5. ANIMATION MAPPING REFINEMENTS (owner, verified vs MM sources —
+- [x] K5. ANIMATION MAPPING REFINEMENTS (owner, verified vs MM sources —
         jump/crouch are PROCEDURAL in MM, no clips exist anywhere):
         idle = frozen first frame of the mech's own heavy wind-up (battle
         carriage; exported clips carry combatPose) + existing breath layer;
-        charge = frozen mid-wind-up of the heavy; jump + crouch = drop the
-        glb mapping, use render3d's generic pose set (real biped poses on
-        the mech rig); dodge keeps ball (each mech's own tuck/spin variant
-        — heavies exported stiff tucks, so nobody rolls who shouldn't);
-        jump never uses ball. dizzy/teeter/hurt stay hitFlinch (confirmed
-        as MM's struck anim). Input: B DOUBLES RT as special; grab moves
-        to D-pad up. Needs freeze-frame support in resolveClip (subclip or
-        freezeT carried to the sampler) + mech_intake PREFER updates +
-        input remap. IMPLEMENT AFTER K3 lands (same render3d files).
+        charge = frozen mid-wind-up of the heavy (poundHold plays unfrozen
+        for titanus/colossus); dodge keeps ball (written under dodge_roll
+        AND dodge_air — the dodge state aliases to those clip names);
+        jump never uses ball. dizzy/hurt stay hitFlinch (MM's struck anim;
+        teeter aliases to idle at the clip layer). Input: B DOUBLES RT as
+        special; grab moved to D-pad up.
+        MID-FLIGHT OWNER CHANGE, applied: MM GLB clips ONLY — the JJK pose
+        library and default pose set are dead for mechs (POSE_LIBRARY_CLIPS
+        off; a mech state with no glb mapping resolves null and draws the
+        placeholder loudly; file deletion is a follow-up). So jump/crouch
+        are NOT the generic pose set: jump = landReach frozen at 0.02s
+        (airborne-neutral opening frame), crouch = land frozen at 0.14s
+        (deepest absorb) — both times picked by eye off rendered frames.
+        Mechanism: manifest clips.<state>.freeze <seconds>; resolveClip
+        prefers glb over everything and collapses the clip to constant
+        tracks at that time (loader.js freezeClip — cached, so the mixer
+        action cache and mirror cache keep object identity; breath still
+        animates on top of the frozen idle).
 
 - [ ] K6. PBR RENDER (owner decision): fighters render with their NATIVE
         baked PBR materials (the export's own metal/rough textures) under

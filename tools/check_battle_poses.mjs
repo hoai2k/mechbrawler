@@ -15,7 +15,7 @@ import { BATTLE_POSES, MATCHED_FRAMES, GAIT_FRAMES } from "../render3d/src/battl
 import { INTENT_POSES, INTENTS, intentFor, baselinePose, CONTACTS, HEIGHTS, AIRBORNE }
   from "../render3d/src/baseline_poses.js";
 import { RIG_FIXES, applyRigFixes, fixesFor } from "../render3d/src/rig_fixes.js";
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -62,13 +62,12 @@ const checkPose = (label, pose) => {
 for (const [frame, pose] of Object.entries(BATTLE_POSES)) checkPose(frame, pose);
 for (const [intent, pose] of Object.entries(INTENT_POSES)) checkPose(`baseline/${intent}`, pose);
 
-// Every frame any character's sheet draws should eventually have a match. Only
-// the frames Yuji has are required today — he is the read character, and the
-// rest of the roster is seeded — but the gap is worth printing.
-const yuji = JSON.parse(readFileSync(join(READS, "yuji.json"), "utf8"));
-const missing = Object.keys(yuji.poses)
-  .filter((k) => !MATCHED_FRAMES.has(k) && !GAIT_FRAMES.has(k));
-if (missing.length) fail(`yuji has no matched pose for: ${missing.join(", ")}`);
+// The sprite-era pose READS (sprites/docs/pose-reads/*.json) went out with
+// the JJK sprites. The libraries above are still live — they are the generic
+// biped poses the mech rigs fall back to (plan task K5) — so everything below
+// that only needs the libraries still runs; the sheet-coverage checks are
+// skipped when no reads exist.
+const HAS_READS = existsSync(READS);
 
 // THE BASELINE'S ONE PROMISE: it covers everything. A per-frame match is an
 // override on top of a floor, and a floor with a hole in it is not a floor —
@@ -79,7 +78,7 @@ if (missing.length) fail(`yuji has no matched pose for: ${missing.join(", ")}`);
 const others = new Set();
 const generic = new Set();
 let frames = 0;
-for (const file of readdirSync(READS).filter((f) => f.endsWith(".json"))) {
+for (const file of (HAS_READS ? readdirSync(READS) : []).filter((f) => f.endsWith(".json"))) {
   const data = JSON.parse(readFileSync(join(READS, file), "utf8"));
   for (const k of Object.keys(data.poses)) {
     frames++;
@@ -222,20 +221,20 @@ for (const [charKey, fix] of Object.entries(RIG_FIXES)) {
 // Nothing should be defined and never reachable: an intent no frame resolves
 // to is either a dead pose or a resolver rule somebody forgot to write.
 const reached = new Set();
-for (const file of readdirSync(READS).filter((f) => f.endsWith(".json"))) {
+for (const file of (HAS_READS ? readdirSync(READS) : []).filter((f) => f.endsWith(".json"))) {
   for (const k of Object.keys(JSON.parse(readFileSync(join(READS, file), "utf8")).poses)) {
     reached.add(intentFor(k));
   }
 }
-const orphans = INTENTS.filter((i) => !reached.has(i));
-if (orphans.length) fail(`baseline intents no frame reaches: ${orphans.join(", ")}`);
+if (HAS_READS) {
+  const orphans = INTENTS.filter((i) => !reached.has(i));
+  if (orphans.length) fail(`baseline intents no frame reaches: ${orphans.join(", ")}`);
+}
 
-const gait = Object.keys(yuji.poses).filter((k) => GAIT_FRAMES.has(k));
-console.log(`battle poses ok: ${MATCHED_FRAMES.size} matched frames, `
-  + `all ${Object.keys(yuji.poses).length - gait.length} of yuji's sheet covered`
-  + (gait.length ? `, ${gait.length} left to the gait cycle (${gait.join(", ")})` : ""));
-console.log(`baseline ok: ${INTENTS.length} intents cover all ${frames} frames `
-  + `across the roster, ${reached.size} of them reached`);
+console.log(`battle poses ok: ${MATCHED_FRAMES.size} matched frames`
+  + (HAS_READS ? "" : " (no sprite pose-reads on disk — sheet coverage skipped)"));
+console.log(`baseline ok: ${INTENTS.length} intents`
+  + (HAS_READS ? `, covering all ${frames} frames across the roster, ${reached.size} reached` : ""));
 console.log(`contacts ok: ${Object.values(CONTACTS).filter(Boolean).length} declared, `
   + `${INTENTS.length - AIRBORNE.size} intents planted on the ground`);
 console.log(`rig fixes ok: ${Object.keys(RIG_FIXES).length} character(s) carry a correction `

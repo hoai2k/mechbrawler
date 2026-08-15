@@ -1,4 +1,4 @@
-// Persistent ally minions: shikigami, curses, transfigured humans.
+// Persistent ally minions — the bodies a summon ultimate puts on the stage.
 //
 // A summon differs from a projectile in that it lives on the stage, picks its
 // own targets, and acts on a cadence. It is data-driven: characters describe a
@@ -71,7 +71,7 @@ const PILOT_CEILING = 90;
 
 // A grounded summon's jump, for reaching platforms and airborne enemies. Only
 // piloted summons jump — hunting ones have no way to decide it is worth it, and
-// a shikigami that hops on its own looks like a bug rather than a tactic. The
+// a summon that hops on its own looks like a bug rather than a tactic. The
 // brawler is the exception: it decides like a fighter does.
 const PILOT_JUMP_VY = -900;
 const PILOT_GRAVITY = 2400;
@@ -224,7 +224,7 @@ function canonicalImage(cfg) {
  * control, because it is derived from the drawn rectangle rather than stored
  * beside it.
  *
- * `BOX_INSET` trims the fringe: fur, wisps, cursed-energy glow and the soft
+ * `BOX_INSET` trims the fringe: fur, wisps, energy glow and the soft
  * edge of the key cut are part of the picture and should not be part of the
  * target. It is the creature equivalent of HURTBOX.standH stopping short of a
  * fighter's hair.
@@ -313,7 +313,7 @@ const BRAWLER_MOVES = {
     reach: 152, high: 190, dmg: 17, base: 480, growth: 7.4, angle: 0.5,
     sfx: "slashHeavy", heavy: true, shake: 7,
   },
-  // Anti-air. Nobody should be able to answer a shikigami by standing on the
+  // Anti-air. Nobody should be able to answer a summon by standing on the
   // platform above it.
   cleave: {
     anim: "upHeavy", windup: 0.28, active: 0.16, recover: 0.34,
@@ -399,7 +399,7 @@ export function spawnSummon(owner, cfg) {
     // --- recoil. A hit does not launch a summon (that would make every summon
     // a free KO setup for whoever hits it hardest) but it absolutely moves it:
     // `knockT` is the stagger, `knockVx` the shove, and both are clamped to the
-    // stage so a shikigami can be pushed around and never off.
+    // stage so a summon can be pushed around and never off.
     knockT: 0,
     knockVx: 0,
     // How much of a shove this creature actually takes. A Max Elephant barely

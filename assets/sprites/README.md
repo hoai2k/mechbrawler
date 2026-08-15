@@ -1,23 +1,17 @@
 # `assets/sprites/` — shared art
 
-Drawings the renderer **spawns**, as opposed to drawings a fighter is **drawn
-from**. These belong to no single character and can turn up in any match.
+Drawings the renderer **spawns**, as opposed to a fighter's own body (which is
+a rigged GLB under `mechs/`, indexed by `render3d/assets/manifest.json`).
+These belong to no single mech and can turn up in any match.
 
-    effects/    techniques, projectiles, auras, impacts, stage-hazard polish
-    summons/    shikigami and creature stills (config_summons.js)
+    effects/    projectile art the ult directors draw (currently just nail.png,
+                the flechette sprite Titanus's SIEGE PROTOCOL volleys use)
+    garnish/    near-field cards for the 3D camera's garnish layer
+                (src/camera3d/garnish.js) — lanterns, vehicles, rubble,
+                hoardings, leaves. Each has a procedural fallback, so the set
+                can change one file at a time.
 
-Character sheets are **not** here — they live in `sprites/assets/`, along with
-the manifest that indexes them. That includes Mahoraga, who is a summon in the
-fiction but is animated out of a character sprite set like any fighter; the
-still under `summons/mahoraga.png` is only the fallback for a set that fails its
-pose check.
-
-See `sprites/README.md` for the full split and the reasoning behind it. Python
-tools take both roots from `tools/sprite_paths.py` (`SHARED` is this directory,
-`CHAR` is the character tree).
-
-Most of this is loaded by key from the catalogue in `src/assets.js` rather than
-by manifest lookup. The exception runs the other way: the manifest's pseudo-
-character `effects` indexes the install auras in `effects/` so the workbench can
-place them like poses, and `spriteUrl()` in `src/assets.js` sends those paths
-back here instead of to the character tree.
+Everything here is loaded by key from the catalogue in `src/assets.js`.
+The JJK-era effect/summon/aura sheets were removed in the Mech Brawler
+conversion (plan task K4); new power-effect art is requested through
+`docs/image-requests.md` and lands here when delivered.

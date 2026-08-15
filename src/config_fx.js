@@ -1,6 +1,6 @@
-// FX dials — every hand-tweakable number for the effects system that
-// docs/effects-plan.md builds: element hit recipes, dash streaks, projectile
-// trails, the Black Flash treatment, controller rumble.
+// FX dials — every hand-tweakable number for the effects system: element hit
+// recipes, dash streaks, projectile trails, the crit-flash treatment,
+// controller rumble.
 //
 // Same contract as config_tuning.js: nothing here is load-bearing. No value
 // changes what a hit connects with or how the simulation steps — the worst a
@@ -17,9 +17,10 @@ export const FX_DENSITY = 1;
 // "energy", which is exactly the pre-FX look: a theme-colour burst and a white
 // spark line. Counts are the base at 0%; damage scales them on top.
 //
-// The rule these recipes exist to enforce: Maki, Toji and Panda have NO cursed
-// energy, so "steel" draws white glints, sparks and dust — never a coloured
-// glow.
+// A mech kit (or a single move) picks a recipe with `fxElement`; the default
+// "energy" burst is what every hit draws today. The rest of the vocabulary is
+// live machinery waiting on kit tags — fire for Inferno, steel for wrecking
+// blows, machine for vented-steam hits, and so on.
 
 export const HIT_RECIPES = {
   energy: { burst: 14, sparks: 8 },
@@ -30,17 +31,11 @@ export const HIT_RECIPES = {
   sound:  { rings: 2, streaks: 7 },
   shadow: { smoke: 7, burst: 10 },
   soul:   { ripple: 1, smoke: 6 },
-  // Round 15 — the four staged fighters.
-  // Dagon generates water out of nothing, so a hit throws spray and a ring of
-  // surge rather than a glow.
   water:  { droplets: 14, spray: 8, rings: 1 },
-  // Mechamaru is a cursed corpse with cannons in it: metal glints and sparks
-  // like `steel`, plus the vented steam a machine working past its rating puts
-  // out. Not the same element as steel — he DOES have cursed energy, and the
-  // cannon shots keep their colour.
+  // Metal glints and sparks like `steel`, plus the vented steam a machine
+  // working past its rating puts out.
   machine: { glints: 8, sparks: 6, smoke: 4 },
-  // Kurourushi's hits are always partly the roaches: specks that scatter and
-  // crawl, over a dark chitinous burst.
+  // Specks that scatter and crawl, over a dark chitinous burst.
   swarm:  { specks: 14, smoke: 4, burst: 8 },
 };
 
@@ -81,22 +76,22 @@ export const PROJ_EMIT = {
   water: 26, machine: 14, swarm: 20,
 };
 
-// ------------------------------------------------------ per-character extras
+// --------------------------------------------------------- per-move extras
 export const CHAR_FX = {
-  counterShimmer: 13,   // particles/sec orbiting a held counter (Infinity, Sky Fold)
-  healMotes: 24,        // gold motes/sec while Reverse Cursed Technique channels
-  dismantleLines: 3,    // slash lines per hit of Sukuna's barrage…
-  dismantleFinisher: 9, // …and across the finisher
+  counterShimmer: 13,   // particles/sec orbiting a held counter stance
+  healMotes: 24,        // gold motes/sec while a heal channels
+  dismantleLines: 3,    // slash lines per hit of a `lattice` barrage…
+  dismantleFinisher: 9, // …and across its finisher
   dismantleSpan: 150,   // slash line length, px
-  seamLength: 100,      // Nanami's 7:3 seam length, px
-  swapTrailTime: 0.3,   // afterimage seconds left at both Boogie Woogie positions
+  seamLength: 100,      // ratio-seam length, px (ratioSeamFx)
+  swapTrailTime: 0.3,   // afterimage seconds left at both ends of a swap
 };
 
-// --------------------------------------------------------------- Black Flash
+// --------------------------------------------------------------- crit flash
 //
-// The show's flashiest single effect: a crimson core, jagged BLACK lightning
-// fractures, and the world dropping dark for a beat. Shared by Yuji's passive
-// proc and the two crit-finisher ultimates.
+// The flashiest single treatment the engine has: a crimson core, jagged black
+// lightning fractures, and the world dropping dark for a beat. Drawn by
+// blackFlashFx/critFinisherFx (fx.js) for crit procs and crit finishers.
 export const BLACK_FLASH = {
   forks: 12,                       // crackle branch count
   reach: 90,                       // how far the forks reach, px
@@ -137,9 +132,9 @@ export const RUMBLE = {
 
 // --------------------------------------------------------------- dash strike
 //
-// The twelve side-specials that share `dashStrike` used to spawn ten dust
-// motes and nothing else. Now: a fan of velocity-aligned streaks at launch,
-// and a boosted afterimage trail for the lunge.
+// Every special that shares the `dashStrike` handler: a fan of
+// velocity-aligned streaks at launch, and a boosted afterimage trail for the
+// lunge.
 export const DASH_FX = {
   streaks: 9,          // launch streak count (before FX_DENSITY)
   trailTime: 0.3,      // seconds of boosted afterimages after launch
