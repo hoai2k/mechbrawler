@@ -34,6 +34,17 @@ JJK meter economy stays, renamed. The fountain's one good idea — that an ult
 is a scheduled event both players can see coming — survives in the full-bar
 glow on the HUD.)*
 
+### Inherent energy, and the ranged slot
+
+The second resource: **INHERENT ENERGY**, the slim cyan bar under the meter.
+It self-recovers, always (~14/s from a 100 pool), the way Mech Mayhem's
+energy did. **Ranged shots spend a little of it** — every mech's MM gun now
+lives on its own dedicated slot, **RB**, priced per weapon (rapid guns ~4-7 a
+shot, big single shells ~16-24) — and **specials spend more** (30 by
+default). Dashing, sprinting and shielding cost nothing, base JJK behaviour.
+Run the pool dry and the gun clicks: the refusal is quiet, and the bar
+refilling is the timer.
+
 ### Summons are ultimates, and they come in small numbers
 
 Where a Mech Mayhem ult spawned a horde *(fenrir's WILD HUNT: 20 wolves;
@@ -108,12 +119,14 @@ the ordering reads without the extremes breaking hurtboxes.
 
 ## The kits
 
-Format per mech: identity · frame · then the moves. **N/S/D** = special
-neutral/side/down on B. **LB** = ultimate at full energy. The MM ranged weapon
-almost always becomes N — it is the signature gun, and a gun wants the neutral
-slot. Light strings, tilts, aerials and dash attacks are listed only where
-they carry identity; the shared framework (jab chain, side/up/down tilt,
-aerials) covers the rest.
+Format per mech: identity · frame · then the moves. **RB** = the ranged
+weapon — every mech's signature MM gun has its own dedicated slot now, spending
+inherent energy per shot. **N/S/D** = special neutral/side/down on RT. **LB** =
+ultimate at full energy. With the gun moved to RB, each mech's N is backfilled
+with one new special chosen to preserve identity — the S and D from the
+original kits are untouched. Light strings, tilts, aerials and dash attacks
+are listed only where they carry identity; the shared framework (jab chain,
+side/up/down tilt, aerials) covers the rest.
 
 ---
 
@@ -128,10 +141,13 @@ Power 10 / Speed 3 / Defense 9.
   out-reaches other mechs' heavies.
 - **Side heavy** — the overhead POUND *(105 dmg, knock 38)*, chargeable to
   2.4s, arms glowing as it banks.
-- **N — Rocket Fist** *(dmg 55, speed 46, cd 2.4)*: the fist leaves as REAL
+- **RB — Rocket Fist** *(dmg 55, speed 46, cd 2.4)*: the fist leaves as REAL
   geometry from the muzzle anchor and re-docks. Two fists; firing both puts
   the gun on a long recover while they fly home. His only projectile, and it
   hits like a truck.
+- **N — Breaker Fist**: one haymaker, two impacts — the blow lands, and a
+  beat later the shock of it lands again. The charge-punch identity, made a
+  special.
 - **S — Skyline Slam** *(grabThrow: dmg 88, throw 32)*: command grab. Seize,
   hoist clean overhead, HURL flat across the arena — a kill throw at the edge.
 - **D — Bulwark Stomp**: a short ground quake around him, knock-up, armored
@@ -146,10 +162,12 @@ Power 10 / Speed 3 / Defense 9.
 oxide red, orange visor. Mid frame, wide chest, short arms — the worst melee
 reach *(2.9)* buys the best trigger discipline. Power 7 / Speed 5 / Defense 5.
 
-- **N — Gatling Burst** *(dmg 9/round, projectile speed 90, the fastest)*: a
-  held spray — a stream of tracer while B is down, barrels visibly spinning
-  up, swapping arms every couple of seconds *(channelSwap 2)*. Chips, pushes,
-  never kills: it exists to make you approach.
+- **RB — Gatling Burst** *(dmg 9/round, projectile speed 90, the fastest)*: a
+  held spray — a stream of tracer while the trigger is down, barrels visibly
+  spinning up, swapping arms every couple of seconds *(channelSwap 2)*. Chips,
+  pushes, never kills: it exists to make you approach.
+- **N — Frag Shell**: a fat grenade lobbed over the tracer line, real splash —
+  the arc the flat stream lacks. More ammunition, of course.
 - **S — Micro-Missile Volley** *(dmg 22×6, homing)*: both shoulder pods
   ripple-fire six seekers that arc onto the target.
 - **D — Flak Fan**: an upward spread burst — his anti-air, ugly to jump into.
@@ -173,9 +191,11 @@ Power 6 / Speed 10 / Defense 2.
 - **Side heavy** — the CORKSCREW DRILL *(viperDrill: coil, then fly flat with
   both blades speared forward, barrel-rolling through the target)*. Her kill
   move, and a horizontal recovery in a pinch.
-- **N — Fang Throw** *(dmg 32, cd 0.8)*: a thrown forearm dagger — the blade
+- **RB — Fang Throw** *(dmg 32, cd 0.8)*: a thrown forearm dagger — the blade
   visibly leaves her arm and regrows *(REGROW 0.18s + 0.5s)*. Fast, flat,
   spammable.
+- **N — Serpent Feint**: she flows backward off the line, then springs through
+  it blades-first — the retreat was the attack. The fencer's mixup.
 - **S — Blade Cyclone** *(dmg 20 multi-hit)*: the IG-11 special — legs keep
   WALKING while everything above the waist spins free, a striding whirlwind
   that saws through whatever it overlaps.
@@ -194,8 +214,10 @@ Power 9 / Speed 4 / Defense 7.
 
 - **Side heavy** — the horn, planted through a half-step brace
   *(chargeLean)*. Launches at 24 knock.
-- **N — Shoulder Cannon** *(dmg 56, splash 3, cd 1.3)*: a hand cannon per
+- **RB — Shoulder Cannon** *(dmg 56, splash 3, cd 1.3)*: a hand cannon per
   fist, alternating. Slow shells with real splash — a mid-range poke.
+- **N — Horn Break**: a braced upward rip of the horn — whatever it catches
+  leaves the ground. The launcher that sets up the charge.
 - **S — BULL RUSH** *(dmg 75, knock 26, held up to ~2s)*: drops to all fours
   and GALLOPS while B is held — frame pitched hard over the horn, fists
   pumping. Ends the moment it connects: one clean launch. Cornering is bad on
@@ -216,9 +238,11 @@ Power 7 / Speed 8 / Defense 3.
 - **Side heavy** — the TRAVELLING TORNADO *(tempestTornado: dmg 42 per beat
   ×2, real forward drive while whirling, arms out)*. A heavy that moves —
   his approach and his kill move in one.
-- **N — Arc Bolt** *(dmg 40, chains 8 units)*: lightning that JUMPS — hits
+- **RB — Arc Bolt** *(dmg 40, chains 8 units)*: lightning that JUMPS — hits
   its mark and chains to a nearby second body. Doubles teams; punishes
   clustering.
+- **N — Power Chord**: he strikes a chord off his own stacks and the front
+  row takes it in the chest — the concert made a weapon.
 - **S — Static Overload** *(dmg 70, radius 8)*: places a storm cell a short
   way ahead — cloud gathers, then bolts hammer DOWN into the zone. A trap you
   herd people into.
@@ -236,8 +260,10 @@ animation IS the gallop. Power 7 / Speed 9 / Defense 3.
 
 - **Side heavy** — the SPIKE LEAP *(fenrirSpike: leap first, the spiked mane
   flares DURING flight, peaking exactly at impact)*.
-- **N — Rend Wave** *(dmg 36, cd 1.0)*: a crescent of torn air off the claws
+- **RB — Rend Wave** *(dmg 36, cd 1.0)*: a crescent of torn air off the claws
   — his poke, medium speed, good arc.
+- **N — Savage Flurry**: both claws, no ceremony — a tearing flurry on the
+  spot, the bite behind the gap-closer.
 - **S — Lunar Pounce** *(dmg 65, leap 14, cd shortest in MM at 5.5)*: a flat
   predator's lunge — fast, low, the gap-closer the rest of the kit hunts
   behind.
@@ -257,9 +283,11 @@ patience. Slowest but cranky. Power 9 / Speed 2 / Defense 9.
 - **Light string / heavies** — the titanus charge contract *(punchHold +
   heavyHold, same clips, dmg 42/46/62 and 100)*; his GLB stages the pound as
   a thunderclap, which reads even better in profile.
-- **N — Mortar Lob** *(dmg 68 — the biggest single shell, splash 5.5, cd
+- **RB — Mortar Lob** *(dmg 68 — the biggest single shell, splash 5.5, cd
   1.7)*: a high arcing shell that lands where you are ABOUT to be. The
   slowest, meanest projectile in the game.
+- **N — Fire Mission**: he designates a stretch of ground three moves ahead —
+  then the shells arrive on it. Artillery patience as a special.
 - **S — Skyline Toss** *(grabThrow: dmg 85, throw 36)*: the command grab,
   thrown UP-and-out — his sets up his own mortar.
 - **D — Bunker Down**: plants; heavy armor and a shield-strength boost for a
@@ -276,9 +304,11 @@ rifle and the theatre. Power 8 / Speed 7 / Defense 2.
 
 - **Side heavy** — WING LASERS *(wraithLasers: the tattered cloak fans open
   into a wing-wall, then the tips fire)*. A heavy that is half projectile.
-- **N — Sniper Round**: a charged piercing shot down the rifle line — slow to
+- **RB — Sniper Round**: a charged piercing shot down the rifle line — slow to
   aim, flat, hits through bodies. Hold to steady; the laser sight is the
   telegraph. *(His MM bats move to S.)*
+- **N — Deadman's Mark**: he marks the spot you are standing on, and a beat
+  later something arrives there. Officially, nothing happens. Move.
 - **S — Night Swarm** *(dmg 26×3, slow)*: three bats that drift and home
   lazily — screen control while he lines up the rifle.
 - **D — Ghost Protocol** *(dmg 60, 5s upstream)*: projects a white spectre
@@ -297,8 +327,10 @@ burners — two chimneys, two hand torches)*. Power 8 / Speed 4 / Defense 6.
 
 - **Light string** — torch-hand combos; **the finisher SETS YOU ALIGHT**
   *(burn 18 over 3s, finisher only — a reward for landing the whole string)*.
-- **N — Dragon's Breath** *(dmg 6.5/tick, range 16 — a long narrow jet)*:
+- **RB — Dragon's Breath** *(dmg 6.5/tick, range 16 — a long narrow jet)*:
   held flame. The cone is a wall; walking into it is the mistake.
+- **N — Backdraft Hook**: a short furnace-hot hook that leaves the target
+  alight — the brawler half of him, on the special button.
 - **S — Napalm Carpet** *(dmg 14, 4 patches, 5s)*: lobbed patches of burning
   ground — stage control that stays.
 - **D — Vent Burst**: dumps the burners straight down — a point-blank fire
@@ -314,8 +346,10 @@ glow `#7ce0ff`. Heavy zoner; ice-lance in the LEFT hand *(fires from the
 mirrored clip — the barrage leaves the weapon, not the empty claw)*.
 Power 8 / Speed 3 / Defense 8.
 
-- **N — Icicle Barrage** *(dmg 13×6, speed 48, cd 1.15)*: a fan of shards
+- **RB — Icicle Barrage** *(dmg 13×6, speed 48, cd 1.15)*: a fan of shards
   off the lance. His main conversation.
+- **N — Cold Snap**: the air around him flash-freezes — a point-blank nova
+  that leaves the crowder rimed and slow. The zoner's get-off-me.
 - **S — Cryo Beam** *(dmg 12, slow 0.45, 1.8s)*: a held beam that FROSTS —
   the slow is the payload; a frosted foe can't escape the next barrage.
 - **D — Ice Wall**: raises a pillar of ice ahead — blocks projectiles, bodies
@@ -342,8 +376,10 @@ Power 8 / Speed 3 / Defense 10.
 - **Side heavy** — the PINCER CLAP *(clawSnap, dmg 100)* — he steps INTO it
   *(heavyDrive: the clap's travel is lateral, so the step is what brings the
   claws to you)*.
-- **N — Hydro Hose** *(dmg 7/tick, range 20)*: held water pressure — less a
+- **RB — Hydro Hose** *(dmg 7/tick, range 20)*: held water pressure — less a
   gun than a push. Shoves bodies off platforms and stuffs approaches.
+- **N — Pincer Grip**: the claw closes from further away than anything should
+  — a command grab at outrageous range, the reach-over-legs identity.
 - **S — Geyser** *(dmg 62, launch 15, cd 7)*: a bubbling patch telegraphs
   UNDER the target, then a water column ERUPTS — his anti-air lives in the
   floor, evadable on reaction.
@@ -364,8 +400,10 @@ fastest, fights with his FEET. Power 7 / Speed 10 / Defense 3.
 - **Light string** — sickle toe-claw KICKS *(saurionKick1/2 + claw rakes)*.
 - **Side heavy** — the lunging BITE *(saurionBite: coils onto his haunches
   and springs the whole frame forward, dmg 80)*.
-- **N — Quill Fan** *(dmg 20×3, spread)*: a fan of black blade-feathers off
+- **RB — Quill Fan** *(dmg 20×3, spread)*: a fan of black blade-feathers off
   both forearms. His own plumage — the fastest-recovering projectile here.
+- **N — Raptor Feint**: he breaks off the line, coils onto his haunches — and
+  arrives back through it claws-first. The predator's mixup.
 - **S — SICKLE POUNCE** *(dmg 62 + bleed, the longest leap in MM at 22)*:
   the bird-of-prey kill-leap — and **the only shield-breaker in the game**
   *(guardBreak 0.6)*. Land ON TOP of them and he latches — perched, feet
@@ -390,8 +428,10 @@ Power 6 / Speed 8 / Defense 5.
 - **Movement** — the crouch is nearly a disappearance; his crouch hurtbox is
   the smallest on the roster. Airborne, the cannon-arms sweep back like a
   diving frog's legs.
-- **N — Slime Slinger** *(dmg 38, splash, GUNK)*: a lobbed glob; splash
+- **RB — Slime Slinger** *(dmg 38, splash, GUNK)*: a lobbed glob; splash
   gunks — heavier jumps, slower dashes.
+- **N — Tongue Lash**: the tongue snaps out, sticks, and hauls them through
+  the gunk on the way back. A frog's command grab.
 - **S — Quad Gunk Barrage** *(dmg 24×5, radius 8)*: all four guns lob a
   sticky mortar carpet at once.
 - **D — Spring Coil**: crouch-charge a SUPER LEAP — release for a towering
@@ -421,8 +461,11 @@ becomes the roster's best wall game. Power 6 / Speed 8 / Defense 4.
 - **Side heavy** — the BARRAGE *(jerryBarrage: eight fast strikes that
   pummel IN PLACE — knock 3, launch 0, deliberately)*: the anti-launch
   heavy; damage without the mercy of distance.
-- **N — Bilge Spit** *(dmg 18, GUNK, ticks)*: a lead glob with trailing
+- **RB — Bilge Spit** *(dmg 18, GUNK, ticks)*: a lead glob with trailing
   wads — long range, gunks on hit.
+- **N — Breach**: the legs fire and the tide comes with him — a towering
+  shell-first leap off a bursting column of brine. Recovery and mixup for the
+  best jumper in the game.
 - **S — Brine Swarm** *(dmg 26)*: coughs up three hopping shrimp-mines that
   bounce forward and pop on contact. Projectiles, not minions.
 - **D — Anchor Drop**: airborne slam straight down (his plunge, available
@@ -445,8 +488,10 @@ Power 8 / Speed 7 / Defense 4.
   3s crash — tuned down for a faster game)*.
 - **Side heavy** — the BACKHAND *(nullBackhand: dmg 84, knock 30 — a
   contemptuous one-hand dismissal with real kill power)*.
-- **N — Null Pointer** *(dmg 30, cd 0.75)*: a de-rez bolt off either claw.
+- **RB — Null Pointer** *(dmg 30, cd 0.75)*: a de-rez bolt off either claw.
   Applies GLITCH — the ranged stack-builder.
+- **N — Exception Handler**: he stops rendering for a beat — strike the
+  glitch and the exception is thrown back at you. The crash as a stance.
 - **S — SEGFAULT** *(dmg 55, dash 14)*: he de-rezzes into a smear of
   corrupted frames and tears THROUGH everything on the line — a pass-through
   dash that glitches everyone it intersects.
@@ -468,8 +513,10 @@ FACE — it bellows on the big hits. Power 10 / Speed 5 / Defense 7.
   clips)*, enormous arcs.
 - **Side heavy** — the two-fisted OVERHEAD DRIVE *(kongaSlam, dmg 98, launch
   10, quake FX)*.
-- **N — Shoulder Salvo** *(dmg 13×6, splash)*: both pods empty in a ripple —
+- **RB — Shoulder Salvo** *(dmg 13×6, splash)*: both pods empty in a ripple —
   a rolling barrage that exists mainly to make you walk into the fists.
+- **N — Armspan Sweep**: both arms at full extension, swept through everything
+  at head height — the longest reach on the roster, used all at once.
 - **S — SKULL DRIVER** *(dmg 96)*: the piledriver. One hand by the head for
   anyone he can palm — the body hangs INVERTED and the head is what lands —
   both hands for a peer. Either way they finish on their back: the long
@@ -498,9 +545,11 @@ MM's highest launch *(13)*. Power 9 / Speed 4 / Defense 9.
 - **Side heavy** — the TOSS *(tritoneToss: horns catch and throw UP, launch
   13 — the game's biggest vertical launch)*: his kill move is a launcher,
   and his up-heavy is the same animal.
-- **N — Flank Cannons** *(dmg 42, speed 62, splash)*: both cannons traverse
+- **RB — Flank Cannons** *(dmg 42, speed 62, splash)*: both cannons traverse
   for a visible half-beat, then fire together. The aim delay is the tell;
   the shells are the fastest heavy ordnance in the game.
+- **N — Seismic Bellow**: the frill flares and six tonnes of chest answers —
+  a bellow that staggers everything in front of it. The animal underneath.
 - **S — GORE CHARGE** *(dmg 88, launch 12, HELD)*: head down, frill planted,
   and he RUNS while B is held — steering badly on purpose *("six tonnes at a
   gallop can be aimed; it cannot be threaded")*. The horns CATCH the first

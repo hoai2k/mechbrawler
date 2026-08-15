@@ -343,6 +343,31 @@ html, body {
   50% { filter: brightness(1.6); }
 }
 
+/* The inherent energy pool — the second resource, under the attack meter.
+   Slimmer than the meter and cyan, so the two bars cannot be confused; it
+   dims when too low to fire, which is the whole of its signalling. */
+.energy-bar {
+  height: 5px;
+  margin-top: 3px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.energy-fill {
+  height: 100%;
+  width: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #2fb6d8, #6ee7ff);
+  transition: width 0.12s linear;
+}
+
+.energy-bar--low .energy-fill {
+  opacity: 0.45;
+}
+
+.hud--crowd .energy-bar { height: 4px; }
+
 .meter-label {
   position: absolute;
   inset: 0;

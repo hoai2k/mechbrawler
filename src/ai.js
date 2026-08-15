@@ -98,6 +98,7 @@ export function aiInput(f) {
   plan.lightP = false;
   plan.heavyP = false;
   plan.specialP = false;
+  plan.rangedP = false;
   plan.ultP = false;
   plan.jumpP = false;
   plan.grabP = false;
@@ -191,6 +192,11 @@ function makePlan(f, opp, lvl) {
     } else if (mid) {
       input.specialP = true;
     }
+  } else if (adx > melee * 1.2 && adx < 560 && (f.energy ?? 0) > 60 && chance(lvl.special * 0.7)) {
+    // The ranged weapon (RB): taken at range when the inherent energy pool is
+    // comfortably ahead of the shot, so the CPU shoots without starving its
+    // own specials.
+    input.rangedP = true;
   }
 
   // defense reaction

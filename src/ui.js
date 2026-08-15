@@ -3,7 +3,7 @@ import { CHARACTER_KEYS, CHARACTERS, RANDOM_KEY, RESOLVED_GROUPS, randomCharacte
 import { STAGES, getStage, backgroundFile } from "./stages.js";
 import { audioSettings, audioUnlocked, cycleMusicMode, MUSIC_MODES, musicPlaying, setTitleLive, syncMusic, playSfx, toggleMute } from "./audio.js";
 import { cpuLevelName } from "./ai.js";
-import { METER_MAX, TIME_OPTIONS } from "./constants.js";
+import { METER_MAX, TIME_OPTIONS, INHERENT_ENERGY } from "./constants.js";
 import { clamp } from "./utils.js";
 import { padsMenuState, padsMenuStates } from "./input.js";
 import { cameraMode } from "./camera_mode.js";
@@ -55,7 +55,7 @@ export function initUi(cb) {
     "startButton", "movesButton", "settingsButton", "fullscreenButton", "muteButton", "controllerStatus", "menuHint", "loadHint",
     ...FIGHTER_IDS.flatMap((id) => [
       `p${id}Panel`, `p${id}Name`, `p${id}Damage`, `p${id}Stocks`,
-      `p${id}Meter`, `p${id}MeterLabel`, `p${id}Portrait`, `p${id}Team`, `p${id}Combo`,
+      `p${id}Meter`, `p${id}MeterLabel`, `p${id}Energy`, `p${id}Portrait`, `p${id}Team`, `p${id}Combo`,
     ]),
     "arenaSign", "arenaSignName", "matchClock", "errorToast", "pauseNotice", "matchStats", "victoryPodium", "stageAgainButton",
     "vsModeButton", "vsModeLabel", "modeMenu", "modeNote",
@@ -651,6 +651,7 @@ function buildHud() {
         </div>
         <div id="p${id}Stocks" class="stocks${mirror ? " stocks--right" : ""}"></div>
         <div class="meter"><div id="p${id}Meter" class="meter-fill"></div><span id="p${id}MeterLabel" class="meter-label"></span></div>
+        <div class="energy-bar"><div id="p${id}Energy" class="energy-fill"></div></div>
         <b id="p${id}Combo" class="combo-count hidden"></b>
       </div>`;
     panel.innerHTML = mirror ? info + portrait : portrait + info;
@@ -1619,6 +1620,7 @@ function characterBody(c) {
     <p class="moves-blurb"><strong>${c.passive.name}:</strong> ${c.passive.desc}</p>
     <div class="moves-section">${TEXT.moves.sectionTitle}</div>
     <dl class="moves-table">
+      ${c.ranged ? `<dt>${TEXT.moves.ranged}</dt><dd><strong>${c.ranged.name}</strong> — ${c.ranged.desc}</dd>` : ""}
       <dt>${TEXT.moves.specialNeutral}</dt><dd><strong>${s.neutral.name}</strong> — ${s.neutral.desc}</dd>
       <dt>${TEXT.moves.specialSide}</dt><dd><strong>${s.side.name}</strong> — ${s.side.desc}</dd>
       <dt>${TEXT.moves.specialDown}</dt><dd><strong>${s.down.name}</strong> — ${s.down.desc}</dd>
@@ -1740,6 +1742,7 @@ export function updateHud() {
     });
     renderStocks(els[`p${id}Stocks`], f);
     renderMeter(els[`p${id}Meter`], els[`p${id}MeterLabel`], f);
+    renderEnergy(els[`p${id}Energy`], f);
   }
 }
 
@@ -1780,6 +1783,15 @@ function renderMeter(fillEl, labelEl, f) {
   labelEl.textContent = !full ? ""
     : hasDomain ? TEXT.hud.superChoiceReady
     : TEXT.hud.ultimateReady;
+}
+
+/** The inherent energy pool (constants.js INHERENT_ENERGY): a slim cyan bar
+ *  under the attack meter. Dims when the pool is too low to matter — the "you
+ *  are out" read at a glance, mirroring the meter's own one-threshold style. */
+function renderEnergy(fillEl, f) {
+  const pct = Math.max(0, Math.min(100, ((f.energy ?? 0) / INHERENT_ENERGY.max) * 100));
+  fillEl.style.width = `${pct}%`;
+  fillEl.parentElement.classList.toggle("energy-bar--low", (f.energy ?? 0) < 25);
 }
 
 /** The result screen. `side` is set only in a team match, where the result

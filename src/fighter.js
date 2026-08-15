@@ -3,7 +3,7 @@ import { clamp, sign } from "./utils.js";
 import { getCharacter } from "./characters.js";
 import { lightMove, heavyMove } from "./moves.js";
 import { spawnMelee, opponentOf, updateStatuses } from "./combat.js";
-import { performSpecial, updateSpecialState } from "./specials.js";
+import { performSpecial, performRanged, updateSpecialState } from "./specials.js";
 import { performUltimate } from "./ultimates.js";
 import { domainInput, activeDomain } from "./domains.js";
 import { burst, dust, popup, banner, ring } from "./particles.js";
@@ -24,6 +24,7 @@ import {
   TEETER_EDGE, TEETER_DELAY,
   RESPAWN_X, SMASH_TILT, SMASH_TILT_ANGLE,
   RESPAWN_WAIT, RESPAWN_PLATFORM_Y, RESPAWN_PLATFORM_HALF_W, RESPAWN_PLATFORM_TIME, RESPAWN_GRACE,
+  INHERENT_ENERGY,
 } from "./constants.js";
 import { TRAIL_LEN, TRAIL_STEP, TURN_TIME, LAND_SQUASH_TIME, TAKEOFF_STRETCH_TIME } from "./config_tuning.js";
 import { mainPlatform, spawnXs } from "./stages.js";
@@ -46,6 +47,9 @@ export function makeFighter(id, charKey, x, facing) {
     id, charKey, char,
     x, y: 0, vx: 0, vy: 0, facing,
     stocks: state.stocks, damage: 0, meter: 0,
+    // Inherent energy (constants.js INHERENT_ENERGY): self-recovering, spent
+    // by ranged shots and specials, never by movement. Starts full.
+    energy: INHERENT_ENERGY.max,
     shield: SHIELD_MAX, shielding: false, shieldRaisedAt: -10, shieldStun: 0,
     prevShield: false,
     grounded: false, crouching: false, fastFalling: false,
@@ -69,7 +73,7 @@ export function makeFighter(id, charKey, x, facing) {
     // Set while an ultimate has this fighter wearing another actor's sprite set
     // (config_transform.js); null means "draw my own body".
     spriteChar: null,
-    cooldowns: { neutral: 0, side: 0, down: 0 },
+    cooldowns: { neutral: 0, side: 0, down: 0, ranged: 0 },
     throatStrain: 0, throatLock: 0,
     statuses: freshStatuses(),
     ledge: null, ledgeCooldown: 0, ledgeTimer: 0, ledgeMove: null, ledgeGrabs: 0,
@@ -862,6 +866,7 @@ function stepRespawnPlatform(f, dt, input) {
   plat.t -= dt;
   const acted = input.lightP || input.heavyP || input.specialP || input.ultP ||
                 input.domainP || !!input.tiltDir || input.grabP ||
+                input.rangedP || input.tauntP ||
                 input.jumpP || input.shieldHeld || input.down;
   const walkedOff = Math.abs(f.x - plat.x) > RESPAWN_PLATFORM_HALF_W;
   if (plat.t <= 0 || acted || walkedOff) leaveRespawnPlatform(f);
@@ -932,6 +937,10 @@ export function updateFighter(f, dt, input) {
   let trickle = METER_PASSIVE;
   if (f.char.passive.id === "gamblersFlow") trickle *= 1.3;
   f.meter = clamp(f.meter + trickle * dt, 0, METER_MAX);
+
+  // Inherent energy self-recovers, always — Mech Mayhem style. Nothing but
+  // firing the gun or casting a special ever drains it.
+  f.energy = clamp((f.energy ?? 0) + INHERENT_ENERGY.regen * dt, 0, INHERENT_ENERGY.max);
 
   updateStatuses(f, dt);
   updateSpecialState(f, dt);
@@ -1094,6 +1103,7 @@ export function updateFighter(f, dt, input) {
   } else if (input.lightP) f.bufferedAction = { kind: "light", t: ACTION_BUFFER };
   else if (input.heavyP) f.bufferedAction = { kind: "heavy", t: ACTION_BUFFER };
   else if (input.specialP) f.bufferedAction = { kind: "special", t: ACTION_BUFFER };
+  else if (input.rangedP) f.bufferedAction = { kind: "ranged", t: ACTION_BUFFER };
   if (f.bufferedAction) {
     f.bufferedAction.t -= dt;
     if (f.bufferedAction.t <= 0) f.bufferedAction = null;
@@ -1127,6 +1137,16 @@ export function updateFighter(f, dt, input) {
       if (f.action.lunge && f.grounded && !inHitstun && input.dirX !== Math.sign(f.vx)) f.vx = 0;
       f.action = null;
     }
+  }
+
+  // A taunt is the one action the player is allowed to regret: any fresh
+  // input cuts it short, so showboating never costs more than the moment of
+  // deciding to stop.
+  if (f.action?.kind === "taunt" &&
+      (input.lightP || input.heavyP || input.specialP || input.rangedP ||
+       input.jumpP || input.grabP || input.ultP || input.domainP ||
+       input.shieldHeld || input.tiltDir || input.dirX !== 0 || input.down)) {
+    f.action = null;
   }
 
   // ---- shield handling
@@ -1221,9 +1241,11 @@ export function updateFighter(f, dt, input) {
       // that arrived while the fighter was busy.
       const act = THROW_ENABLED && input.grabP ? "grab"
         : input.specialP ? "special"
+        : input.rangedP ? "ranged"
         : input.heavyP ? "heavy"
         : input.lightP ? "light"
         : input.tiltDir ? "tilt"
+        : input.tauntP ? "taunt"
         : f.bufferedAction?.kind;
       if (act === "grab") {
         // Grounded only, like Smash: the air already belongs to aerials, and
@@ -1235,6 +1257,17 @@ export function updateFighter(f, dt, input) {
       } else if (act === "special") {
         const slot = input.down || f.crouching ? "down" : (input.dirX !== 0 ? "side" : "neutral");
         performSpecial(f, slot);
+      } else if (act === "ranged") {
+        // RB: the mech's gun — same execution path as a special (specials.js),
+        // its own cooldown slot, priced in inherent energy.
+        performRanged(f);
+      } else if (act === "taunt") {
+        // D-pad down: hold the victory pose for a beat. Grounded only, deals
+        // nothing, and any input cancels it (below) — pure theatre.
+        if (f.grounded) {
+          beginAction(f, "taunt", 1.5, "win", { lockMovement: true });
+          playGrunt(f.charKey);
+        }
       } else if (act === "heavy") {
         beginHeavy(f, input);
       } else if (act === "light") {

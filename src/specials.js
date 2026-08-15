@@ -17,7 +17,7 @@ import { clamp, sign, rand, chance } from "./utils.js";
 import { spawnMeleeScaled as spawnMelee, spawnProjectileScaled as spawnProjectile, opponentOf, applyHit, hurtbox, applyStatus, ownerStick, debugShape } from "./combat.js";
 import { burst, dust, ring, popup, banner } from "./particles.js";
 import { playSfx, playGrunt, moveCallFor, spokenLead, spokenCommitAt, cutSfx, playCutGrunt } from "./audio.js";
-import { METER_MAX } from "./constants.js";
+import { METER_MAX, INHERENT_ENERGY } from "./constants.js";
 import { rectsOverlap, circleRectOverlap } from "./utils.js";
 import { getImage } from "./assets.js";
 import { spawnSummon } from "./summons.js";
@@ -94,7 +94,10 @@ function beginSpecialAction(f, slot, dur, opts = {}) {
 }
 
 function slotAnim(slot) {
-  return slot === "neutral" ? "specialNeutral" : slot === "side" ? "specialSide" : "specialDown";
+  // The ranged weapon plays the neutral-special pose: the 26-state contract's
+  // `specialNeutral` maps to each mech's own shoot/channel clip, which is
+  // exactly the clip the gun always used when it lived on N.
+  return slot === "side" ? "specialSide" : slot === "down" ? "specialDown" : "specialNeutral";
 }
 
 // The direction a fighter is aiming with the d-pad, as a unit vector, or
@@ -109,6 +112,29 @@ function aimVector(f) {
 
 export function performSpecial(f, slot) {
   const cfg = f.char.specials[slot] || f.char.specials.neutral;
+  performMove(f, cfg, slot);
+}
+
+/** The ranged weapon (RB): the character's `ranged` config — the Mech Mayhem
+ *  gun that used to live on specials.neutral — run down the exact execution
+ *  path the specials use, with its own cooldown slot and a cheaper inherent
+ *  energy price. */
+export function performRanged(f) {
+  const cfg = f.char.ranged;
+  performMove(f, cfg, "ranged");
+}
+
+/** What a move spends from the inherent energy pool. Ranged shots price
+ *  themselves per weapon (`p.energyCost`, floored); specials cost more, with
+ *  one shared default so most kits need not say it. */
+function energyCostOf(cfg, slot) {
+  if (slot === "ranged") {
+    return Math.max(INHERENT_ENERGY.rangedFloor, cfg.p?.energyCost ?? INHERENT_ENERGY.rangedFloor);
+  }
+  return cfg.p?.energyCost ?? INHERENT_ENERGY.specialCost;
+}
+
+function performMove(f, cfg, slot) {
   if (!cfg) return;
   if (f.cooldowns[slot] > 0) return;
   if (f.statuses.silence > 0) {
@@ -122,6 +148,15 @@ export function performSpecial(f, slot) {
     }
   }
 
+  // Inherent energy: the same "not ready" grammar as a sealed technique — a
+  // quiet refusal, and the pool visibly refilling on the HUD is the timer.
+  const energyCost = energyCostOf(cfg, slot);
+  if ((f.energy ?? 0) < energyCost) {
+    popup(f.x, f.y - 160, "LOW ENERGY", "#6ee7ff", 15);
+    playSfx("miss", 0.7);
+    return;
+  }
+
   const handler = HANDLERS[cfg.type];
   if (!handler) return;
 
@@ -130,6 +165,7 @@ export function performSpecial(f, slot) {
   // so a command that gets cut off costs nothing and can be tried again.
   const spend = () => {
     f.cooldowns[slot] = cfg.cooldown || 1.2;
+    f.energy = Math.max(0, (f.energy ?? 0) - energyCost);
     if (f.char.passive.id === "throatStrain" && cfg.strain) {
       f.throatStrain += cfg.strain;
       if (f.throatStrain >= 3) {
@@ -908,6 +944,7 @@ function spawnSummonFlash(owner, spriteKey, duration, height, forward) {
 }
 
 function currentSlot(cfg, f) {
+  if (f.char.ranged === cfg) return "ranged";
   const s = f.char.specials;
   if (s.neutral === cfg) return "neutral";
   if (s.side === cfg) return "side";
