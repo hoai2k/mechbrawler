@@ -36,12 +36,12 @@ plays nothing like a platform fighter.
 - [ ] R3. Presentation dossier: how the neon title flicker is done, the menu
         palette, music inventory (src/music + public/sound), sfx, and what
         "brighter" should mean concretely in render3d's toon pass.
-- [ ] D1. docs/characters.md — the NEW system of powers: per mech, the full
+- [x] D1. docs/characters.md — the NEW system of powers: per mech, the full
         brawler kit (lights/heavies/dash/air, ranged, special, ult, movement
         quirks), with the reasoning. This is the design source of truth.
 - [ ] D2. docs/arenas.md — the NEW arena set: per arena, platforms, hazard
         design with timings/telegraphs, music pick, palette note.
-- [ ] D3. docs/image-requests.md — REWRITTEN for this game: power effects,
+- [x] D3. docs/image-requests.md — REWRITTEN for this game: power effects,
         hazard effects, UI garnish we cannot source from robotworld. Old JJK
         request docs and history deleted. DONE EARLY so generation can start.
 
