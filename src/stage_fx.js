@@ -21,6 +21,8 @@ import { getStage, mainPlatform } from "./stages.js";
 import { playSfx } from "./audio.js";
 import { burst, dust, popup, banner, ring, sparkLine } from "./particles.js";
 import { hitboxRect, shieldBreak } from "./combat.js";
+import { getImage } from "./assets.js";
+import { sharedAdjust } from "./shared_sprites.js";
 import { clamp, sign } from "./utils.js";
 // Camera cues: each gimmick pokes the 2.5D rig at its big moment. A no-op in
 // flat mode (camera_mode.js swallows the call when no rig is listening), so
@@ -122,6 +124,43 @@ function movePlatform(plat, nx, ny) {
 }
 
 const smoothstep = (t) => t * t * (3 - 2 * t);
+
+/**
+ * A delivered hazard plate, drawn over the procedural hazard it dresses.
+ *
+ * OVER, not instead of. Every board in this file paints its hazard out of
+ * gradients and rectangles, and those drawings are tuned to the timings — the
+ * pour widens as it lands, the train's streak leads its nose. A plate that
+ * replaced all of that would have to re-earn the timing; a plate drawn ON it
+ * gives the hazard a face and keeps the motion that was already right. It also
+ * means a board whose art has not landed looks exactly as it did.
+ *
+ * `h` is the plate's height in game pixels before the workbench's scale, taken
+ * from STAGE_FX in src/shared_sprites.js — that table is what the effect
+ * workbench sizes these against, so the number it shows and the number drawn
+ * here are the same number.
+ *
+ * `anchor` says which part of the drawing lands on (x, y): "centre" for
+ * something crossing the air, "top" for something hanging, "feet" for
+ * something standing on the floor.
+ */
+function hazardArt(ctx, key, x, y, h, { anchor = "centre", alpha = 1, flip = 0,
+                                        rotate = 0, additive = true } = {}) {
+  const img = getImage(key);
+  if (!img) return false;
+  const adj = sharedAdjust(key);
+  const dh = h * adj.scale;
+  const dw = img.width * dh / img.height;
+  ctx.save();
+  if (additive) ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = alpha;
+  ctx.translate(x + adj.dx, y + adj.dy);
+  if (rotate || adj.rot) ctx.rotate(rotate + adj.rot);
+  if (flip) ctx.scale(flip < 0 ? -1 : 1, 1);
+  ctx.drawImage(img, -dw / 2, anchor === "feet" ? -dh : anchor === "top" ? 0 : -dh / 2, dw, dh);
+  ctx.restore();
+  return true;
+}
 
 // The topmost landable surface under a world x — where a dropped object
 // (container, car husk) actually comes to rest. Falls back to the main.
@@ -227,6 +266,11 @@ const STAGE_FX = {
           ctx.fillStyle = grad;
           ctx.fillRect(Math.min(train.x, train.x - train.dir * 320), track.y - 52, 320 + 40, 46);
           ctx.restore();
+          // The nose itself, riding the streak. Mirrored to the travel
+          // direction the same way a projectile is — the plate is drawn facing
+          // one way and the pass alternates.
+          hazardArt(ctx, "stagefx:monorail_train", train.x, track.y - 30, 150,
+                    { anchor: "centre", alpha: 0.95, flip: train.dir > 0 ? -1 : 1, additive: false });
         }
         // ambient neon motes
         ctx.save();
@@ -320,6 +364,10 @@ const STAGE_FX = {
           const wob = Math.sin(state.matchTime * 22) * 6;
           ctx.fillRect(strip.x + 30 + wob, 200, strip.w - 60, plat.y - 200);
           ctx.restore();
+          // The crucible doing the pouring, hung at the top of the sheet: the
+          // gradient is the metal falling, this is what it falls out of.
+          hazardArt(ctx, "stagefx:ladle_pour", strip.x + strip.w / 2 + wob, 96, 210,
+                    { anchor: "top", alpha: 0.95, additive: false });
         }
         // cooling patch
         const left = patchUntil - state.matchTime;
@@ -916,6 +964,16 @@ const STAGE_FX = {
             ctx.fillRect(jx - 12, plat.y - h, 24, h);
           }
           ctx.restore();
+          // A gout on each jet, standing in the fissure and rising out of it.
+          // Sized off the jet it dresses rather than off a constant, so the
+          // art breathes with the same 17Hz wobble the gradient does.
+          const count2 = Math.max(3, Math.round(branch.w / 60));
+          for (let i = 0; i < count2; i++) {
+            const jx = branch.x + (i + 0.5) * (branch.w / count2);
+            const h = 70 + 26 * Math.sin(state.matchTime * 17 + i * 2);
+            hazardArt(ctx, "stagefx:magma_gout", jx, plat.y + 4, h * 2.6,
+                      { anchor: "feet", alpha: 0.8, flip: i % 2 ? -1 : 1 });
+          }
         }
         // ambient embers + ash
         ctx.save();

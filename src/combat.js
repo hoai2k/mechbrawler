@@ -1,7 +1,7 @@
 import { state } from "./state.js";
 import { clamp, sign, rectsOverlap, circleRectOverlap } from "./utils.js";
 import { burst, dust, sparkLine, ring, popup, banner } from "./particles.js";
-import { hitFx, elementOf, burnTickFx, bleedTickFx, projectileEmit, explodeFx, blackFlashFx, ratioSeamFx, specks, spray } from "./fx.js";
+import { hitFx, elementOf, burnTickFx, bleedTickFx, projectileEmit, explodeFx, blackFlashFx, ratioSeamFx, specks, spray, spriteFlash } from "./fx.js";
 import { PROJ_TRAIL, BLACK_FLASH, RUMBLE } from "./config_fx.js";
 import { rumbleFighter, rumbleEvent } from "./rumble.js";
 import { duckMusic } from "./audio.js";
@@ -1157,6 +1157,10 @@ export function shieldBreak(target) {
   banner("SHIELD BREAK!", "#ff8a8a", { y: 180, size: 44, life: 1.2 });
   playSfx("guardBreak", 0.9);
   burst(target.x, target.y - 90, "#cfe4ff", 40, 1.4);
+  // The dome they were holding, coming apart: hex shards and the orange break
+  // flash, drawn over the same point drawShieldBubble had it at.
+  spriteFlash("effect:shield_burst", target.x, target.y - 70,
+              { h: 190, life: 0.5, grow: 0.7 });
   state.camera.shake = Math.max(state.camera.shake, 12);
   rumbleEvent(target, "shieldBreak");
 }

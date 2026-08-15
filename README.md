@@ -17,6 +17,16 @@ Then open http://127.0.0.1:5174
 
 Or double-click `play-mac.command` (macOS) / `play-windows.bat` (Windows).
 
+### The effect workbench
+
+<http://127.0.0.1:5174/workbench/> — every shared drawing in the game in one
+grid, each beside the mech that throws it, rendered by the real rig at the
+game's own scale. Sizing an effect is a question about a ratio, and this is
+where that question can be answered by looking. Drag to nudge, scroll to size,
+then **Copy config** and paste the result over `EFFECT_PLACEMENT` in
+`src/config_effects.js`. New art gets there via
+[assets/intake/README.md](assets/intake/README.md).
+
 ## Controls
 
 | | Player 1 | Player 2 |

@@ -141,6 +141,36 @@ plays nothing like a platform fighter.
         and features no longer in the game (JJK sprites/effects/cards/
         backgrounds/voice files, JJK docs, JJK-specific tools).
 
+- [x] K6. EFFECT ART DELIVERED AND WIRED (the whole of docs/image-requests.md:
+        61 plates). `tools/effects_intake.py` lands a delivery — trim to alpha,
+        cap the long edge, copy into assets/sprites/effects/ and assets/ui/.
+        Kits name their art (`sprite`/`sprites` + `spriteH`, 42 slots);
+        statuses, guard dome + shatter, air-jump jet, KO burst and the
+        full-energy HUD flare are wired at their draw sites; three arena
+        hazards draw their plate over the procedural one; the JJK logo and
+        versus badge are replaced and the stock dots are the mech-head chip.
+        Placement lives in the NEW src/config_effects.js — the `otherSprites`
+        block of the deleted character manifest, as configuration.
+        ALSO FIXED, both turned up by the wiring: the `ranged` slot was outside
+        the shared-sprite walk (so every mech's gun was unsizable and reported
+        unused), and `nailstorm` hard-coded the JJK `effect:nail` in its volley.
+        STILL OPEN: 13 hazard plates are loaded and placeable but their boards
+        still paint themselves (one `hazardArt` call each, in stage_fx.js), and
+        `shock_arc` has no electric status to attach to.
+
+- [x] K7. EFFECT WORKBENCH (`workbench/`, replacing the JJK sprite workbench
+        that was deleted with the sprite era). One grid, no character picker
+        and no filters: every shared drawing in the game, each on a card that
+        renders the REAL RIG at the game's own scale beside it — the mech that
+        throws it, or the roster median as a ruler for art nobody throws — with
+        the drawing at the height its kit declares, the move's collision shape,
+        and the point it launches from. Drag to nudge, scroll to size, Mirror
+        to flip, double-click to reset; "Copy config" emits src/config_effects.js.
+        Reads through the game's own `sharedAdjust`/`sharedHit`/`sharedAttack`
+        so the tool cannot disagree with the renderer about what a number means.
+        Reference mechs stand in a GAIT frame by default, not the move's own
+        pose, because of K5 below — one line to flip once that lands.
+
 - [ ] K5. ANIMATION MAPPING REFINEMENTS (owner, verified vs MM sources —
         jump/crouch are PROCEDURAL in MM, no clips exist anywhere):
         idle = frozen first frame of the mech's own heavy wind-up (battle

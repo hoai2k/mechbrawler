@@ -4,6 +4,7 @@ import { STAGES, backgroundFile } from "./stages.js";
 import { cameraMode } from "./camera_mode.js";
 import { transformActorsFor } from "./config_transform.js";
 import { SUMMON_ART, SUMMON_POSES } from "./config_summons.js";
+import { EFFECT_PLACEMENT } from "./config_effects.js";
 
 export const images = new Map();
 export let spriteManifest = null;
@@ -60,23 +61,34 @@ const spriteUrl = (file) =>
     ? `${SHARED_SPRITE_DIR}${file}`
     : `${CHAR_SPRITE_DIR}${file}`);
 
+// The shared effect art, all of it delivered against docs/image-requests.md and
+// landed by tools/effects_intake.py. Required loads: every one of these is
+// named by a kit, a status or a piece of shared feedback that runs in any
+// match, and a mech whose gun draws nothing is a bug rather than a fallback.
+//
+// The JJK effect set that used to be listed here is still ON DISK, in the same
+// directory — the asset purge is its own checkpoint (K4/X3 in
+// docs/mech-conversion-plan.md), and deleting art is not something to do as a
+// side effect of a delivery. It is simply not fetched any more: nothing in the
+// mech roster names it, so the list is the whole difference.
 const EFFECT_KEYS = [
-  // (rainbow_dragon is NOT here: Geto's dragon is summon:rainbow_dragon, and
-  // the effects/ copy was a required fetch nothing ever drew.)
-  "blue", "red", "purple", "dismantle", "fuga", "sword_beam", "wind_scythe", "nail",
-  "cursed_spirit_orb", "ember", "cursed_bud", "chain", "shutter",
-  "lava_geyser", "root_spikes", "scissors_curse", "shrine", "triceratops",
-  "uzumaki", "meteor", "tempest", "nail_storm", "scream_wave",
-  "cursed_tool", "ratio_wave", "soul_isomer", "speech_word", "drum_burst", "soul_touch",
-  "aura_gold", "aura_pink", "aura_violet", "aura_orange", "aura_green",
-  "boogie_clap", "domain_gamble",
-  // Geto's summoned curses, cut out of his delivered art (tools/recut_curses.py)
-  "curse_a", "curse_b", "curse_c", "curse_d", "curse_dragon",
-  // Round 7 — Choso, Mei Mei, Uro, Yuji, Reggie, Gakuganji
-  "piercing_blood", "blood_orb", "aura_crimson", "crow", "crow_flock",
-  "sky_ripple", "sky_shard", "divergent_shock",
-  "receipt_blade", "spray_cloud", "drop_vending", "drop_bike", "drop_futon", "sedan",
-  "sound_wave", "feedback_wall", "concert_wave", "aura_amber",
+  // Per-mech power art — the drawing each gun, special and ultimate throws.
+  // Every one of these is named by src/characters.js.
+  "rocket_fist", "meteor_rock", "gatling_tracer", "micro_missile",
+  "fang_dagger", "energy_serpent", "cannon_shell", "arc_bolt", "storm_cell",
+  "rend_wave", "mortar_shell", "sniper_beam", "bat_wisp", "flame_jet",
+  "napalm_patch", "icicle_shard", "ice_wall", "water_jet", "geyser_column",
+  "tsunami_wall", "quill_feather", "raptor_egg", "slime_glob", "gunk_splat",
+  "croak_ring", "goo_wad", "shrimp_mine", "null_bolt", "glitch_shard",
+  "salvo_rocket", "shockwave_arc", "siege_shell", "frill_flare", "frost_rime",
+  // Status and shared feedback — drawn for anyone, by src/fx.js, src/render.js
+  // and the HUD, so they belong to no fighter and load in every match.
+  "burn_flame", "shock_arc", "venom_drip",
+  "shield_dome", "shield_burst", "jet_flame", "ko_burst",
+  // `energy_flare` is NOT here: the HUD is HTML, so the full-pool flare is a
+  // background-image in styles.css and the browser fetches it. Loading it here
+  // as well would fetch the same picture twice under two URLs, the loader's
+  // carrying a `?v=` stamp the stylesheet's does not.
 ];
 
 // Effects for fighters whose art has not been delivered yet, keyed by fighter
@@ -120,7 +132,25 @@ const STAGED_SUMMON_KEYS = {
 // round 9D in docs/asset-requests.md. Optional: every hazard draws a
 // procedural canvas fallback, so a missing file changes nothing visible
 // except polish.
-const STAGE_FX_SPRITES = ["stage_lantern", "stage_fang", "stage_flower", "stage_weak_curse"];
+// Arena hazard art (src/stage_fx.js, "Active Boards"), one or two plates per
+// board. Optional in the strongest sense: every hazard already draws itself out
+// of gradients and rectangles, so a plate that has not landed — or a hazard
+// whose draw code has not been given its plate yet — costs nothing but the
+// procedural look it has always had.
+const STAGE_FX_SPRITES = [
+  "monorail_train",                        // neon — the maglev
+  "ladle_pour",                            // foundry — the crucible
+  "magma_gout",                            // volcano — the lava burst
+  "ice_floe",                              // frozen — the drifting slab
+  "crane_hook", "cargo_container",         // harbor
+  "debris_sat",                            // orbital — the tumbling wreck
+  "blast_charge",                          // quarry — the mining charge
+  "vine_whip", "spore_cloud",              // jungle
+  "magnet_crane", "car_husk",              // scrapyard
+  "wind_streak",                           // skyterrace — the gust
+  "billboard_ad", "drone_taxi",            // uptown
+  "collapse_dust",                         // ruins — the column bloom
+];
 
 // Near-field cards for the 3D camera's garnish layer (round 18F). Optional in
 // the strongest sense: every one of them has a procedural drawing in
@@ -192,7 +222,14 @@ export function getImage(key) {
  *  other way needs flipping once, at the source, or every spawn site would
  *  have to know about that one file. */
 function sharedMirror(key) {
-  return !!spriteManifest?.otherSprites?.[key]?.faceLeft;
+  // `otherSprites` in the character manifest was where this lived while there
+  // WAS a character manifest. There is not one any more (loadCoreAssets says
+  // so at length), so the placement of shared art is configuration now —
+  // src/config_effects.js, written by the effect workbench. The manifest is
+  // still consulted first so a workbench holding an unsaved edit in memory
+  // wins over the file it has not written yet.
+  return !!(spriteManifest?.otherSprites?.[key]?.faceLeft
+    ?? EFFECT_PLACEMENT[key]?.faceLeft);
 }
 
 const mirrored = new Map();
@@ -216,6 +253,23 @@ function mirroredShared(key, img) {
  *  the flag live and has to see the change on the very next frame. */
 export function forgetSharedMirror(key) {
   mirrored.delete(key);
+}
+
+/** Point the shared-art accessors at a manifest the caller owns.
+ *
+ *  THE EFFECT WORKBENCH IS THE ONLY CALLER, and it needs this because an edit
+ *  it is holding has to beat the config file it has not been written to yet.
+ *  `sharedAdjust`, `sharedHit` and `sharedMirror` all consult
+ *  `spriteManifest.otherSprites` before falling through to EFFECT_PLACEMENT
+ *  (see `entryOf` in shared_sprites.js), so handing them an object whose
+ *  `otherSprites` IS the workbench's store makes every read in the game's own
+ *  code path see the unsaved value — rather than the workbench maintaining a
+ *  parallel resolution that could drift from the one that ships.
+ *
+ *  The game never calls it. `spriteManifest` stays null in a match, which is
+ *  the state the fall-through is written for. */
+export function __setSpriteManifest(manifest) {
+  spriteManifest = manifest;
 }
 
 // Sprite art is ~450 MB across 23 fighters, and a match uses at most four of

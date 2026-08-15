@@ -39,6 +39,7 @@
 
 import { CHARACTERS, CHARACTER_KEYS } from "./characters.js";
 import { spriteManifest } from "./assets.js";
+import { EFFECT_PLACEMENT } from "./config_effects.js";
 
 /** How a kit node names a shared drawing, and which field holds the height that
  *  drawing is painted at.
@@ -133,12 +134,26 @@ const isSharedKey = (v) => typeof v === "string"
  *  a size set on any of them is a statement about the creature; without this,
  *  adjusting the pose you happen to be looking at silently does nothing. */
 function entryOf(key) {
+  // Two stores, in this order, and the order is the whole point. The
+  // MANIFEST's `otherSprites` is where these numbers lived while the game had
+  // a character manifest; it has none now, but the workbench still builds one
+  // in memory to hold an edit that has not been copied into the config file
+  // yet, so an unsaved nudge has to win over the saved one it is replacing.
+  // EFFECT_PLACEMENT (src/config_effects.js) is where they actually live.
   const all = spriteManifest?.otherSprites;
-  if (!all) return null;
-  if (all[key]) return all[key];
-  const parts = String(key).split(":");
-  if (parts[0] === "summon" && parts.length === 3) return all[`${parts[0]}:${parts[1]}`] || null;
-  return null;
+  const resolve = (map) => {
+    if (!map) return null;
+    if (map[key]) return map[key];
+    // The one inheritance rule: a summon POSE (`summon:nue:idle_a`) falls back
+    // to its creature (`summon:nue`). Six poses of a creature are one drawing
+    // at one zoom, so a size set on any of them is a statement about the
+    // creature; without this, adjusting the pose you happen to be looking at
+    // silently does nothing.
+    const parts = String(key).split(":");
+    if (parts[0] === "summon" && parts.length === 3) return map[`${parts[0]}:${parts[1]}`] || null;
+    return null;
+  };
+  return resolve(all) || resolve(EFFECT_PLACEMENT);
 }
 
 function scaleOf(key) {
@@ -185,6 +200,29 @@ export function sharedScale(key) {
   return scaleOf(key) ?? 1;
 }
 
+/**
+ * Where this drawing's COLLISION SHAPE sits relative to the picture, and how
+ * big — the correction that makes the shape the workbench draws land on the
+ * art instead of on the bare spawn point.
+ *
+ * Presentation only, and deliberately so: the shape itself is a number the move
+ * declares (`r`, `w`/`h`), the game tests it at the spawn point, and none of
+ * that is negotiable from here. What IS negotiable is the picture, which the
+ * nudge has already moved — so a shot drawn 30px ahead of the point it collides
+ * on needs its drawn circle moved the same 30px or the workbench shows a
+ * mismatch it invented itself.
+ *
+ * No entry means "the shape sits on the shot's own position". `{0, 0, 1}` means
+ * "the shape sits on the picture", and the two are different places the moment
+ * the picture has been nudged anywhere — which is why zero is stored rather
+ * than dropped as an empty edit.
+ */
+export function sharedHit(key) {
+  const h = entryOf(key)?.hit;
+  const n = (v, d) => (Number.isFinite(v) ? v : d);
+  return { dx: n(h?.dx, 0), dy: n(h?.dy, 0), scale: n(h?.scale, 1), set: !!h };
+}
+
 /** Fold each shared sprite's scale into the `spriteH` of every kit entry that
  *  draws it, once, after the manifest has loaded.
  *
@@ -225,6 +263,13 @@ export function applySharedSpriteScales() {
   };
   for (const key of CHARACTER_KEYS) {
     const char = CHARACTERS[key];
+    // `ranged` is a TOP-LEVEL slot, not one of the three specials: K1 moved
+    // each mech's gun out of `specials.neutral` into its own field with its own
+    // cooldown and energy price. Walking only `specials` and `ultimate` — which
+    // is what this did, unchanged from the JJK kits that had no such slot —
+    // left every gun in the game outside the fold, so a size set on a gun's art
+    // was stored, shown in the workbench, and never reached the shot.
+    visit(char?.ranged);
     visit(char?.specials);
     visit(char?.ultimate);
   }
@@ -269,12 +314,38 @@ export const AURA_FOOT_DY = 10;
  *  moment, and the mid-point is the only defensible one. */
 export const AURA_PREVIEW_H = Math.round(AURA_H * AURA_PULSE.base);
 
-/** Hazard art, with the height and anchor each draw site uses (stage_fx.js). */
+/** Arena hazard art, with the height and anchor each draw site uses
+ *  (src/stage_fx.js), and the board it belongs to.
+ *
+ *  The heights are the size each hazard is drawn at on its board, taken from
+ *  the procedural drawing the plate is replacing — a maglev nose is as tall as
+ *  the track platform is deep, a pour is as tall as the drop from the crucible.
+ *  They are a starting point rather than a measurement: which is exactly what
+ *  the workbench's Size is for, and why this table is the thing it sizes
+ *  against.
+ *
+ *  `drawn: false` marks a plate that has LANDED but whose hazard still paints
+ *  itself procedurally — the art is loaded and placeable here, and one edit to
+ *  that hazard's `draw` puts it on the board. Saying so is the difference
+ *  between "not delivered" and "delivered, not yet hung", and only the second
+ *  is true of any of these. */
 const STAGE_FX = {
-  "stagefx:stage_fang": { h: 72, anchor: "centre", what: "a rising fang, and the diving one" },
-  "stagefx:stage_flower": { h: 46, anchor: "feet", what: "a bloom on the platform" },
-  "stagefx:stage_lantern": { h: 44, anchor: "top", what: "a lantern hung from its cord" },
-  "stagefx:stage_weak_curse": { h: 60, anchor: "feet", what: "the curse that wanders the stage" },
+  "stagefx:monorail_train": { h: 150, anchor: "centre", board: "neon", what: "the maglev crossing the track" },
+  "stagefx:ladle_pour": { h: 210, anchor: "top", board: "foundry", what: "the crucible tipping over the floor" },
+  "stagefx:magma_gout": { h: 260, anchor: "feet", board: "volcano", what: "the lava burst out of the vent" },
+  "stagefx:ice_floe": { h: 90, anchor: "feet", board: "frozen", drawn: false, what: "a drifting slab of the floor" },
+  "stagefx:crane_hook": { h: 220, anchor: "top", board: "harbor", drawn: false, what: "the crane hook on its swing" },
+  "stagefx:cargo_container": { h: 110, anchor: "feet", board: "harbor", drawn: false, what: "a dropped container" },
+  "stagefx:debris_sat": { h: 96, anchor: "centre", board: "orbital", drawn: false, what: "tumbling wreckage" },
+  "stagefx:blast_charge": { h: 70, anchor: "feet", board: "quarry", drawn: false, what: "the planted mining charge" },
+  "stagefx:vine_whip": { h: 200, anchor: "top", board: "jungle", drawn: false, what: "the cable-vine that lashes across" },
+  "stagefx:spore_cloud": { h: 130, anchor: "centre", board: "jungle", drawn: false, what: "a drifting puff of spores" },
+  "stagefx:magnet_crane": { h: 120, anchor: "top", board: "scrapyard", drawn: false, what: "the scrap magnet on its cable" },
+  "stagefx:car_husk": { h: 90, anchor: "feet", board: "scrapyard", drawn: false, what: "a dropped car body" },
+  "stagefx:wind_streak": { h: 80, anchor: "centre", board: "skyterrace", drawn: false, what: "the gust crossing the terrace" },
+  "stagefx:billboard_ad": { h: 160, anchor: "top", board: "uptown", drawn: false, what: "the glitching ad panel" },
+  "stagefx:drone_taxi": { h: 70, anchor: "centre", board: "uptown", drawn: false, what: "an air-taxi crossing behind" },
+  "stagefx:collapse_dust": { h: 240, anchor: "feet", board: "ruins", drawn: false, what: "the bloom off a collapsing column" },
 };
 
 const POOLS = [SHIKIGAMI_POOL, TRANSFIGURED_POOL, CURSE_POOL, INVENTORY_POOL];
@@ -382,8 +453,12 @@ function buildRegistry() {
 
   // 2. Hazards.
   for (const [key, fx] of Object.entries(STAGE_FX)) {
-    put(key, { h: fx.h, anchor: fx.anchor, owner: "a stage hazard", ...NUDGED,
-               what: `${fx.what} — its height in stage_fx.js` });
+    const hung = fx.drawn !== false;
+    put(key, { h: fx.h, anchor: fx.anchor, owner: `the ${fx.board} hazard`,
+               ...NUDGED, board: fx.board, pending: !hung,
+               what: hung
+                 ? `${fx.what} — its height in stage_fx.js`
+                 : `${fx.what} — delivered and loaded, but ${fx.board} still paints itself: placing it here is the number its draw site will use` });
   }
 
   // 3. Everything a kit names, walked exactly as the scale fold walks it.
@@ -449,7 +524,11 @@ function buildRegistry() {
   };
   // Which pose the fighter is in while it happens. A special plays the anim for
   // its slot (slotAnim, specials.js); an ultimate plays `ult`.
-  const SLOT_ANIM = { neutral: "specialNeutral", side: "specialSide", down: "specialDown",
+  // The gun plays the neutral-special pose — `slotAnim` in specials.js says
+  // why: `specialNeutral` maps to each mech's own shoot clip, which is the clip
+  // the gun always used back when it lived on N.
+  const SLOT_ANIM = { ranged: "specialNeutral",
+                      neutral: "specialNeutral", side: "specialSide", down: "specialDown",
                       ult: "ult" };
   const DRAW_SITES = {
     // --- drawn by render.js / summons.js, on something that moves ---------
@@ -628,6 +707,8 @@ function buildRegistry() {
     // Slot by slot rather than the whole `specials` object at once: which slot a
     // move sits in IS which pose the fighter is in while they throw it, and that
     // is the pose the workbench has to stand beside the drawing.
+    // The gun first, in its own slot — see the note on the scale fold's walk.
+    visit(c?.ranged, c?.name || key, "centre", null, NUDGED, null, "ranged");
     for (const [slot, def] of Object.entries(c?.specials || {})) {
       visit(def, c?.name || key, "centre", null, NUDGED, null, slot);
     }

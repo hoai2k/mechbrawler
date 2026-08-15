@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Effect workbench — Mech Brawler</title>
+    <link rel="icon" href="../favicon-32x32.png">
+    <link rel="stylesheet" href="effects.css">
+  </head>
+  <body>
+    <header class="bar">
+      <div class="bar-title">
+        <strong>Effect workbench</strong>
+        <span id="count" class="muted">…</span>
+      </div>
+
+      <div class="bar-tools">
+        <label class="tool">
+          Zoom
+          <input id="zoom" type="range" min="0.5" max="2" step="0.05" value="1">
+          <output id="zoomOut">1.00×</output>
+        </label>
+        <label class="tool tool--check">
+          <input id="showHit" type="checkbox" checked>
+          Hit shape
+        </label>
+        <label class="tool tool--check">
+          <input id="showLaunch" type="checkbox" checked>
+          Launch point
+        </label>
+        <!--
+          Which pose the reference mech stands in. "Neutral stance" is the
+          default and that is a statement about the RIGS, not about the tool:
+          most mech clips other than the gaits are still mis-mapped in
+          render3d's manifest (K5 in docs/mech-conversion-plan.md, open), so a
+          card defaulting to the launch state today shows a machine lying on its
+          face. Flipping the default is a one-line change once K5 lands.
+        -->
+        <label class="tool">
+          Pose
+          <select id="pose">
+            <option value="stance" selected>Neutral stance</option>
+            <option value="launch">Launch state (K5 pending)</option>
+          </select>
+        </label>
+        <button id="copyConfig" type="button">Copy config</button>
+      </div>
+
+      <p id="status" class="muted">booting…</p>
+      <p id="poseNote" class="muted bar-note">
+        Mechs are standing in a <strong>neutral gait frame</strong>, not the
+        move's own pose: outside the gaits, most rig states are still mis-mapped
+        (K5, open) and would show a machine on its face. A ruler is all the
+        reference has to be to answer a size question — switch to
+        <em>Launch state</em> above to see the mapping as it stands.
+      </p>
+    </header>
+
+    <!--
+      The whole tool in one sentence: every shared drawing in the game, beside
+      the mech that throws it, at the size the game paints it. The intro is here
+      rather than in a help panel because a workbench nobody can read is a
+      workbench nobody uses, and there is exactly this much to say.
+    -->
+    <section class="intro">
+      <p>
+        Each card renders the <strong>real rig</strong>, in the <strong>real
+        animation state</strong> the move plays, frozen at release — so the size
+        of a drawing is a ratio you can see rather than a number you have to
+        trust. Art no kit throws (hazards, statuses, the KO burst) gets the
+        roster's median mech beside it, dimmed, purely as a ruler.
+      </p>
+      <p>
+        <strong>Drag</strong> the canvas to nudge the drawing,
+        <strong>scroll</strong> it to size it, <strong>double-click</strong> a
+        control to put it back. The red shape is what the move actually collides
+        on and the green cross is where it leaves the mech — neither is editable,
+        because both are numbers the kit declares; they are here to be matched.
+        When it looks right, <strong>Copy config</strong> and paste the result
+        over <code>EFFECT_PLACEMENT</code> in <code>src/config_effects.js</code>.
+      </p>
+    </section>
+
+    <main id="grid" class="grid"></main>
+
+    <!-- The fallback for a browser that will not give a plain-http page the
+         clipboard. Hidden until it is needed. -->
+    <textarea id="dump" class="dump" hidden readonly spellcheck="false"></textarea>
+
+    <script type="module" src="effects.js"></script>
+  </body>
+</html>

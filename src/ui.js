@@ -1792,6 +1792,12 @@ function renderEnergy(fillEl, f) {
   const pct = Math.max(0, Math.min(100, ((f.energy ?? 0) / INHERENT_ENERGY.max) * 100));
   fillEl.style.width = `${pct}%`;
   fillEl.parentElement.classList.toggle("energy-bar--low", (f.energy ?? 0) < 25);
+  // FULL is the state worth a flare: the pool regenerates continuously, so the
+  // moment it tops out is the moment the expensive things become affordable
+  // again, and it is the only moment in the bar's life a player needs told
+  // about. The reactor starburst (assets/ui/energy_flare.png via CSS) lights
+  // behind the bar's leading edge while it holds there.
+  fillEl.parentElement.classList.toggle("energy-bar--full", pct >= 99.5);
 }
 
 /** The result screen. `side` is set only in a team match, where the result
