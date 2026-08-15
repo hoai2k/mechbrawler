@@ -756,6 +756,24 @@ function drawMissingArt(ctx, f, flicker) {
 function drawShieldBubble(ctx, f) {
   const pct = f.shield / SHIELD_MAX;
   const fresh = state.matchTime - f.shieldRaisedAt <= PARRY_WINDOW;
+  // The delivered hex-tessellated energy dome (effect:shield_dome) replaces
+  // the old smooth bubble. It shrinks with the shield's health exactly as the
+  // bubble did, breathes slightly, and the procedural circle stays as the
+  // fallback while the art streams in. A fresh (parry-window) shield flashes
+  // white via a brightness bump rather than a different drawing.
+  const dome = getImage("effect:shield_dome");
+  if (dome) {
+    const r = 52 + pct * 20;
+    const h = r * 1.9 * (1 + 0.02 * Math.sin(state.matchTime * 6));
+    const w = dome.width * h / dome.height;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = fresh ? 0.95 : 0.55 + pct * 0.2;
+    if (fresh) ctx.filter = "brightness(1.5)";
+    ctx.drawImage(dome, f.x - w / 2, f.y + 8 - h, w, h);
+    ctx.restore();
+    return;
+  }
   ctx.save();
   ctx.globalAlpha = 0.5;
   ctx.strokeStyle = fresh ? "#ffffff" : f.char.theme;

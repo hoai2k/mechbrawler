@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { clamp, sign, rectsOverlap, circleRectOverlap } from "./utils.js";
-import { burst, dust, sparkLine, ring, popup, banner } from "./particles.js";
+import { burst, dust, sparkLine, ring, popup, banner, spriteFlash } from "./particles.js";
 import { hitFx, elementOf, burnTickFx, bleedTickFx, projectileEmit, explodeFx, blackFlashFx, ratioSeamFx, specks, spray } from "./fx.js";
 import { PROJ_TRAIL, BLACK_FLASH, RUMBLE } from "./config_fx.js";
 import { rumbleFighter, rumbleEvent } from "./rumble.js";
@@ -556,6 +556,9 @@ export function applyStatus(effect, owner, target, extra = {}) {
     // target harder (his `tideBorn` passive).
     case "drench":
       s.drench = Math.max(s.drench || 0, 3.2);
+      // the frost/gunk rime crust flashed on application (delivered art —
+      // drench is the engine's one movement-tax status; FROST recolours it)
+      spriteFlash(target.x, target.y - 80, "effect:frost_rime", { h: 130, life: 0.5, alpha: 0.7 });
       break;
     // Kurourushi — the Festering Life Sword's eggs hatch inside the wound.
     // Stacks: each new cut adds a generation, up to three, and the whole colony
@@ -588,6 +591,8 @@ export function updateStatuses(f, dt) {
       s.burn.tick = 0.45;
       f.damage += s.burn.dmg;
       burnTickFx(f.x, f.y - 80);
+      // the clinging flame lick (delivered art) over the ember particles
+      spriteFlash(f.x + (Math.random() - 0.5) * 30, f.y - 70 - Math.random() * 40, "effect:burn_flame", { h: 54, life: 0.4, vy: -60 });
     }
     if (s.burn.t <= 0) s.burn = null;
   }
@@ -1157,6 +1162,8 @@ export function shieldBreak(target) {
   banner("SHIELD BREAK!", "#ff8a8a", { y: 180, size: 44, life: 1.2 });
   playSfx("guardBreak", 0.9);
   burst(target.x, target.y - 90, "#cfe4ff", 40, 1.4);
+  // The dome shattering (delivered art): hex shards and the orange break flash.
+  spriteFlash(target.x, target.y - 80, "effect:shield_burst", { h: 170, life: 0.42, grow: 1.35 });
   state.camera.shake = Math.max(state.camera.shake, 12);
   rumbleEvent(target, "shieldBreak");
 }

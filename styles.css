@@ -279,17 +279,19 @@ html, body {
 .stocks { display: flex; gap: 5px; }
 .stocks--right { justify-content: flex-end; }
 
+/* The delivered mech-head chip (assets/ui/stock_chip.png, reads at 24px and
+   below). A lost stock keeps the silhouette but goes dark — the outline of a
+   mech that is no longer there. */
 .stock-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 8px currentColor;
+  width: 14px;
+  height: 14px;
+  background: url("assets/ui/stock_chip.png") center / contain no-repeat;
+  filter: drop-shadow(0 0 4px currentColor);
 }
 
 .stock-dot--lost {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+  filter: grayscale(1) brightness(0.45);
+  opacity: 0.55;
 }
 
 .fighter-status .stocks { color: var(--panel-theme, var(--text-dim)); }
@@ -341,6 +343,28 @@ html, body {
 @keyframes meterPulse {
   0%, 100% { filter: brightness(1); }
   50% { filter: brightness(1.6); }
+}
+
+/* ENERGY full: the reactor-starburst flare (delivered art) bursts off the end
+   of the bar — the "ultimate is live" beacon, readable from across the couch. */
+.meter--full { overflow: visible; }
+
+.meter--full::after {
+  content: "";
+  position: absolute;
+  right: -15px;
+  top: 50%;
+  width: 30px;
+  height: 28px;
+  transform: translateY(-50%);
+  background: url("assets/sprites/effects/energy_flare.png") center / contain no-repeat;
+  animation: energyFlare 0.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes energyFlare {
+  0%, 100% { opacity: 0.75; transform: translateY(-50%) scale(0.9); }
+  50% { opacity: 1; transform: translateY(-50%) scale(1.2); }
 }
 
 /* The inherent energy pool — the second resource, under the attack meter.
@@ -462,7 +486,7 @@ html, body {
 .hud--crowd .fighter-status { padding: 5px 7px; border-radius: 3px; }
 .hud--crowd .damage { font-size: 0.95rem; }
 .hud--crowd .fighter-name { font-size: 0.58rem; letter-spacing: 0.02em; }
-.hud--crowd .stock-dot { width: 8px; height: 8px; }
+.hud--crowd .stock-dot { width: 10px; height: 10px; }
 .hud--crowd .meter { height: 7px; }
 .hud--crowd .meter-label { font-size: 7px; letter-spacing: 0.12em; }
 
@@ -752,6 +776,20 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .neon-title .tube { animation: none; }
 }
+
+/* The painted wordmark (assets/ui/wordmark_mech_brawler.png) won the K9
+   side-by-side against the CSS tube lettering — the tubes read as thin sign
+   script, the painting reads as a game title. It stays ON a .tube element so
+   the co-prime flicker keyframes and the neon-buzz reader (ui.js) keep
+   driving it: the sign still stutters, the buzz still answers. */
+.neon-wordmark {
+  display: block;
+  width: clamp(420px, 50vw, 720px);
+  margin: 0 auto;
+  filter: drop-shadow(0 0 34px rgba(56, 232, 255, 0.4)) drop-shadow(0 0 60px rgba(255, 77, 216, 0.28));
+}
+
+#menuOverlay .neon-wordmark { width: clamp(220px, 24vw, 340px); }
 
 .neon-sub {
   display: block;
@@ -2257,6 +2295,29 @@ html, body {
    Padding on the clipped side hands the plate back the visible middle. */
 .intro-panel:first-child .intro-plate { padding-left: 9%; }
 .intro-panel:last-child .intro-plate { padding-right: 9%; }
+
+/* The diagonal neon energy tear (delivered art) behind the VS lettering. */
+.intro-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: clamp(380px, 52vw, 780px);
+  transform: translate(-50%, -50%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+.intro-overlay.is-entering .intro-flash {
+  animation: introFlashIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: 0.28s;
+}
+
+@keyframes introFlashIn {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(1.6) rotate(6deg); }
+  to { opacity: 0.9; transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+}
 
 .intro-vs {
   position: absolute;

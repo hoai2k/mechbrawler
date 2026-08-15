@@ -375,6 +375,9 @@ const HANDLERS = {
       dmg: p.dmg, baseKb: p.base, growth: p.growth, angle: p.angle,
       label: cfg.name, name: "INFINITY",
     };
+    // A counter with delivered art (Tritone's frill flare) shows it for the
+    // stance window — the display organ IS the tell.
+    if (p.sprite) spawnSummonFlash(f, p.sprite, p.window || 0.55, p.spriteH || 160, 30);
     ring(f.x, f.y - 90, p.color || f.char.theme, 100);
     playSfx("shield", 0.7, 1.4);
   },

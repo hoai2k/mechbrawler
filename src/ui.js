@@ -1411,6 +1411,7 @@ export function showBattleIntro(entrants, { loading = false } = {}) {
         </div>`;
       }).join("")}
     </div>
+    <img class="intro-flash" src="assets/ui/vs_flash.png" alt="" aria-hidden="true">
     <b class="intro-vs" aria-hidden="true">${TEXT.intro.vs}</b>
     <div class="intro-stage">${TEXT.intro.stageLabel(getStage(state.stageKey)?.name || "")}</div>
     ${loading ? `<div class="intro-load" role="progressbar" aria-label="${TEXT.intro.loading}">

@@ -60,11 +60,40 @@ const spriteUrl = (file) =>
     ? `${SHARED_SPRITE_DIR}${file}`
     : `${CHAR_SPRITE_DIR}${file}`);
 
-// Effect art the ult directors draw by key. Just the flechette today: the
-// JJK effect bank went out with the conversion (plan task K4), and new mech
-// power-effect art (docs/image-requests.md) registers here as it lands.
+// Effect art drawn by key: `effect:<name>` resolves to
+// assets/sprites/effects/<name>.png. The full mech round delivered against
+// docs/image-requests.md (plan task K9), plus the flechette the nailstorm
+// director spawns. Consumers: kit configs (characters.js `sprite`/`spriteH`),
+// stage hazards (stage_fx.js), status/shared FX (particles.spriteFlash sites),
+// and the shield bubble (render.js).
 const EFFECT_KEYS = [
-  "nail", // Titanus SIEGE PROTOCOL flechettes (nailstorm director, ultimates.js)
+  "nail", // Tritone SIEGE PROTOCOL flechettes (nailstorm director, ultimates.js)
+  // -- power effects, per mech (docs/image-requests.md §1)
+  "rocket_fist", "meteor_rock",            // titanus
+  "gatling_tracer", "micro_missile",       // vulcan
+  "fang_dagger", "energy_serpent",         // viper
+  "cannon_shell",                          // rhino
+  "arc_bolt", "storm_cell",                // tempest
+  "rend_wave",                             // fenrir
+  "mortar_shell",                          // colossus
+  "sniper_beam", "bat_wisp",               // wraith
+  "flame_jet", "napalm_patch",             // inferno
+  "icicle_shard", "ice_wall",              // glacier
+  "water_jet", "geyser_column", "tsunami_wall", // cranky
+  "quill_feather", "raptor_egg",           // saurion
+  "slime_glob", "gunk_splat", "croak_ring", // frogger
+  "goo_wad", "shrimp_mine",                // jerry
+  "null_bolt", "glitch_shard",             // nullbot
+  "salvo_rocket", "shockwave_arc",         // konga
+  "siege_shell", "frill_flare",            // tritone
+  // -- status + shared FX (§2)
+  "burn_flame", "frost_rime", "shock_arc", "venom_drip",
+  "energy_flare", "shield_dome", "shield_burst", "jet_flame", "ko_burst",
+  // -- arena hazards (§3, drawn by stage_fx.js)
+  "ladle_pour", "magma_gout", "ice_floe", "crane_hook", "cargo_container",
+  "monorail_train", "debris_sat", "blast_charge", "vine_whip", "spore_cloud",
+  "magnet_crane", "car_husk", "wind_streak", "billboard_ad", "drone_taxi",
+  "collapse_dust",
 ];
 
 // Near-field cards for the 3D camera's garnish layer (round 18F). Optional in

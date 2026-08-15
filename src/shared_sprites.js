@@ -62,6 +62,8 @@ const SPRITE_FIELDS = [
   // name would leave that drawing unscalable.
   ["sprite", ["spriteH", "h"]],
   ["orbSprite", ["orbSpriteH"], { r: "orbR" }],
+  ["waveSprite", ["waveSpriteH"]],  // rampage ground-wave (Konga APEX POUND)
+  ["eggSprite", ["eggSpriteH"]],    // summon warp-in prop (Saurion RAPTOR PACK)
   ["key", ["h"]],          // a random-drop entry: `{ key: "effect:…", w, h }`
   ["aura", []],
   ["domainSprite", []],
@@ -206,6 +208,8 @@ export function applySharedSpriteScales() {
     const char = CHARACTERS[key];
     visit(char?.specials);
     visit(char?.ultimate);
+    // The RB gun slot (K1) declares sprites the same way the specials do.
+    visit(char?.ranged);
   }
 }
 

@@ -6,6 +6,19 @@ procedurally. Delivered files land in `intake/` (arena backgrounds and mech
 cards already arrived — thank you); effect sprites go to
 `intake/effects/<name>.png` unless noted.
 
+**STATUS — the full effect round is DELIVERED and WIRED (plan task K9).**
+All 58 effect sprites (§1–§3) plus `stock_chip`, `vs_flash` and
+`wordmark_mech_brawler` (§4) arrived in `assets/intake/`, were downscaled to
+game scale (`assets/sprites/effects/`, `assets/ui/`) and wired into the kits,
+statuses, hazards and UI. The painted wordmark won its side-by-side against
+the CSS neon title and now IS the title (index.html). The delivered tables
+below are kept for the record of what each sprite is; the only OPEN requests
+are the two in §5 at the bottom.
+
+Notes from the wiring pass: `shock_arc` and `venom_drip` are registered and
+load, but their statuses (SHOCK, VENOM) are still `TODO(engine)` in
+characters.js — they get consumers when those statuses land.
+
 Style baseline for every request: **bright neon arcade** — the palette of the
 intake arena paintings (deep blue-black grounds, hot cyan/magenta/amber
 accents), clean silhouettes that read at 15% screen height, glow baked in,
@@ -15,7 +28,7 @@ were smoky and dark; these should read like signage. When in doubt, brighter.
 Sizes: effect sprites ~512px on the long side unless noted; they are drawn
 scaled down, so detail beyond silhouette + glow is wasted.
 
-## 1 — Power effects (per mech)
+## 1 — Power effects (per mech) — DELIVERED
 
 One sprite per named effect. Side view or shallow ¾ unless noted — these
 composite into a side-on fight.
@@ -56,7 +69,7 @@ composite into a side-on fight.
 | `siege_shell.png` | TRITONE N/LB | a heavy cannon shell with orange tracer, slight spin |
 | `frill_flare.png` | TRITONE D | a luminous frill fan, olive-orange rim light, spread wide |
 
-## 2 — Status + shared FX
+## 2 — Status + shared FX — DELIVERED
 
 | file | what |
 |---|---|
@@ -70,7 +83,7 @@ composite into a side-on fight.
 | `jet_flame.png` | a boost-jet cone for the double-jump burn, blue-white core, loopable pair welcome |
 | `ko_burst.png` | the blast-zone KO: a radial neon burst, white core, magenta-cyan petals |
 
-## 3 — Arena hazard effects (provisional until docs/arenas.md lands)
+## 3 — Arena hazard effects — DELIVERED
 
 The 12 arenas each get one signature hazard; these are the sprites they need.
 Marked ~ where the hazard design may still shift — silhouettes are safe to
@@ -95,13 +108,18 @@ generate now, they will be used somewhere even if the mechanic moves.
 | `drone_taxi.png`~ | uptown | a small passing air-taxi silhouette, lit windows |
 | `collapse_dust.png` | ruins | a column-collapse dust bloom, moon-grey with cyan edge |
 
-## 4 — UI garnish
+## 4 — UI garnish — wordmark/vs/stock DELIVERED; the rest are §5
 
 | file | what |
 |---|---|
 | `wordmark_mech_brawler.png` | OPTIONAL — the title is CSS neon text first; a painted neon-sign wordmark "MECH BRAWLER" (two-line, tube-letter style, cyan+magenta, unlit variant welcome as a pair) upgrades it if it looks better |
 | `vs_flash.png` | the VS splash slash: a diagonal neon energy tear |
 | `stock_chip.png` | a small mech-head silhouette chip for the stock counter, works at 24px |
+
+## 5 — OPEN requests (the outstanding-art surface)
+
+| file | what |
+|---|---|
 | `favicon_mech.png` | the site favicons + touch icons (favicon.ico, favicon-16/32, apple-touch-icon, android-chrome-192/512) still carry the old JJK logo mark — a square neon mech-head glyph on `#05070c`, readable at 16px, replaces the whole set |
 | `victory_backdrop.jpg` | `assets/backgrounds/victory.jpg` (the results-screen backdrop, 2048×1152) is still the JJK painting — a neon hangar / winner's podium scene in the arena palette replaces it |
 

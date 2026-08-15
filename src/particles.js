@@ -1,5 +1,6 @@
 import { state } from "./state.js";
 import { rand, clamp } from "./utils.js";
+import { getImage } from "./assets.js";
 
 /** Low-level spawn for the element recipes in fx.js. Beyond the classic dot
  *  fields, a particle may carry:
@@ -82,6 +83,23 @@ export function sparkLine(x, y, dirX, color, count = 12) {
   }
 }
 
+/** A one-shot drawn IMAGE riding the particle system — the delivered effect
+ *  sprites (docs/image-requests.md) at the moments that are events rather than
+ *  entities: the KO burst, a shield shattering, a status tick, a jet burn.
+ *  `key` is an `effect:<name>` from assets.js EFFECT_KEYS; a sprite that has
+ *  not arrived yet simply draws nothing, so every call site keeps its
+ *  procedural burst underneath. Scales from `h` by `grow` per second, spins at
+ *  `spin` rad/s, fades over `life`. `flip` mirrors (art faces right). */
+export function spriteFlash(x, y, key, { h = 120, life = 0.45, rot = 0, spin = 0, grow = 1, alpha = 0.95, flip = false, vy = 0, additive = true } = {}) {
+  if (state.particles.length >= MAX_PARTICLES) return;
+  state.particles.push({
+    img: key, x, y, vx: 0, vy, gravity: 0,
+    size: h, life, maxLife: life, color: "#ffffff",
+    rot, spin, grow, imgAlpha: alpha, flip,
+    additive,
+  });
+}
+
 export function ring(x, y, color, radius = 60) {
   if (state.particles.length >= MAX_PARTICLES) return;
   state.particles.push({ ringR: 8, ringMax: radius, x, y, life: 0.32, maxLife: 0.32, color, size: 0, vx: 0, vy: 0, gravity: 0 });
@@ -116,11 +134,14 @@ export function updateParticles(dt) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.vy += p.gravity * dt;
+    if (p.spin) p.rot = (p.rot || 0) + p.spin * dt;
     if (p.wobbleAmp) {
       const age = p.maxLife - p.life;
       p.x += Math.sin(age * (p.wobbleFreq || 6) + (p.wobblePhase || 0)) * p.wobbleAmp * dt;
     }
-    p.size *= Math.pow(p.grow ?? 0.985, dt * 60);
+    // Image particles keep their spawn size — their growth is eased at draw
+    // time from `grow` (spriteFlash) rather than compounded per frame.
+    if (!p.img) p.size *= Math.pow(p.grow ?? 0.985, dt * 60);
   }
   for (let i = state.popups.length - 1; i >= 0; i--) {
     const p = state.popups[i];
@@ -153,7 +174,21 @@ export function drawParticles(ctx) {
     ctx.globalAlpha = alpha;
     const want = p.additive === false ? "source-over" : "lighter";
     if (want !== op) { op = want; ctx.globalCompositeOperation = op; }
-    if (p.ringMax) {
+    if (p.img) {
+      const img = getImage(p.img);
+      if (!img) continue;
+      const t = 1 - p.life / p.maxLife;             // 0 fresh → 1 spent
+      // `grow` is the height multiplier reached at end of life, eased linearly.
+      const h = p.size * (1 + ((p.grow ?? 1) - 1) * t);
+      const w = img.width * h / img.height;
+      ctx.globalAlpha = alpha * (p.imgAlpha ?? 1);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      if (p.rot) ctx.rotate(p.rot);
+      if (p.flip) ctx.scale(-1, 1);
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
+      ctx.restore();
+    } else if (p.ringMax) {
       ctx.strokeStyle = p.color;
       ctx.lineWidth = 3;
       ctx.beginPath();

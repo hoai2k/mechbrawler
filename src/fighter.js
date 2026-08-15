@@ -6,7 +6,7 @@ import { spawnMelee, opponentOf, updateStatuses } from "./combat.js";
 import { performSpecial, performRanged, updateSpecialState } from "./specials.js";
 import { performUltimate } from "./ultimates.js";
 import { domainInput, activeDomain } from "./domains.js";
-import { burst, dust, popup, banner, ring } from "./particles.js";
+import { burst, dust, popup, banner, ring, spriteFlash } from "./particles.js";
 import { playSfx, playGrunt, playKoCry, startShieldLoop, stopShieldLoop, noteFireBurning } from "./audio.js";
 import { rumbleEvent } from "./rumble.js";
 import { counterShimmerFx, healMotesFx } from "./fx.js";
@@ -758,6 +758,9 @@ export function ringOut(f) {
   const by = clamp(f.y, 80, 640);
   burst(bx, by, f.char.theme, 54, 1.9);
   ring(bx, by, f.char.theme, 200);
+  // The blast-zone KO burst (delivered art): a radial neon starburst over the
+  // procedural pop, growing and fading through the slow-mo beat.
+  spriteFlash(bx, by, "effect:ko_burst", { h: 220, life: 0.55, grow: 1.6, spin: 0.5 });
   banner("KO!", "#ffffff", { y: 200, size: 84, life: 1.0 });
 
   // clear this fighter's combat objects — including scripted entities
@@ -1415,6 +1418,9 @@ export function updateFighter(f, dt, input) {
       f.takeoffT = TAKEOFF_STRETCH_TIME;
       f.fastFalling = false;
       dust(f.x, f.y, 10);
+      // The air jump is a jet burn, not a leg push — the boost cone under the
+      // feet (delivered art), pointed straight down.
+      spriteFlash(f.x, f.y + 26, "effect:jet_flame", { h: 96, life: 0.32, rot: 0.8, alpha: 0.85 });
     }
   }
 
