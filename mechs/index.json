@@ -40,7 +40,12 @@
         "throwHeave",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "cranky": {
@@ -77,7 +82,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "fenrir": {
@@ -116,7 +126,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "frogger": {
@@ -154,7 +169,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "glacier": {
@@ -193,7 +213,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "inferno": {
@@ -233,7 +258,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "jerry": {
@@ -270,7 +300,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "konga": {
@@ -310,7 +345,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "nullbot": {
@@ -349,7 +389,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "rhino": {
@@ -385,7 +430,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "saurion": {
@@ -424,7 +474,12 @@
         "taunt",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "tempest": {
@@ -464,7 +519,12 @@
         "tempestTornado",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "titanus": {
@@ -508,7 +568,12 @@
         "throwHeave",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "tritone": {
@@ -545,7 +610,12 @@
         "tritoneToss",
         "victory",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "viper": {
@@ -585,7 +655,12 @@
         "viperStab",
         "viperWhirl",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "vulcan": {
@@ -626,7 +701,12 @@
         "victory",
         "vulcanSpray",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     },
     "wraith": {
@@ -673,7 +753,12 @@
         "victory",
         "wraithLasers",
         "walk",
-        "run"
+        "run",
+        "jumpRise",
+        "jumpFall",
+        "hover",
+        "crouch",
+        "battleIdle"
       ]
     }
   },

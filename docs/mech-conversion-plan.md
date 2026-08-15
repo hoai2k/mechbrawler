@@ -200,7 +200,7 @@ plays nothing like a platform fighter.
         mannequin BODY if the placeholder needs it), plus their imports.
         AFTER K5 + K6 land (same files).
 
-- [ ] K8. SAMPLE MM'S PROCEDURAL JUMP/CROUCH INTO CLIPS (owner confirmed
+- [x] K8. SAMPLE MM'S PROCEDURAL JUMP/CROUCH INTO CLIPS (owner confirmed
         they exist — they are ANIMATOR LAYERS, not named clips: the
         airborne rising-tuck/falling-spread + airReach + hover jet pose in
         robotworld src/mechs/animator.js ~line 596, and the duck layer

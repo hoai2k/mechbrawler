@@ -15,26 +15,28 @@
 // be lost — put a preference change HERE, where it applies roster-wide and
 // the diff shows exactly which mechs it moved.
 //
-// STATES WITH NO PERFECT SOURCE (the compromises, made once, here — K5,
-// verified against the MM sources: jump/crouch are PROCEDURAL upstream, no
-// clips exist anywhere):
-//   idle    <- the mech's own heavy wind-up, FROZEN at its first frame
-//              (freeze: 0). MM has no idle clip; the heavy's opening frame is
-//              the battle carriage — same bespoke-first candidates as
-//              sideHeavy, so every mech idles in ITS OWN stance. The breath
-//              layer animates on top (render3d pose.js).
-//   charge  <- the same heavy, frozen mid-wind-up (freeze: 0.35) — except
+// STATES WITH NO PERFECT SOURCE (the compromises, made once, here — K5;
+// jump/crouch/hover upgraded by K8):
+//   idle    <- battleIdle: K8 sampled MM's real ready/combat stance (the
+//              animator's readyK carriage layer, with the idle breath/sway
+//              alive in the clip) — retiring the K5 frozen-heavy-wind-up
+//              stopgap. render3d's own breath layer still animates on top.
+//   charge  <- the mech's own heavy wind-up, frozen mid-wind-up (freeze:
+//              0.35, K5) — except
 //              titanus/colossus, whose poundHold is a REAL hold loop and
 //              stays unfrozen.
-//   fall    <- landReach  the stretched pre-landing reach IS a falling pose.
-//   jump    <- landReach, FROZEN at 0.02s (owner: MM clips only, no JJK pose
-//              sets) — the clip's opening frame stands upright with the legs
-//              gathered, which reads airborne-neutral; by 0.04s it tips into
-//              the dive reach. Picked by eye off rendered frames. ball is
+//   jump/fall/crouch <- jumpRise/jumpFall/crouch: K8 sampled Mech Mayhem's
+//              PROCEDURAL animator layers (the airborne rising-tuck/
+//              falling-spread + airReach, and the duck layer at each mech's
+//              own duckDepth) into real 0.5s held clips in the export, so
+//              the K5 freeze-frame stopgap (landReach@0.02 / land@0.14) is
+//              retired. Each mech's personality is baked in — konga jumps
+//              arms-up ready to grab, frogger squats to the floor. ball is
 //              the DODGE tuck and never the jump.
-//   crouch  <- land, frozen at 0.14s — the deepest moment of the touchdown
-//              absorb (also picked by eye; the clip runs 0.63s and is
-//              already rising by 0.3).
+//   hover   <- the MM jet-flight pose, exported alongside (K8). The 26-state
+//              contract has NO hover/air-jump state today (states.js), so
+//              the key is written but nothing resolves it yet — the jet-burn
+//              air-jump feature can consume it when it lands.
 //   dodge   <- ball, written under the dodge_roll AND dodge_air keys:
 //              render3d aliases the dodge state to those clip names
 //              (states.js STATE_ALIASES), so a plain `dodge` key is dead.
@@ -57,7 +59,7 @@ const HEIGHT_M = {
 };
 
 // The heavy wind-up candidates, bespoke names first — shared by sideHeavy
-// (played) and idle/charge (frozen frames of the same clip, see below).
+// (played) and charge (a frozen frame of the same clip, see below).
 const HEAVY_WINDUP = [
   "clawSnap", "kongaSlam", "tritoneToss", "fenrirSpike", "viperDrill",
   "tempestTornado", "wraithLasers", "jerryBarrage", "nullBackhand",
@@ -67,24 +69,25 @@ const HEAVY_WINDUP = [
 // How far into the heavy wind-up the charge freeze sits, seconds.
 const CHARGE_FREEZE_T = 0.35;
 
-// Freeze times for the procedural-in-MM states, seconds into their source
-// clips — picked by eye off rendered frames (see the compromises block).
-const JUMP_FREEZE_T = 0.02;   // into landReach: upright, legs gathered
-const CROUCH_FREEZE_T = 0.14; // into land: the deepest absorb
-
 // state -> exported clip candidates, first present in that mech's GLB wins.
 // Bespoke names lead so a mech with its own move animation always uses it.
-// idle, charge, jump and crouch are handled after the loop — their frozen
-// frames need the `freeze` key, not just a name. The dodge tuck is written
+// charge is handled after the loop — its frozen frame needs the `freeze`
+// key, not just a name. idle/jump/fall/crouch are the K8-sampled MM
+// stance/procedural layers, real held clips now — no freeze. hover has no state in
+// the 26-state contract yet (see the compromises block); its key is written
+// for the jet-burn air-jump to consume later. The dodge tuck is written
 // under dodge_roll AND dodge_air: render3d resolves by CLIP name, and the
 // dodge state aliases to dodge_roll (states.js STATE_ALIASES), so a plain
 // `dodge` key would never be looked up.
 const PREFER = {
-  idle: HEAVY_WINDUP,
+  idle: ["battleIdle"],
   walk: ["walk"],
   run: ["run"],
   dash: ["run"],
-  fall: ["landReach"],
+  jump: ["jumpRise"],
+  fall: ["jumpFall"],
+  crouch: ["crouch"],
+  hover: ["hover"],
   land: ["land"],
   hurt: ["hitFlinch"],
   teeter: ["hitFlinch"],
@@ -142,22 +145,12 @@ for (const id of ids) {
     if (hit) clips[state] = { glb: hit };
     else missing.push(state);
   }
-  // K5 freeze frames. idle = the battle carriage: the first frame of the
-  // mech's own heavy wind-up, held (breath animates on top in render3d).
-  if (clips.idle) clips.idle.freeze = 0;
-  // charge = mid-wind-up of the same heavy — unless this mech exported a real
-  // hold loop (poundHold: titanus, colossus), which plays unfrozen.
+  // K5 freeze frame: charge = mid-wind-up of the mech's own heavy — unless
+  // this mech exported a real hold loop (poundHold: titanus, colossus),
+  // which plays unfrozen. (idle's freeze was retired by K8's battleIdle.)
   if (have.has("poundHold")) clips.charge = { glb: "poundHold" };
   else if (clips.sideHeavy) clips.charge = { glb: clips.sideHeavy.glb, freeze: CHARGE_FREEZE_T };
   else missing.push("charge");
-  // jump/crouch are procedural in MM — no clip exists anywhere — and the
-  // owner ruled out the JJK pose sets, so both are frozen frames of the
-  // landing clips (times picked by eye; see the compromises block). Never
-  // ball: the tuck is the dodge's.
-  if (have.has("landReach")) clips.jump = { glb: "landReach", freeze: JUMP_FREEZE_T };
-  else missing.push("jump");
-  if (have.has("land")) clips.crouch = { glb: "land", freeze: CROUCH_FREEZE_T };
-  else missing.push("crouch");
   if (missing.length) {
     console.warn(`${id}: no clip for ${missing.join(", ")} — state will use the default pose set`);
   }
