@@ -674,13 +674,14 @@ with the side it fights for.
 | Crouch / fast-fall | Left stick ▼ |
 | Light attack | X |
 | Heavy attack (hold = charge) | Y |
-| Special | B |
+| Ranged weapon (spends inherent energy) | RB |
+| Special | RT |
 | Dash | Shove the stick, or double-tap |
 | Dash attack | Light or heavy, while running |
-| Ultimate | RB |
-| Domain Expansion | LB |
+| Ultimate (at full attack energy) | LB |
 | Shield / dodges | LT |
-| Grab (direction throws · Light pummels) | RT |
+| Taunt | D-pad ▼ |
+| Grab (direction throws · Light pummels) | B |
 | Tilt attacks (no run-up) | Right stick |
 | Steer summons / aim creature shots | D-pad |
 | Pause | Start |

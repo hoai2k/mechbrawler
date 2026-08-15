@@ -103,7 +103,7 @@ plays nothing like a platform fighter.
 
 ## Phase 4b — owner directives (added mid-conversion)
 
-- [ ] K1. CONTROLS + INHERENT ENERGY (owner spec): LB = Ultimate at full
+- [x] K1. CONTROLS + INHERENT ENERGY (owner spec): LB = Ultimate at full
         attack energy (done). LT = shield/dodge. RB = RANGED attack — a new
         dedicated kit slot (the Mech Mayhem gun, moved out of
         specials.neutral). RT = special (neutral/side/down). X/Y light/
@@ -115,6 +115,16 @@ plays nothing like a platform fighter.
         configs), specials.neutral backfilled per mech (a new move or the
         old S/D redistributed), HUD inherent-energy bar, docs/characters.md
         control section updated.
+        DONE: RB=ranged (own kit slot + cooldown, specials.js performRanged
+        through the same handler path), RT=special, LT=shield, LB=ultimate,
+        B=grab, A=jump alone, d-pad down=taunt (anim "win", 1.5s, any input
+        cancels); `f.energy` pool (constants.js INHERENT_ENERGY: 100 max,
+        14/s regen; ranged `p.energyCost` 4-22 per weapon, specials 30
+        default; dash/sprint/shield free); every mech's MM gun moved to a
+        top-level `ranged` config and N backfilled with one new
+        identity-preserving special (S/D untouched); slim cyan energy bar
+        under the HUD meter; CPU fires ranged at range when the pool is high;
+        controls tables/moves screen/README/characters.md regenerated.
 - [ ] K2. SFX: replace the JJK bank with Mech Mayhem's
         (robotworld public/sfx: 122 files + manifest — generic camelCase,
         <mech>_<event> overrides, amb_<arena> beds, step_<material>).

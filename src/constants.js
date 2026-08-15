@@ -353,6 +353,20 @@ export const THROWS = {
   down: { dmg: 6,   baseKb: 270, growth: 4.0, angle: 1.12, label: "Down Throw",  sfx: "punch" },
 };
 
+// ------------------------------------------------------- inherent energy
+//
+// The second resource, Mech Mayhem style: a self-recovering pool every mech
+// carries. Ranged shots (RB) spend a little of it — each weapon prices its own
+// shot via `p.energyCost` — and specials spend MORE (`p.energyCost ?? 30`).
+// Dashing, sprinting and shielding cost nothing, exactly as before. Entirely
+// separate from the ATTACK meter below, which still gates the ultimate.
+export const INHERENT_ENERGY = {
+  max: 100,
+  regen: 14,        // per second, always
+  rangedFloor: 4,   // the cheapest a ranged shot can be
+  specialCost: 30,  // what a special spends when its p names no energyCost
+};
+
 // meter / ultimate
 export const METER_MAX = 100;
 export const METER_PASSIVE = 1.1;

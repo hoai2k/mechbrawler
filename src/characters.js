@@ -26,6 +26,13 @@
 // Every special `type` names a handler in src/specials.js and every ultimate
 // `type` a director in src/ultimates.js; the `p` shapes mirror the JJK kits
 // that used the same handler, so every field written here is actually read.
+//
+// `ranged` is the RB slot: the mech's Mech Mayhem gun, moved out of
+// specials.neutral (K1). Same config shape as a special, run down the same
+// execution path (specials.js performRanged), with `p.energyCost` pricing each
+// shot in inherent energy — cheap for rapid guns, dear for big single shells.
+// Specials spend energy too (`p.energyCost ?? 30`, constants.js
+// INHERENT_ENERGY); the freed N slot is backfilled per mech below.
 // Where docs/characters.md asks for behavior the engine does not have yet, the
 // closest existing handler is used and a `// TODO(engine):` comment says what
 // is still owed.
@@ -73,11 +80,20 @@ export const CHARACTERS = {
     // heavyHold / chargeGlow:"arms" — titanus and colossus only).
     light: { dmg: 9.2, speed: 0.9, angle: 0.34, effect: null, label: "Haymaker String", sfx: "punch" },
     heavy: { dmg: 16.2, speed: 0.9, angle: 0.46, effect: null, label: "Overhead Pound", sfx: "punch", shieldMul: 1.8 },
+    // The MM gun, on RB. A big single shell: priced near the top of the band.
+    ranged: {
+      name: "Rocket Fist", type: "projectile", cooldown: 2.4,
+      desc: "A fist leaves the arm as real ordnance, hits like a truck, and flies home to re-dock.",
+      p: { energyCost: 18, speed: 600, vy: 0, r: 30, dur: 0.85, dmg: 11, base: 480, growth: 8.0, angle: 0.34, color: "#ffa832", label: "Rocket Fist" },
+    },
     specials: {
+      // New N (the gun moved to RB): the charge-punch identity as a special —
+      // the blow lands, then the shock of it lands again. echoStrike, yuji's
+      // Divergent Fist shape.
       neutral: {
-        name: "Rocket Fist", type: "projectile", cooldown: 2.4,
-        desc: "A fist leaves the arm as real ordnance, hits like a truck, and flies home to re-dock.",
-        p: { speed: 600, vy: 0, r: 30, dur: 0.85, dmg: 11, base: 480, growth: 8.0, angle: 0.34, color: "#ffa832", label: "Rocket Fist" },
+        name: "Breaker Fist", type: "echoStrike", cooldown: 3.5,
+        desc: "One haymaker, two impacts — the fist lands, and a beat later the shock of it lands again.",
+        p: { delay: 0.1, echoDelay: 0.34, ox: 46, oy: -100, w: 180, h: 110, dmg: 10, base: 420, growth: 7.0, angle: 0.4, echoDmg: 7, echoBase: 480, echoGrowth: 7.6, echoAngle: 0.5, color: "#ffa832", label: "Breaker Fist" },
       },
       side: {
         name: "Skyline Slam", type: "commandGrab", cooldown: 5.0,
@@ -120,14 +136,22 @@ export const CHARACTERS = {
     stats: { speed: 421, airSpeed: 345, accel: 2656, jump: 872, airJumps: 1, weight: 1.04, friction: 0.86 },
     light: { dmg: 6.0, speed: 1.0, angle: 0.3, effect: null, label: "Muzzle Jab", sfx: "punch" },
     heavy: { dmg: 12.0, speed: 1.0, angle: 0.44, effect: null, label: "Barrel Club", sfx: "punch", shieldMul: 1.6 },
+    // The MM gun, on RB. The cheapest, most rapid gun in the game.
+    ranged: {
+      name: "Gatling Burst", type: "projectile", cooldown: 0.75,
+      desc: "A spray of tracer that chips, pushes, and never kills — it exists to make you approach.",
+      // TODO(engine): docs/characters.md wants a held CHANNEL (stream while
+      // the trigger is down, barrels spinning up, arms swapping); the
+      // projectile handler fires a burst per press instead.
+      p: { energyCost: 4, speed: 900, vy: 0, r: 14, dur: 0.55, dmg: 2, base: 130, growth: 2.2, angle: 0.28, color: "#ff8c30", count: 3, spread: 70, label: "Gatling" },
+    },
     specials: {
+      // New N (the gun moved to RB): more ammunition, of course — a lobbed
+      // frag shell with real splash, the arc the flat gatling stream lacks.
       neutral: {
-        name: "Gatling Burst", type: "projectile", cooldown: 0.75,
-        desc: "A spray of tracer that chips, pushes, and never kills — it exists to make you approach.",
-        // TODO(engine): docs/characters.md wants a held CHANNEL (stream while B
-        // is down, barrels spinning up, arms swapping); the projectile handler
-        // fires a burst per press instead.
-        p: { speed: 900, vy: 0, r: 14, dur: 0.55, dmg: 2, base: 130, growth: 2.2, angle: 0.28, color: "#ff8c30", count: 3, spread: 70, label: "Gatling" },
+        name: "Frag Shell", type: "projectile", cooldown: 3.5,
+        desc: "A fat grenade lobbed over the tracer line — every problem is insufficient ammunition.",
+        p: { speed: 480, vy: -160, gravity: 340, r: 26, dur: 1.1, dmg: 10, base: 400, growth: 6.8, angle: 0.5, color: "#ff8c30", explode: 90, label: "Frag Shell" },
       },
       side: {
         name: "Micro-Missile Volley", type: "projectile", cooldown: 4.1,
@@ -166,11 +190,19 @@ export const CHARACTERS = {
     stats: { speed: 497, airSpeed: 408, accel: 3040, jump: 907, airJumps: 1, weight: 0.88, friction: 0.86 },
     light: { dmg: 6.0, speed: 1.1, angle: 0.26, effect: null, label: "Energy Daggers", sfx: "slash" },
     heavy: { dmg: 10.8, speed: 1.1, angle: 0.4, effect: null, label: "Corkscrew Drill", sfx: "slashHeavy", shieldMul: 1.5 },
+    // The MM gun, on RB. Cheap and rapid — the spammable dagger.
+    ranged: {
+      name: "Fang Throw", type: "projectile", cooldown: 0.8,
+      desc: "A thrown forearm dagger — the blade visibly leaves her arm and regrows. Fast, flat, spammable.",
+      p: { energyCost: 6, speed: 720, vy: -2, r: 18, dur: 0.7, dmg: 6.5, base: 260, growth: 5.4, angle: 0.3, color: "#5aff2e", label: "Fang Throw" },
+    },
     specials: {
+      // New N (the dagger moved to RB): the fencer's mixup — a backstep that
+      // becomes a springing stab, angles nobody teaches. feint, maki's shape.
       neutral: {
-        name: "Fang Throw", type: "projectile", cooldown: 0.8,
-        desc: "A thrown forearm dagger — the blade visibly leaves her arm and regrows. Fast, flat, spammable.",
-        p: { speed: 720, vy: -2, r: 18, dur: 0.7, dmg: 6.5, base: 260, growth: 5.4, angle: 0.3, color: "#5aff2e", label: "Fang Throw" },
+        name: "Serpent Feint", type: "feint", cooldown: 3.5,
+        desc: "She flows backward off the line, then springs through it blades-first — the retreat was the attack.",
+        p: { iframes: 0.26, lunge: 600, delay: 0.05, dur: 0.14, ox: 50, oy: -96, w: 180, h: 100, dmg: 10, base: 400, growth: 6.8, angle: 0.32, color: "#5aff2e", label: "Serpent Feint", sfx: "slash" },
       },
       side: {
         name: "Blade Cyclone", type: "dashStrike", cooldown: 3.75,
@@ -212,11 +244,19 @@ export const CHARACTERS = {
     stats: { speed: 396, airSpeed: 325, accel: 2320, jump: 858, airJumps: 1, weight: 1.18, friction: 0.9 },
     light: { dmg: 8.0, speed: 0.95, angle: 0.32, effect: null, label: "Horn Jab", sfx: "punch" },
     heavy: { dmg: 14.6, speed: 0.95, angle: 0.44, effect: null, label: "Planted Horn", sfx: "punch", shieldMul: 1.8 },
+    // The MM gun, on RB. A mid-weight shell: mid-band price.
+    ranged: {
+      name: "Shoulder Cannon", type: "projectile", cooldown: 1.3,
+      desc: "A hand cannon per fist, alternating — slow shells with real splash, a mid-range poke.",
+      p: { energyCost: 14, speed: 550, vy: -8, r: 26, dur: 0.9, dmg: 11, base: 420, growth: 7.0, angle: 0.4, color: "#ff2a20", explode: 70, label: "Shoulder Cannon" },
+    },
     specials: {
+      // New N (the cannon moved to RB): the horn, thrown UP — a planted
+      // upward gore that starts the launch his side heavy finishes. burst.
       neutral: {
-        name: "Shoulder Cannon", type: "projectile", cooldown: 1.3,
-        desc: "A hand cannon per fist, alternating — slow shells with real splash, a mid-range poke.",
-        p: { speed: 550, vy: -8, r: 26, dur: 0.9, dmg: 11, base: 420, growth: 7.0, angle: 0.4, color: "#ff2a20", explode: 70, label: "Shoulder Cannon" },
+        name: "Horn Break", type: "burst", cooldown: 3.5,
+        desc: "A braced upward rip of the horn — whatever it catches leaves the ground.",
+        p: { delay: 0.1, dur: 0.14, ox: 40, oy: -110, w: 170, h: 160, dmg: 11, base: 440, growth: 7.2, angle: 1.1, label: "Horn Break", color: "#ff2a20", sfx: "punch" },
       },
       side: {
         name: "Bull Rush", type: "dashStrike", cooldown: 4.1,
@@ -257,13 +297,21 @@ export const CHARACTERS = {
     stats: { speed: 459, airSpeed: 376, accel: 2896, jump: 900, airJumps: 1, weight: 0.94, friction: 0.86 },
     light: { dmg: 5.6, speed: 1.05, angle: 0.3, effect: null, label: "Static Jab", sfx: "punch" },
     heavy: { dmg: 6.5, speed: 1.05, angle: 0.42, effect: null, label: "Travelling Tornado", sfx: "whoosh", shieldMul: 1.5 },
+    // The MM gun, on RB. Rapid lightning: cheap.
+    ranged: {
+      name: "Arc Bolt", type: "projectile", cooldown: 0.9,
+      desc: "Lightning that jumps — it finds its mark and wants a second body nearby.",
+      // TODO(engine): SHOCK status (brief hitstun extension) and the
+      // chain-to-a-second-target behavior are new engine work.
+      p: { energyCost: 8, speed: 760, vy: 0, r: 22, dur: 0.7, dmg: 8, base: 330, growth: 6.4, angle: 0.36, color: "#3fd8ff", label: "Arc Bolt" },
+    },
     specials: {
+      // New N (the bolt moved to RB): the concert made a weapon — a resonant
+      // chord blasted off the stacks. shout, the sonic-cone shape.
       neutral: {
-        name: "Arc Bolt", type: "projectile", cooldown: 0.9,
-        desc: "Lightning that jumps — it finds its mark and wants a second body nearby.",
-        // TODO(engine): SHOCK status (brief hitstun extension) and the
-        // chain-to-a-second-target behavior are new engine work.
-        p: { speed: 760, vy: 0, r: 22, dur: 0.7, dmg: 8, base: 330, growth: 6.4, angle: 0.36, color: "#3fd8ff", label: "Arc Bolt" },
+        name: "Power Chord", type: "shout", cooldown: 3.5,
+        desc: "He strikes a chord off his own stacks and the front row takes it in the chest.",
+        p: { ox: 40, oy: -110, w: 280, h: 170, dmg: 9, base: 400, growth: 6.6, angle: 0.5, color: "#3fd8ff", label: "POWER CHORD" },
       },
       side: {
         name: "Static Overload", type: "trap", cooldown: 4.4,
@@ -302,11 +350,19 @@ export const CHARACTERS = {
     stats: { speed: 478, airSpeed: 392, accel: 2860, jump: 900, airJumps: 1, weight: 0.96, friction: 0.86 },
     light: { dmg: 6.0, speed: 1.05, angle: 0.28, effect: null, label: "Claw Rake", sfx: "slash" },
     heavy: { dmg: 11.7, speed: 1.05, angle: 0.44, effect: null, label: "Spike Leap", sfx: "slashHeavy", shieldMul: 1.6 },
+    // The MM ranged weapon, on RB. A steady poke: cheap-mid.
+    ranged: {
+      name: "Rend Wave", type: "wave", cooldown: 1.0,
+      desc: "A crescent of torn air off the claws — his poke, medium speed, good arc.",
+      p: { energyCost: 8, speed: 460, r: 34, dur: 0.9, dmg: 7, base: 340, growth: 6.4, angle: 0.36, color: "#6cd8ff", label: "Rend Wave" },
+    },
     specials: {
+      // New N (the wave moved to RB): the claws up close — a savaging flurry
+      // on the spot, the bite behind the gap-closer. burst.
       neutral: {
-        name: "Rend Wave", type: "wave", cooldown: 1.0,
-        desc: "A crescent of torn air off the claws — his poke, medium speed, good arc.",
-        p: { speed: 460, r: 34, dur: 0.9, dmg: 7, base: 340, growth: 6.4, angle: 0.36, color: "#6cd8ff", label: "Rend Wave" },
+        name: "Savage Flurry", type: "burst", cooldown: 3.5,
+        desc: "Both claws, no ceremony — a tearing flurry for whatever the pounce just caught.",
+        p: { delay: 0.06, dur: 0.18, ox: 40, oy: -96, w: 190, h: 110, dmg: 11, base: 400, growth: 6.8, angle: 0.36, label: "Savage Flurry", color: "#6cd8ff", sfx: "slash" },
       },
       side: {
         name: "Lunar Pounce", type: "dashStrike", cooldown: 3.5,
@@ -357,11 +413,20 @@ export const CHARACTERS = {
     // chargeGlow:"arms") — see titanus.
     light: { dmg: 8.4, speed: 0.9, angle: 0.34, effect: null, label: "Banked Haymaker", sfx: "punch" },
     heavy: { dmg: 15.4, speed: 0.9, angle: 0.46, effect: null, label: "Thunderclap Pound", sfx: "punch", shieldMul: 1.8 },
+    // The MM gun, on RB. The biggest single shell in the game: priced to match.
+    ranged: {
+      name: "Mortar Lob", type: "projectile", cooldown: 1.7,
+      desc: "A high arcing shell that lands where you are about to be — the slowest, meanest projectile in the game.",
+      p: { energyCost: 22, speed: 430, vy: -260, gravity: 420, r: 34, dur: 1.5, dmg: 13.5, base: 520, growth: 8.4, angle: 0.6, color: "#ffc23c", explode: 100, label: "Mortar Lob" },
+    },
     specials: {
+      // New N (the mortar moved to RB): artillery patience as a special — a
+      // fire mission called onto ground ahead, shells arriving on a delay.
+      // trap, tempest's storm-cell shape.
       neutral: {
-        name: "Mortar Lob", type: "projectile", cooldown: 1.7,
-        desc: "A high arcing shell that lands where you are about to be — the slowest, meanest projectile in the game.",
-        p: { speed: 430, vy: -260, gravity: 420, r: 34, dur: 1.5, dmg: 13.5, base: 520, growth: 8.4, angle: 0.6, color: "#ffc23c", explode: 100, label: "Mortar Lob" },
+        name: "Fire Mission", type: "trap", cooldown: 4.0,
+        desc: "He designates a stretch of ground three moves ahead — then the shells arrive on it.",
+        p: { dist: 260, armTime: 0.7, lifetime: 3.5, w: 170, h: 200, dmg: 13, base: 460, growth: 7.4, angle: 0.9, color: "#ffc23c", label: "Fire Mission" },
       },
       side: {
         name: "Skyline Toss", type: "commandGrab", cooldown: 5.0,
@@ -404,12 +469,22 @@ export const CHARACTERS = {
     stats: { speed: 449, airSpeed: 368, accel: 2980, jump: 886, airJumps: 1, weight: 0.9, friction: 0.86 },
     light: { dmg: 6.0, speed: 1.05, angle: 0.3, effect: null, label: "Stock Strike", sfx: "punch" },
     heavy: { dmg: 10.5, speed: 1.05, angle: 0.44, effect: null, label: "Wing Lasers", sfx: "slashHeavy", shieldMul: 1.5 },
+    // The rifle, on RB — the one weapon everything else in the kit is spent on.
+    // A heavy single round: priced high.
+    ranged: {
+      name: "Sniper Round", type: "projectile", cooldown: 1.5,
+      desc: "A piercing shot down the rifle line — slow to aim, flat, hits through bodies.",
+      // TODO(engine): hold-to-steady charge and the laser-sight telegraph.
+      p: { energyCost: 16, speed: 940, vy: 0, r: 18, dur: 0.6, dmg: 12, base: 430, growth: 7.2, angle: 0.24, color: "#ff2030", pierce: true, label: "Sniper Round" },
+    },
     specials: {
+      // New N (the rifle moved to RB): sniper theatre without the rifle — a
+      // kill-mark that detonates where the target STOOD when he called it.
+      // warpStrike, uro's telegraphed-drop shape.
       neutral: {
-        name: "Sniper Round", type: "projectile", cooldown: 1.5,
-        desc: "A piercing shot down the rifle line — slow to aim, flat, hits through bodies.",
-        // TODO(engine): hold-to-steady charge and the laser-sight telegraph.
-        p: { speed: 940, vy: 0, r: 18, dur: 0.6, dmg: 12, base: 430, growth: 7.2, angle: 0.24, color: "#ff2030", pierce: true, label: "Sniper Round" },
+        name: "Deadman's Mark", type: "warpStrike", cooldown: 3.5,
+        desc: "He marks the spot you are standing on. Officially, nothing happens there. Move.",
+        p: { delay: 0.4, r: 95, dmg: 11, base: 420, growth: 7.0, angle: 0.6, color: "#ff2030", label: "Deadman's Mark" },
       },
       side: {
         name: "Night Swarm", type: "projectile", cooldown: 3.5,
@@ -452,13 +527,21 @@ export const CHARACTERS = {
     // chain, exactly the comboStatus MM gives him.
     light: { dmg: 7.2, speed: 0.95, angle: 0.32, effect: "burn", label: "Torch-Hand Combo", sfx: "punch" },
     heavy: { dmg: 13.2, speed: 0.95, angle: 0.44, effect: null, label: "Furnace Hook", sfx: "punch", shieldMul: 1.7 },
+    // The MM gun, on RB. A held-stream flamer: cheap per tongue.
+    ranged: {
+      name: "Dragon's Breath", type: "projectile", cooldown: 0.75,
+      desc: "A long narrow jet of held flame — the cone is a wall; walking into it is the mistake.",
+      // TODO(engine): a held channel (stream while the trigger is down); fires
+      // a burning tongue per press instead.
+      p: { energyCost: 5, speed: 420, vy: 0, r: 30, dur: 0.8, dmg: 6, base: 160, growth: 3.2, angle: 0.34, color: "#ff8a1e", effect: "burn", pierce: true, label: "Dragon's Breath" },
+    },
     specials: {
+      // New N (the flamer moved to RB): the brawler half of him — a torch-hand
+      // hook that leaves the target alight. burst, carrying his burn.
       neutral: {
-        name: "Dragon's Breath", type: "projectile", cooldown: 0.75,
-        desc: "A long narrow jet of held flame — the cone is a wall; walking into it is the mistake.",
-        // TODO(engine): a held channel (stream while B is down); fires a
-        // burning tongue per press instead.
-        p: { speed: 420, vy: 0, r: 30, dur: 0.8, dmg: 6, base: 160, growth: 3.2, angle: 0.34, color: "#ff8a1e", effect: "burn", pierce: true, label: "Dragon's Breath" },
+        name: "Backdraft Hook", type: "burst", cooldown: 3.5,
+        desc: "A short furnace-hot hook — the punch is fine; it is the fire that stays.",
+        p: { delay: 0.08, dur: 0.14, ox: 42, oy: -100, w: 170, h: 110, dmg: 10, base: 420, growth: 6.8, angle: 0.42, effect: "burn", label: "Backdraft Hook", color: "#ff8a1e", sfx: "punch" },
       },
       side: {
         name: "Napalm Carpet", type: "trap", cooldown: 4.7,
@@ -498,11 +581,19 @@ export const CHARACTERS = {
     stats: { speed: 383, airSpeed: 314, accel: 2296, jump: 858, airJumps: 1, weight: 1.19, friction: 0.9 },
     light: { dmg: 7.6, speed: 0.95, angle: 0.32, effect: null, label: "Lance Jab", sfx: "punch" },
     heavy: { dmg: 14.2, speed: 0.95, angle: 0.44, effect: null, label: "Planted Lance", sfx: "slashHeavy", shieldMul: 1.7 },
+    // The MM gun, on RB. A quick fan of shards: cheap-mid.
+    ranged: {
+      name: "Icicle Barrage", type: "projectile", cooldown: 1.15,
+      desc: "A fan of shards off the left-hand lance — his main conversation.",
+      p: { energyCost: 9, speed: 620, vy: -4, r: 18, dur: 0.8, dmg: 2.6, base: 200, growth: 4.0, angle: 0.32, color: "#7ce0ff", count: 3, spread: 110, label: "Icicle Barrage" },
+    },
     specials: {
+      // New N (the barrage moved to RB): the zoner's get-off-me — a point-blank
+      // frost nova that leaves the crowder rimed and slow. burst.
       neutral: {
-        name: "Icicle Barrage", type: "projectile", cooldown: 1.15,
-        desc: "A fan of shards off the left-hand lance — his main conversation.",
-        p: { speed: 620, vy: -4, r: 18, dur: 0.8, dmg: 2.6, base: 200, growth: 4.0, angle: 0.32, color: "#7ce0ff", count: 3, spread: 110, label: "Icicle Barrage" },
+        name: "Cold Snap", type: "burst", cooldown: 3.5,
+        desc: "The air around him flash-freezes — a point-blank nova for anyone rude enough to get close.",
+        p: { delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 250, h: 160, dmg: 9, base: 420, growth: 6.6, angle: 0.6, effect: "drench", label: "Cold Snap", color: "#7ce0ff", sfx: "punch" },
       },
       side: {
         name: "Cryo Beam", type: "wave", cooldown: 5.0,
@@ -547,13 +638,21 @@ export const CHARACTERS = {
     stats: { speed: 343, airSpeed: 281, accel: 2260, jump: 816, airJumps: 1, weight: 1.24, friction: 0.9 },
     light: { dmg: 8.0, speed: 0.9, angle: 0.3, effect: null, label: "Pincer Strike", sfx: "punch" },
     heavy: { dmg: 15.4, speed: 0.9, angle: 0.44, effect: null, label: "Pincer Clap", sfx: "punch", shieldMul: 1.8 },
+    // The MM gun, on RB. A held hose: the cheapest shot in the game.
+    ranged: {
+      name: "Hydro Hose", type: "projectile", cooldown: 0.75,
+      desc: "Held water pressure — less a gun than a push. Shoves bodies off platforms and stuffs approaches.",
+      // TODO(engine): a held channel; fires a pressure slug per press. The
+      // push IS the move: tiny damage, outsized base knockback.
+      p: { energyCost: 4, speed: 560, vy: 0, r: 26, dur: 0.65, dmg: 2, base: 300, growth: 3.0, angle: 0.2, color: "#4fc3ff", effect: "drench", pierce: true, label: "Hydro Hose" },
+    },
     specials: {
+      // New N (the hose moved to RB): the pincers themselves — a command grab
+      // at outrageous range, the reach-over-legs identity made a special.
       neutral: {
-        name: "Hydro Hose", type: "projectile", cooldown: 0.75,
-        desc: "Held water pressure — less a gun than a push. Shoves bodies off platforms and stuffs approaches.",
-        // TODO(engine): a held channel; fires a pressure slug per press. The
-        // push IS the move: tiny damage, outsized base knockback.
-        p: { speed: 560, vy: 0, r: 26, dur: 0.65, dmg: 2, base: 300, growth: 3.0, angle: 0.2, color: "#4fc3ff", effect: "drench", pierce: true, label: "Hydro Hose" },
+        name: "Pincer Grip", type: "commandGrab", cooldown: 4.5,
+        desc: "The claw closes from further away than anything should — seized, squeezed, and flung.",
+        p: { range: 160, dmg: 14, base: 540, growth: 7.8, angle: 0.5, color: "#4fc3ff", label: "Pincer Grip" },
       },
       side: {
         name: "Geyser", type: "trap", cooldown: 4.4,
@@ -597,11 +696,19 @@ export const CHARACTERS = {
     stats: { speed: 483, airSpeed: 396, accel: 2896, jump: 900, airJumps: 1, weight: 0.95, friction: 0.86 },
     light: { dmg: 6.4, speed: 1.1, angle: 0.26, effect: null, label: "Sickle Kicks", sfx: "slash" },
     heavy: { dmg: 12.3, speed: 1.05, angle: 0.42, effect: null, label: "Lunging Bite", sfx: "slashHeavy", shieldMul: 1.6 },
+    // The MM gun, on RB. The fastest-recovering projectile here: cheap.
+    ranged: {
+      name: "Quill Fan", type: "projectile", cooldown: 0.9,
+      desc: "A fan of black blade-feathers off both forearms — his own plumage, quickest gun in the game.",
+      p: { energyCost: 7, speed: 700, vy: -2, r: 18, dur: 0.7, dmg: 4, base: 220, growth: 4.4, angle: 0.3, color: "#ff2418", count: 3, spread: 120, label: "Quill Fan" },
+    },
     specials: {
+      // New N (the quills moved to RB): the predator's mixup — a coiling hop
+      // back, then the whole frame springs through the gap feet-first. feint.
       neutral: {
-        name: "Quill Fan", type: "projectile", cooldown: 0.9,
-        desc: "A fan of black blade-feathers off both forearms — his own plumage, quickest gun in the game.",
-        p: { speed: 700, vy: -2, r: 18, dur: 0.7, dmg: 4, base: 220, growth: 4.4, angle: 0.3, color: "#ff2418", count: 3, spread: 120, label: "Quill Fan" },
+        name: "Raptor Feint", type: "feint", cooldown: 3.5,
+        desc: "He breaks off the line, coils onto his haunches — and arrives back through it claws-first.",
+        p: { iframes: 0.26, lunge: 620, delay: 0.05, dur: 0.14, ox: 52, oy: -92, w: 190, h: 100, dmg: 10, base: 400, growth: 6.8, angle: 0.34, color: "#ff2418", label: "Raptor Feint", sfx: "slash" },
       },
       side: {
         name: "Sickle Pounce", type: "dashStrike", cooldown: 3.75,
@@ -652,13 +759,21 @@ export const CHARACTERS = {
     stats: { speed: 440, airSpeed: 361, accel: 2800, jump: 956, airJumps: 1, weight: 1.01, friction: 0.86 },
     light: { dmg: 6.0, speed: 1.05, angle: 0.3, effect: null, label: "Quad Jab", sfx: "punch" },
     heavy: { dmg: 12.0, speed: 1.0, angle: 0.44, effect: null, label: "Four-Armed Clap", sfx: "punch", shieldMul: 1.6 },
+    // The MM gun, on RB. A quick lobbed glob: cheap.
+    ranged: {
+      name: "Slime Slinger", type: "projectile", cooldown: 0.85,
+      desc: "A lobbed glob; the splash gunks — heavier jumps, slower dashes.",
+      // GUNK is the engine's waterlog movement tax, recoloured — which is
+      // exactly what `drench` is (docs/characters.md, statuses table).
+      p: { energyCost: 7, speed: 470, vy: -120, gravity: 300, r: 30, dur: 1.1, dmg: 7.5, base: 330, growth: 6.2, angle: 0.45, color: "#aef23c", effect: "drench", explode: 60, label: "Slime Slinger" },
+    },
     specials: {
+      // New N (the slinger moved to RB): the frog's tongue — a sticky command
+      // grab that reels them in gunked. commandGrab, drench payload.
       neutral: {
-        name: "Slime Slinger", type: "projectile", cooldown: 0.85,
-        desc: "A lobbed glob; the splash gunks — heavier jumps, slower dashes.",
-        // GUNK is the engine's waterlog movement tax, recoloured — which is
-        // exactly what `drench` is (docs/characters.md, statuses table).
-        p: { speed: 470, vy: -120, gravity: 300, r: 30, dur: 1.1, dmg: 7.5, base: 330, growth: 6.2, angle: 0.45, color: "#aef23c", effect: "drench", explode: 60, label: "Slime Slinger" },
+        name: "Tongue Lash", type: "commandGrab", cooldown: 4.5,
+        desc: "The tongue snaps out, sticks, and hauls them through the gunk on the way back.",
+        p: { range: 150, dmg: 13, base: 500, growth: 7.4, angle: 0.6, effect: "drench", color: "#aef23c", label: "Tongue Lash" },
       },
       side: {
         name: "Quad Gunk Barrage", type: "projectile", cooldown: 4.1,
@@ -707,11 +822,20 @@ export const CHARACTERS = {
     // 88-damage volley (88 / 6.5), with the anti-launch read kept in the tiny
     // angle: damage without the mercy of distance.
     heavy: { dmg: 13.5, speed: 1.05, angle: 0.12, effect: null, label: "The Barrage", sfx: "punch", shieldMul: 1.6 },
+    // The MM gun, on RB. Long-range wads: cheap.
+    ranged: {
+      name: "Bilge Spit", type: "projectile", cooldown: 1.1,
+      desc: "A lead glob with trailing wads — long range, gunks on hit.",
+      p: { energyCost: 6, speed: 540, vy: -30, gravity: 120, r: 26, dur: 1.0, dmg: 4, base: 260, growth: 5.0, angle: 0.36, color: "#ff2818", effect: "drench", count: 2, spread: 90, label: "Bilge Spit" },
+    },
     specials: {
+      // New N (the spit moved to RB): the spring itself — a shell-first launch
+      // off a bursting column of brine; recovery and mixup for the best jumper
+      // in the game. updraft.
       neutral: {
-        name: "Bilge Spit", type: "projectile", cooldown: 1.1,
-        desc: "A lead glob with trailing wads — long range, gunks on hit.",
-        p: { speed: 540, vy: -30, gravity: 120, r: 26, dur: 1.0, dmg: 4, base: 260, growth: 5.0, angle: 0.36, color: "#ff2818", effect: "drench", count: 2, spread: 90, label: "Bilge Spit" },
+        name: "Breach", type: "updraft", cooldown: 3.5,
+        desc: "The legs fire and the tide comes with him — a towering shell-first leap off a bursting column.",
+        p: { w: 180, h: 230, dmg: 8, base: 400, growth: 6.4, liftSelf: 1000, color: "#ff2818", label: "Breach" },
       },
       side: {
         name: "Brine Swarm", type: "projectile", cooldown: 4.7,
@@ -762,11 +886,19 @@ export const CHARACTERS = {
     // delivery once the status exists.
     light: { dmg: 6.0, speed: 1.05, angle: 0.3, effect: null, label: "De-rez Combo", sfx: "punch" },
     heavy: { dmg: 12.9, speed: 1.05, angle: 0.46, effect: null, label: "The Backhand", sfx: "punch", shieldMul: 1.6 },
+    // The MM gun, on RB. A rapid stack-builder: cheap.
+    ranged: {
+      name: "Null Pointer", type: "projectile", cooldown: 0.75,
+      desc: "A de-rez bolt off either claw — the ranged stack-builder.",
+      p: { energyCost: 5, speed: 640, vy: 0, r: 22, dur: 0.8, dmg: 6, base: 300, growth: 5.8, angle: 0.3, color: "#27f6ff", label: "Null Pointer" },
+    },
     specials: {
+      // New N (the bolt moved to RB): the crash weaponised as a stance —
+      // touch him mid-frame and the corruption answers. counter.
       neutral: {
-        name: "Null Pointer", type: "projectile", cooldown: 0.75,
-        desc: "A de-rez bolt off either claw — the ranged stack-builder.",
-        p: { speed: 640, vy: 0, r: 22, dur: 0.8, dmg: 6, base: 300, growth: 5.8, angle: 0.3, color: "#27f6ff", label: "Null Pointer" },
+        name: "Exception Handler", type: "counter", cooldown: 4.0,
+        desc: "He stops rendering for a beat — strike the glitch and the exception is thrown back at you.",
+        p: { window: 0.55, dmg: 13, base: 480, growth: 7.4, angle: 0.45, color: "#27f6ff", label: "Exception Handler" },
       },
       side: {
         name: "SEGFAULT", type: "dashStrike", cooldown: 4.1,
@@ -811,11 +943,19 @@ export const CHARACTERS = {
     stats: { speed: 415, airSpeed: 340, accel: 2344, jump: 872, airJumps: 1, weight: 1.15, friction: 0.86 },
     light: { dmg: 8.0, speed: 1.0, angle: 0.32, effect: null, label: "Ape Haymakers", sfx: "punch" },
     heavy: { dmg: 15.1, speed: 0.95, angle: 0.46, effect: null, label: "Overhead Drive", sfx: "punch", shieldMul: 1.8 },
+    // The MM gun, on RB. A four-shell ripple: mid-band price.
+    ranged: {
+      name: "Shoulder Salvo", type: "projectile", cooldown: 2.1,
+      desc: "Both pods empty in a ripple — a rolling barrage that exists mainly to make you walk into the fists.",
+      p: { energyCost: 12, speed: 460, vy: -100, gravity: 260, r: 22, dur: 1.2, dmg: 2.6, base: 220, growth: 4.2, angle: 0.4, color: "#ffa432", count: 4, spread: 140, explode: 60, label: "Shoulder Salvo" },
+    },
     specials: {
+      // New N (the salvo moved to RB): the longest reach on the roster, swept
+      // flat — one enormous backhand arc at full armspan. burst, wide.
       neutral: {
-        name: "Shoulder Salvo", type: "projectile", cooldown: 2.1,
-        desc: "Both pods empty in a ripple — a rolling barrage that exists mainly to make you walk into the fists.",
-        p: { speed: 460, vy: -100, gravity: 260, r: 22, dur: 1.2, dmg: 2.6, base: 220, growth: 4.2, angle: 0.4, color: "#ffa432", count: 4, spread: 140, explode: 60, label: "Shoulder Salvo" },
+        name: "Armspan Sweep", type: "burst", cooldown: 3.5,
+        desc: "Both arms at full extension, swept through everything at head height — the reach is the weapon.",
+        p: { delay: 0.1, dur: 0.16, ox: 30, oy: -100, w: 280, h: 120, dmg: 11, base: 430, growth: 7.0, angle: 0.4, label: "Armspan Sweep", color: "#ffa432", sfx: "punch" },
       },
       side: {
         name: "Skull Driver", type: "commandGrab", cooldown: 5.0,
@@ -862,11 +1002,19 @@ export const CHARACTERS = {
     // The Toss: MM's biggest vertical launch (13) — his kill move is a
     // launcher, so the heavy angle points at the sky.
     heavy: { dmg: 13.8, speed: 0.95, angle: 0.85, effect: null, label: "The Toss", sfx: "punch", shieldMul: 1.7 },
+    // The MM gun, on RB. Twin heavy shells per press: priced high-mid.
+    ranged: {
+      name: "Flank Cannons", type: "projectile", cooldown: 1.6,
+      desc: "Both cannons traverse for a visible half-beat, then fire together — the fastest heavy ordnance in the game.",
+      p: { energyCost: 16, speed: 800, vy: 0, r: 26, dur: 0.8, dmg: 8.5, base: 380, growth: 6.6, angle: 0.36, color: "#ff8a24", count: 2, spread: 80, explode: 70, label: "Flank Cannons" },
+    },
     specials: {
+      // New N (the cannons moved to RB): the animal underneath — a ground-
+      // shaking bellow behind the frill, the herd's warning made a cone. shout.
       neutral: {
-        name: "Flank Cannons", type: "projectile", cooldown: 1.6,
-        desc: "Both cannons traverse for a visible half-beat, then fire together — the fastest heavy ordnance in the game.",
-        p: { speed: 800, vy: 0, r: 26, dur: 0.8, dmg: 8.5, base: 380, growth: 6.6, angle: 0.36, color: "#ff8a24", count: 2, spread: 80, explode: 70, label: "Flank Cannons" },
+        name: "Seismic Bellow", type: "shout", cooldown: 3.5,
+        desc: "The frill flares and six tonnes of chest answers — a bellow that staggers everything in front of it.",
+        p: { ox: 40, oy: -100, w: 300, h: 150, dmg: 8, base: 400, growth: 6.4, angle: 0.5, color: "#ff8a24", label: "SEISMIC BELLOW" },
       },
       side: {
         name: "Gore Charge", type: "dashStrike", cooldown: 4.4,
@@ -953,7 +1101,7 @@ for (const [key, actor] of Object.entries(SPRITE_ACTORS)) actor.key = key;
 export function actorsFor(fighterKey) {
   const char = CHARACTERS[fighterKey];
   if (!char) return [];
-  const moves = [char.ultimate, ...Object.values(char.specials || {}), ...(char.domains || [])];
+  const moves = [char.ultimate, char.ranged, ...Object.values(char.specials || {}), ...(char.domains || [])];
   const keys = moves.map((m) => m?.p?.actor).filter((k) => k && SPRITE_ACTORS[k]);
   return [...new Set(keys)];
 }

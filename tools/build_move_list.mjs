@@ -59,6 +59,7 @@ for (const group of CHARACTER_GROUPS) {
     rows.push([
       `[${c.name}](#${key})`,
       group.label,
+      c.ranged?.name ?? "—",
       ...SLOTS.map(([slot]) => c.specials[slot]?.name ?? "—"),
       c.ultimate?.name ?? "—",
       domain?.name ?? "—",
@@ -71,6 +72,10 @@ for (const group of CHARACTER_GROUPS) {
     lines.push("");
     lines.push(`*${group.label} · \`${key}\` · theme \`${c.theme}\`*`);
     lines.push("");
+    if (c.ranged) {
+      const cd = c.ranged.cooldown ? ` *(${c.ranged.cooldown}s cooldown, ${c.ranged.p?.energyCost ?? "?"} energy)*` : "";
+      lines.push(`- Ranged (RB)${cd} — ${moveLine(c.ranged)}`);
+    }
     for (const [slot, label] of SLOTS) {
       const move = c.specials[slot];
       const cd = move?.cooldown ? ` *(${move.cooldown}s cooldown)*` : "";
@@ -103,17 +108,19 @@ re-run. Its companions are [characters.md](characters.md), which explains *why*
 each kit is the way it is, and [game-mechanics.md](game-mechanics.md), which
 explains the systems the moves are built from.
 
-**${rows.length} fighters**${staged ? `, ${staged} of them staged and not yet selectable` : ""} — every one with three specials and an
+**${rows.length} fighters**${staged ? `, ${staged} of them staged and not yet selectable` : ""} — every one with a ranged weapon (RB), three specials and an
 ultimate, and **${withDomains}** of them with a Domain Expansion as well.
 
 An ultimate and a Domain Expansion each cost the **whole** meter bar, so a
-fighter who has both is choosing between them every time the bar fills. Specials
-are free and run on individual cooldowns instead.
+fighter who has both is choosing between them every time the bar fills. Ranged
+shots and specials spend the self-recovering INHERENT ENERGY pool (shots are
+priced per weapon; specials default to 30) and run on individual cooldowns on
+top of it.
 
 ## The whole roster
 
-| Fighter | Group | Neutral special | Side special | Down special | Ultimate | Domain Expansion |
-|---|---|---|---|---|---|---|
+| Fighter | Group | Ranged (RB) | Neutral special | Side special | Down special | Ultimate | Domain Expansion |
+|---|---|---|---|---|---|---|---|
 ${rows.map((r) => `| ${r.map(cell).join(" | ")} |`).join("\n")}
 
 ## Every kit in full

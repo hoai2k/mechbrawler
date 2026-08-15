@@ -27,6 +27,11 @@ export const KEY_BINDS = {
     dash: ["KeyQ"],
     // The Ultimate — one key, like the one shoulder button (LB) it mirrors.
     domain: ["KeyU"],
+    // The ranged weapon (RB on a pad). P beside the O/I attack row — the whole
+    // right-hand cluster reads I/O/P across the top of J/K/L.
+    ranged: ["KeyP"],
+    // Taunt (d-pad down on a pad). Y, above the U/I supers.
+    taunt: ["KeyY"],
     // Summon steering — the keyboard's stand-in for the d-pad. A cluster left
     // of the attack keys, reachable without leaving the WASD hand's
     // neighbours; see summons.js for what it drives.
@@ -42,6 +47,10 @@ export const KEY_BINDS = {
     shield: ["ShiftRight", "NumpadEnter"],
     dash: ["Backslash"],
     domain: ["Semicolon", "Numpad5"],
+    // The brackets sit above P2's quote/semicolon cluster; the free numpad
+    // corners double them for the numpad hand.
+    ranged: ["BracketLeft", "Numpad6"],
+    taunt: ["BracketRight", "Numpad9"],
     // The numpad is fully spoken for by P2's buttons, so their steering cluster
     // is the number row in the same 8/4/5/6 shape.
     steerUp: ["Digit8"], steerLeft: ["Digit4"], steerDown: ["Digit5"], steerRight: ["Digit6"],
@@ -54,23 +63,25 @@ export const KEY_BINDS = {
  *  home) or NONE, which is a real state: dash has no button and is double-tap
  *  only, the way it was before dash was ever given one. */
 export const PAD_BUTTONS = {
-  // A, plus RT as a second jump. A pad has one thumb for the face cluster, and
-  // jumping while attacking asks that thumb for two buttons at once; the right
-  // index finger is doing nothing at that moment.
-  //
-  // Unless the grab mechanic is on (src/flags.js), which it now is by default:
-  // grab wants exactly the button a Smash player's index finger expects, so RT
-  // is taken back from jump and A jumps alone. The two-button jump is what a
-  // `?throw=false` session falls back to.
-  jump: THROW_ENABLED ? [0] : [0, 7],
-  grab: THROW_ENABLED ? 7 : [],   // RT behind the flag; bound to nothing otherwise
-  dash: [],    // double-tap a direction
-  light: 2,
-  heavy: 3,
-  domain: 4,   // LB
-  ult: 5,      // RB
+  // The owner's mech layout: A jump · X light · Y heavy · RT special ·
+  // RB ranged · LT shield · LB ultimate · d-pad down taunt. The two right
+  // fingers carry the two things a mech does constantly — shoot (RB) and cast
+  // (RT) — and the supers keep the left shoulder.
+  jump: [0],   // A
+  // Grab moved to B when RT became special: the face button the thumb already
+  // rests beside, and B had just been freed.
+  grab: THROW_ENABLED ? 1 : [],   // B behind the flag; bound to nothing otherwise
+  dash: [],    // double-tap a direction, or shove the stick
+  light: 2,    // X
+  heavy: 3,    // Y
+  domain: 4,   // LB — the Ultimate at full attack energy
+  ranged: 5,   // RB — the mech's gun, spending inherent energy
   shield: 6,   // LT
-  special: 1,  // B
+  special: 7,  // RT — neutral/side/down specials
+  // Keyboard-only second ultimate key (I / '); no pad button — LB is the pad's
+  // ultimate and RB now belongs to the ranged weapon.
+  ult: [],
+  taunt: 13,   // d-pad down
   pause: 9,
   dpadUp: 12, dpadDown: 13, dpadLeft: 14, dpadRight: 15,
 };
@@ -80,7 +91,7 @@ export const PAD_BUTTONS = {
 const PAD_LABELS = {
   0: "A", 1: "B", 2: "X", 3: "Y",
   4: "LB", 5: "RB", 6: "LT", 7: "RT",
-  9: "Start",
+  9: "Start", 13: "D-pad ▼",
 };
 
 /** Every label an action is bound to: `padLabelsFor("jump")` → ["A", "RT"]. */
@@ -134,6 +145,7 @@ const ROWS = [
   { id: "crouch", action: "Crouch / fast-fall", pad: "Left stick ▼" },
   { id: "light", action: "Light attack", bind: "light", short: "Light" },
   { id: "heavy", action: "Heavy attack (hold = charge)", bind: "heavy", short: "Heavy" },
+  { id: "ranged", action: "Ranged weapon (spends inherent energy)", bind: "ranged", short: "Ranged" },
   { id: "special", action: "Special", bind: "special" },
   // Two ways in, and the first is the one a Smash player reaches for: shove the
   // left stick out from centre and the fighter dashes, roll it out gently and
@@ -141,9 +153,9 @@ const ROWS = [
   // what a keyboard has — a key cannot be shoved.
   { id: "dash", action: "Dash", pad: "Shove the stick, or double-tap" },
   { id: "dashAttack", action: "Dash attack", pad: "Light or heavy, while running" },
-  { id: "ult", action: "Ultimate", bind: "ult" },
-  { id: "domain", action: "Ultimate", bind: "domain", short: "Ult" },
+  { id: "domain", action: "Ultimate (at full attack energy)", bind: "domain", short: "Ult" },
   { id: "shield", action: "Shield / dodges", bind: "shield", short: "Shield / dodge" },
+  { id: "taunt", action: "Taunt", bind: "taunt", short: "Taunt" },
   // Only listed while the mechanic is on (the default; `?throw=false` drops
   // it): a control row the game does not read would be a lie in every
   // generated table and tip.

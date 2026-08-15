@@ -204,19 +204,15 @@ function padButtonPressed(pad, spec) {
 // Buttons and axes come from PAD_BUTTONS / PAD_AXES in config_controls.js.
 // The layout they describe, and why:
 //
-//   A jump · B special · X light · Y heavy · LT shield · RT jump again
-//   Dash has no button: double-tap a direction. It briefly had B, which is the
-//     button special wants — special is pressed constantly and dash has a
-//     motion that has always worked.
-//   RT is a SECOND jump rather than a new action. Jump is the one input a
-//     player wants while the thumb is already on an attack button. (Behind
-//     ?throw=true, RT is grab instead — see src/flags.js and src/grab.js.)
-//   LB Domain Expansion · RB ultimate — the two supers, one shoulder each, so
-//     neither can be pressed by accident while reaching for the other. Domain
-//     used to be the whole d-pad, which was four buttons spent on a move only
-//     eight fighters have and nobody has two of.
-//   D-pad steers this player's summons and aims their creature shots. It took
-//     that job over from the right stick when the right stick became attacks.
+//   A jump · X light · Y heavy · RT special · RB ranged · LT shield ·
+//   LB ultimate · d-pad down taunt — the mech layout: the right index and
+//     middle fingers carry the gun and the specials, the two things a mech
+//     does constantly, and the one super keeps the left shoulder.
+//   Dash has no button: double-tap a direction, or shove the stick.
+//   Grab lives on B (behind ?throw=true — src/flags.js and src/grab.js),
+//     the face button freed when special moved to RT.
+//   D-pad steers this player's summons and aims their creature shots; a fresh
+//     press of d-pad DOWN is also the taunt.
 //
 // The RIGHT STICK is the tilt stick: flick it and the fighter throws the tilt
 // in that direction on the spot — the attack a light press only gives you at a
@@ -290,6 +286,8 @@ function padSnapshot(pad) {
     heavyP: padButtonPressed(pad, PAD_BUTTONS.heavy),
     heavyHeld: padButton(pad, PAD_BUTTONS.heavy),
     specialP: padButtonPressed(pad, PAD_BUTTONS.special),
+    rangedP: padButtonPressed(pad, PAD_BUTTONS.ranged),
+    tauntP: padButtonPressed(pad, PAD_BUTTONS.taunt),
     grabP: padButtonPressed(pad, PAD_BUTTONS.grab),
     dashP: padButtonPressed(pad, PAD_BUTTONS.dash),
     domainP: padButtonPressed(pad, PAD_BUTTONS.domain),
@@ -329,6 +327,8 @@ function keysSnapshot(map) {
     heavyP: anyPressed(map.heavy),
     heavyHeld: anyHeld(map.heavy),
     specialP: anyPressed(map.special),
+    rangedP: anyPressed(map.ranged || []),
+    tauntP: anyPressed(map.taunt || []),
     ultP: anyPressed(map.ult),
     shieldHeld: anyHeld(map.shield),
     dashP: anyPressed(map.dash || []),
@@ -349,6 +349,8 @@ export function blankInput() {
     left: false, right: false, up: false, down: false,
     jumpP: false, jumpHeld: false, lightP: false,
     heavyP: false, heavyHeld: false, specialP: false, ultP: false,
+    // The ranged weapon (RB) and the taunt (d-pad down) — see fighter.js.
+    rangedP: false, tauntP: false,
     shieldHeld: false, pauseP: false, dirX: 0, dashP: false,
     // How far the stick is pushed sideways, -1..1, kept ALONGSIDE `dirX`
     // rather than replacing it: everything that only asks "which way" still
@@ -436,6 +438,12 @@ export function padsMenuState() {
 // The two menu buttons, by index rather than by gameplay action: A and B.
 const MENU_CONFIRM = 0;
 const MENU_BACK = 1;
+// The bumpers page menus. By index for the same reason as A and B above: they
+// used to borrow the domain/ult gameplay bindings, and when RB became the
+// ranged weapon (and the `ult` pad binding emptied) the menus would have lost
+// their paging with it.
+const MENU_PAGE_PREV = 4;   // LB
+const MENU_PAGE_NEXT = 5;   // RB
 
 const blankMenuState = () => ({
   up: false, down: false, left: false, right: false,
@@ -471,8 +479,8 @@ export function padsMenuStates() {
       confirmP: padButtonPressed(pad, MENU_CONFIRM),
       backP: padButtonPressed(pad, MENU_BACK),
       altP: padButtonPressed(pad, PAD_BUTTONS.light),
-      pagePrevP: padButtonPressed(pad, PAD_BUTTONS.domain),
-      pageNextP: padButtonPressed(pad, PAD_BUTTONS.ult),
+      pagePrevP: padButtonPressed(pad, MENU_PAGE_PREV),
+      pageNextP: padButtonPressed(pad, MENU_PAGE_NEXT),
     };
   }
   return out;

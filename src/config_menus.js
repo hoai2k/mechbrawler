@@ -196,10 +196,11 @@ export const TEXT = {
     sectionTitle: "Signature techniques",
     // Button names come from the control map (config_controls.js), so a
     // rebinding rewrites the move list rather than leaving it lying.
+    ranged: `${padName("ranged")} · Ranged`,
     specialNeutral: `${padName("special")} · Special`,
     specialSide: `Side + ${padName("special")}`,
     specialDown: `Down + ${padName("special")}`,
-    ultimate: padName("ult"),
+    ultimate: padName("domain"),
     ultimateNote: "Costs a FULL Cursed Energy bar.",
     domainSectionTitle: "Ultimate",
     domainInput: padName("domain"),
@@ -244,9 +245,11 @@ export const TEXT = {
       + "SHOVE the stick from centre to dash — roll it out gently and you walk — or double-tap a "
       + `direction. Attacking out of a run throws that fighter's dash attack: ${padName("light")} `
       + `for the lunge, ${padName("heavy")} for the charge, both of them committal. `
-      + `${padName("domain")} and ${padName("ult")} both fire the Ultimate at full Energy. `
+      + `${padName("ranged")} fires the mech's RANGED weapon and ${padName("domain")} the Ultimate at full Energy. `
+      + "Ranged shots and specials spend INHERENT ENERGY — the slim cyan bar, always refilling; "
+      + "moving, dashing and shielding never do. "
       + "The RIGHT STICK throws tilt attacks — flick it for the tilt or aerial in that direction, or hold it "
-      + "while a smash charges to angle the swing. The D-pad steers any summon you have on the stage."
+      + `while a smash charges to angle the swing. The D-pad steers any summon you have on the stage; ${padName("taunt")} taunts.`
       + (THROW_ENABLED
         ? ` ${padName("grab")} GRABS: it beats shields, a direction throws them, Light pummels,`
           + " and a grabbed fighter mashes buttons to break free."
