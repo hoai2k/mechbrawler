@@ -28,6 +28,41 @@
 // workbench, never hard-coded per fighter in engine code. The workbench edits
 // these live through setToonDefaults / setRimColor.
 
+// ---------------------------------------------------------------- the style
+//
+// K6, owner decision: the mech GLBs ship with their own baked PBR materials
+// (real metal/rough textures painted for these bodies), and the DEFAULT is to
+// render them natively — MeshStandardMaterial as delivered, ACES filmic grade,
+// an MM-style light rig (scene.js) — because that is how Mech Mayhem draws
+// them and the paint jobs were authored against it. The toon+ink pass above
+// survives as an EXPERIMENT behind `?render=toon`: same ramp, same outline
+// shells, same NoToneMapping as it always had. `?render=` is otherwise free —
+// backend selection retired with the sprite/billboard paths (render_backend.js).
+
+/** "pbr" (default) or "toon" (`?render=toon`). Fixed for the page's life —
+ *  materials are converted at rig load — so both consumers (loader.js picks
+ *  the material pass, scene.js the tone mapping, lights and cache tag) read
+ *  one constant and cannot disagree mid-session. */
+export const RENDER_STYLE = (() => {
+  const p = new URLSearchParams(typeof location !== "undefined" ? location.search : "");
+  return (p.get("render") ?? "").trim().toLowerCase() === "toon" ? "toon" : "pbr";
+})();
+
+export const TOON_STYLE = RENDER_STYLE === "toon";
+
+/** The PBR path's whole material pass: keep the GLB's own materials, just
+ *  give their textures the same anisotropy help the toon conversion gave —
+ *  the 15° lens plus the 2× downsample mush painted panel detail at glancing
+ *  angles either way. No re-materialing, no outline shells. */
+export function applyNativeMaterials(root) {
+  root.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    for (const mat of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (mat.map) mat.map.anisotropy = Math.max(mat.map.anisotropy || 1, 4);
+    }
+  });
+}
+
 /** Per-character shading, and the switch that turns it off.
  *
  *  A DI3 shade sheet says what a fighter's own art shades LIKE — the painted

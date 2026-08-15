@@ -20,3 +20,29 @@ export const LIGHT_RIG = {
   hemi: { sky: 0xf4f6ff, ground: 0x3a4152, intensity: 1.0 },
   key: { color: 0xffffff, intensity: 2.6, position: [1.5, 2.5, 2.0] },
 };
+
+// THE PBR RIG (K6) — Mech Mayhem's balance, read straight off robotworld
+// src/core/engine.js: warm sun 2.4, cool-sky hemi 0.7, and a REAL rim light
+// (a directional from behind-left) rather than the toon shader's fresnel
+// term, because a MeshStandardMaterial has no rim uniform to push. The rim's
+// neutral colour/intensity here is MM's default; on a tinted stage scene.js
+// re-colours it from the stage tint and runs it HOT (MM's neon arenas run
+// their rims 1.25–1.4) — that is the per-arena seam stageLightTint feeds.
+// The banding argument above does not apply: PBR wants the hemisphere's
+// unbanded fill, that is what makes it read as ambient bounce.
+// POSITIONS ARE CAMERA-AWARE, unlike the toon rig's. The offscreen camera
+// sits at yaw −78° — mostly −X, barely +Z (scene.js CAMERA_YAW_DEG) — and the
+// toon key at +X lights the FAR flank, which the ramp+rim shrugged off but
+// PBR shows as a mech in its own shadow. The PBR key comes over the camera's
+// shoulder, the rim from behind the far shoulder where a back light belongs.
+export const PBR_LIGHT_RIG = {
+  hemi: { sky: 0x8fb4d8, ground: 0x2a2620, intensity: 0.8 },
+  key: { color: 0xfff2dd, intensity: 2.4, position: [-2.2, 2.6, 1.4] },
+  rim: { color: 0x5f8fff, intensity: 0.85, position: [2.2, 2.2, -2.2],
+         tintedIntensity: 1.3 },
+  // Environment reflections for the metals (scene.js builds the PMREM from a
+  // synthetic room; MM runs RoomEnvironment at 0.55 — a touch more here, the
+  // roster's dark paint jobs need the fill and there is no bloom pass).
+  envIntensity: 0.85,
+  exposure: 1.05,
+};

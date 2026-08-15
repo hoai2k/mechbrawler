@@ -1,5 +1,6 @@
 // The renderer — rigged 3D models, animated LIVE at full frame rate, rendered
-// toon-ramped and ink-outlined, and composited into the game world.
+// with their native PBR materials under an ACES grade (toon-ramped and
+// ink-outlined behind `?render=toon`), and composited into the game world.
 //
 // This is the ONLY way a character is drawn. It used to be one of three, chosen
 // with `?render=`, and every backend fell through to sprite sheets for any

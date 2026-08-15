@@ -11,17 +11,24 @@
 //      CPU-vs-CPU match. Asserts: the backend engaged, rigs registered,
 //      poses rendered through the 3D pipeline, the sampling economy holds
 //      (renders per second stays well under full rate — the pose cache
-//      doing its job), toon-shaded pixels are on screen where a fighter
+//      doing its job), 3D-rendered pixels are on screen where a fighter
 //      stands, and no page errors.
 //
 //   2. DETERMINISM.  Same pose token -> byte-identical pixels across a
 //      cache clear. The afterimage trail replays tokens seconds later, so
 //      a nondeterministic render shows as flickering ghosts.
 //
-//   3. MECH CLIPS.  With no mannequin flag, a delivered mech registers from
-//      the render3d manifest, its states resolve to its OWN exported GLB
-//      animations (the M2 clip mapping), and it draws through drawCharFrame
-//      as a model.
+//   3. MECH CLIPS + NATIVE PBR (K6).  With no mannequin flag, a delivered
+//      mech registers from the render3d manifest, its states resolve to its
+//      OWN exported GLB animations (the M2 clip mapping), it draws through
+//      drawCharFrame as a model — and it keeps its NATIVE baked PBR
+//      materials under the ACES grade (the default since K6: no toon
+//      re-materialing, no outline shells).
+//
+//   3b. TOON FLAG.  `?render=toon` keeps the old anime pass: toon-converted
+//      materials, ink outline shells, NoToneMapping — and the same clip
+//      resolution, with the style in the light half of the cache key so the
+//      two styles can never serve each other's pixels.
 //
 //   4. K3 PRESENTATION.  The facing rules (pose.PRESENT): idle pins to a ¾
 //      toward the lens, travel and an attack's hit phase to pure profile,
@@ -118,9 +125,10 @@ async function bootAndFight(page, url) {
     const dials = window.__render3d.dials;
     const elapsed = (performance.now() - before.t) / 1000;
     // A BODY, drawn where a fighter stands: sample where the camera actually
-    // puts the fighter and look for the INK OUTLINE this backend draws every
-    // body with — hard local contrast, measured against a same-sized patch
-    // of empty sky so a busy background cannot pass for a fighter.
+    // puts the fighter and look for hard local contrast (a lit body against
+    // the stage — the PBR default has no ink shells), measured against a
+    // same-sized patch of empty sky so a busy background cannot pass for a
+    // fighter.
     const { WORLD } = await import("/src/constants.js");
     const c = document.getElementById("gameCanvas");
     const ctx = c.getContext("2d");
@@ -173,7 +181,7 @@ async function bootAndFight(page, url) {
     `${r.windowRenders} renders in ${r.elapsed.toFixed(1)}s vs budget ${Math.round(budget)}`);
   check(r.hits > r.misses, "the pose cache carries most frames", `${r.hits} hits / ${r.misses} misses`);
   check(r.sampled && r.pixels > 200 && r.pixels > r.sky * 3,
-    "an inked 3D body is drawn where a fighter stands",
+    "a rendered 3D body is drawn where a fighter stands",
     `${r.pixels} edge px on the fighter vs ${r.sky} on an empty patch of stage`);
   check(errors.length === 0, "no page errors in a 3d match", errors.slice(0, 2).join(" | "));
   await page.close();
@@ -224,7 +232,21 @@ async function bootAndFight(page, url) {
   const r = await page.evaluate(async (ensureSrc) => {
     const backend = await import("/render3d/src/backend.js");
     const loader = await import("/render3d/src/loader.js");
+    const scn = await import("/render3d/src/scene.js");
     await eval(ensureSrc)("titanus");
+    // The K6 material census: under the PBR default the rig keeps its GLB's
+    // own MeshStandardMaterials — nothing toonified, no outline shells.
+    const rig = loader.getRig("titanus");
+    let std = 0, toonified = 0, outlines = 0;
+    rig.root.traverse((o) => {
+      if (o.userData.isOutline) { outlines++; return; }
+      if (!o.isMesh) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        if (m?.userData?.toonified) toonified++;
+        else if (m?.isMeshStandardMaterial) std++;
+      }
+    });
     const own = loader.resolveClip("titanus", "light");
     const idle = loader.resolveClip("titanus", "idle");
     const charge = loader.resolveClip("titanus", "charge");
@@ -246,10 +268,20 @@ async function bootAndFight(page, url) {
       lightSrc: own?.source, idleSrc: idle?.source, chargeSrc: charge?.source,
       jumpSrc: jump?.source, crouchSrc: crouch?.source, dodgeSrc: dodge?.source,
       token, drew, px, rendered,
+      std, toonified, outlines,
+      toneMapping: window.__render3d.renderer.toneMapping,
+      lightKey: scn.lightKey(),
     };
   }, ENSURE_RIG);
 
   check(r.registered, "a delivered mech registers from the render3d manifest");
+  // K6: native PBR is the default — ACESFilmicToneMapping is 4 in three.js.
+  check(r.toneMapping === 4, "the default render grades with ACES tone mapping",
+    `toneMapping ${r.toneMapping}`);
+  check(r.std > 0 && r.toonified === 0 && r.outlines === 0,
+    "the mech keeps its native PBR materials — no toon conversion, no ink shells",
+    `${r.std} standard / ${r.toonified} toonified / ${r.outlines} outline meshes`);
+  check(/@pbr$/.test(r.lightKey), "the cache's light key carries the pbr style", r.lightKey);
   check(r.token.startsWith("r3d:"), "rigged characters hand out render3d pose tokens", r.token);
   check(/^glb:/.test(r.lightSrc || ""), "an attack resolves to the mech's own GLB animation", r.lightSrc);
   // K8: idle is MM's real ready stance, sampled as the battleIdle clip
@@ -271,6 +303,54 @@ async function bootAndFight(page, url) {
   check(r.drew === true && r.px > 100, "the delivered rig draws through drawCharFrame", `${r.px} px`);
   check(r.rendered, "and draws as a MODEL, not a cached or placeholder path");
   check(errors.length === 0, "no page errors on the mech clip path", errors.slice(0, 2).join(" | "));
+  await page.close();
+}
+
+// -------------------------------------------- 3b. the toon experiment flag
+//
+// `?render=toon` preserves the pre-K6 anime pass exactly: every material
+// toon-converted, ink outline shells grown, NoToneMapping for the two-band
+// ramp — same clip resolution, style-tagged cache keys.
+
+{
+  const page = await browser.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await bootMenu(page, `${BASE}/index.html?render=toon&camera=flat`);
+
+  const r = await page.evaluate(async (ensureSrc) => {
+    const loader = await import("/render3d/src/loader.js");
+    const scn = await import("/render3d/src/scene.js");
+    const backend = await import("/render3d/src/backend.js");
+    await eval(ensureSrc)("titanus");
+    const rig = loader.getRig("titanus");
+    let toonified = 0, outlines = 0;
+    rig.root.traverse((o) => {
+      if (o.userData.isOutline) { outlines++; return; }
+      if (o.isMesh && o.material?.userData?.toonified) toonified++;
+    });
+    const c = document.createElement("canvas");
+    c.width = 300; c.height = 300;
+    const drew = backend.drawCharFrame(c.getContext("2d"), "titanus",
+      backend.currentFrame("titanus", "idle", 0.5), 150, 280, { facing: 1 });
+    return {
+      toonified, outlines,
+      toneMapping: window.__render3d.renderer.toneMapping,
+      lightKey: scn.lightKey(),
+      idleSrc: loader.resolveClip("titanus", "idle")?.source,
+      drew,
+    };
+  }, ENSURE_RIG);
+
+  check(r.toneMapping === 0, "?render=toon keeps NoToneMapping for the ramp",
+    `toneMapping ${r.toneMapping}`);
+  check(r.toonified > 0 && r.outlines > 0,
+    "?render=toon keeps the toon materials and ink shells",
+    `${r.toonified} toonified / ${r.outlines} outline meshes`);
+  check(/@toon$/.test(r.lightKey), "the cache's light key carries the toon style", r.lightKey);
+  check(r.idleSrc === "glb:battleIdle", "clip resolution is style-independent", r.idleSrc);
+  check(r.drew === true, "the toon path still draws through drawCharFrame");
+  check(errors.length === 0, "no page errors on the toon flag", errors.slice(0, 2).join(" | "));
   await page.close();
 }
 
