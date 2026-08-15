@@ -204,15 +204,17 @@ function padButtonPressed(pad, spec) {
 // Buttons and axes come from PAD_BUTTONS / PAD_AXES in config_controls.js.
 // The layout they describe, and why:
 //
-//   A jump · X light · Y heavy · RT special · RB ranged · LT shield ·
-//   LB ultimate · d-pad down taunt — the mech layout: the right index and
-//     middle fingers carry the gun and the specials, the two things a mech
-//     does constantly, and the one super keeps the left shoulder.
+//   A jump · X light · Y heavy · RT or B special · RB ranged · LT shield ·
+//   LB ultimate · d-pad up grab · d-pad down taunt — the mech layout: the
+//     right index and middle fingers carry the gun and the specials, the two
+//     things a mech does constantly, and the one super keeps the left
+//     shoulder. B doubles RT (K5): the thumb fires the same special the
+//     trigger does.
 //   Dash has no button: double-tap a direction, or shove the stick.
-//   Grab lives on B (behind ?throw=true — src/flags.js and src/grab.js),
-//     the face button freed when special moved to RT.
+//   Grab lives on d-pad UP (behind ?throw=true — src/flags.js and
+//     src/grab.js), beside the taunt on d-pad down.
 //   D-pad steers this player's summons and aims their creature shots; a fresh
-//     press of d-pad DOWN is also the taunt.
+//     press of d-pad DOWN is also the taunt, and of d-pad UP the grab.
 //
 // The RIGHT STICK is the tilt stick: flick it and the fighter throws the tilt
 // in that direction on the spot — the attack a light press only gives you at a

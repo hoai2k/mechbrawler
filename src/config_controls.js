@@ -63,21 +63,23 @@ export const KEY_BINDS = {
  *  home) or NONE, which is a real state: dash has no button and is double-tap
  *  only, the way it was before dash was ever given one. */
 export const PAD_BUTTONS = {
-  // The owner's mech layout: A jump · X light · Y heavy · RT special ·
-  // RB ranged · LT shield · LB ultimate · d-pad down taunt. The two right
-  // fingers carry the two things a mech does constantly — shoot (RB) and cast
-  // (RT) — and the supers keep the left shoulder.
+  // The owner's mech layout: A jump · X light · Y heavy · RT or B special ·
+  // RB ranged · LT shield · LB ultimate · d-pad up grab · d-pad down taunt.
+  // The two right fingers carry the two things a mech does constantly — shoot
+  // (RB) and cast (RT) — and the supers keep the left shoulder.
   jump: [0],   // A
-  // Grab moved to B when RT became special: the face button the thumb already
-  // rests beside, and B had just been freed.
-  grab: THROW_ENABLED ? 1 : [],   // B behind the flag; bound to nothing otherwise
+  // Grab on d-pad up (K5): B now doubles RT as special, so the grab moved to
+  // the free d-pad direction — up, beside the taunt on down.
+  grab: THROW_ENABLED ? 12 : [],   // d-pad ▲ behind the flag; bound to nothing otherwise
   dash: [],    // double-tap a direction, or shove the stick
   light: 2,    // X
   heavy: 3,    // Y
   domain: 4,   // LB — the Ultimate at full attack energy
   ranged: 5,   // RB — the mech's gun, spending inherent energy
   shield: 6,   // LT
-  special: 7,  // RT — neutral/side/down specials
+  // RT is the special's home; B doubles it (K5) — the thumb's face button
+  // fires exactly what the middle finger's trigger does.
+  special: [7, 1],  // RT or B — neutral/side/down specials
   // Keyboard-only second ultimate key (I / '); no pad button — LB is the pad's
   // ultimate and RB now belongs to the ranged weapon.
   ult: [],
@@ -91,7 +93,7 @@ export const PAD_BUTTONS = {
 const PAD_LABELS = {
   0: "A", 1: "B", 2: "X", 3: "Y",
   4: "LB", 5: "RB", 6: "LT", 7: "RT",
-  9: "Start", 13: "D-pad ▼",
+  9: "Start", 12: "D-pad ▲", 13: "D-pad ▼",
 };
 
 /** Every label an action is bound to: `padLabelsFor("jump")` → ["A", "RT"]. */
