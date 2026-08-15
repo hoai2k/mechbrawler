@@ -179,6 +179,20 @@ plays nothing like a platform fighter.
         mannequin BODY if the placeholder needs it), plus their imports.
         AFTER K5 + K6 land (same files).
 
+- [ ] K8. SAMPLE MM'S PROCEDURAL JUMP/CROUCH INTO CLIPS (owner confirmed
+        they exist — they are ANIMATOR LAYERS, not named clips: the
+        airborne rising-tuck/falling-spread + airReach + hover jet pose in
+        robotworld src/mechs/animator.js ~line 596, and the duck layer
+        ~line 792). Extend robotworld tools/export-mech.mjs (local clone at
+        /workspace/hoai2k/robotworld, dev server :5175) to sample four
+        synthetic states per mech through the real animator: jumpRise
+        (vy>0), jumpFall (vy<0), hover, crouch (duck at that mech's own
+        duckDepth). Re-export all 17, re-copy into mechs/ (PROVENANCE
+        regen commands updated), regenerate the render3d manifest mapping
+        jump<-jumpRise, fall<-jumpFall, crouch<-crouch, and the jet-burn
+        air-jump <-hover. Supersedes K5's freeze-frame stopgap for jump/
+        crouch (idle/charge freezes stay). AFTER K5 lands.
+
 ## Phase 5 — polish and cleanup
 
 - [ ] X1. Brighter grade: toon ramp lift, stage light rigs per arena palette,
