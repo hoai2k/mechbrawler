@@ -559,7 +559,8 @@ function buildStageGrid() {
     // The same plate the match will draw, so the card is a preview rather than
     // a different painting of the same place (src/stages.js, backgroundFile).
     const src = backgroundFile(stage, cameraMode !== "3d");
-    btn.innerHTML = `<img src="${src}" alt="${stage.name}" loading="lazy"><span>${stage.name}</span>`;
+    const blurb = stage.desc ? `<small>${stage.desc}</small>` : "";
+    btn.innerHTML = `<img src="${src}" alt="${stage.name}" loading="lazy"><span>${stage.name}${blurb}</span>`;
     btn.dataset.stage = stage.key;
     btn.addEventListener("click", () => { if (!rouletteRunning) callbacks.startMatch(stage.key); });
     els.stageGrid.appendChild(btn);

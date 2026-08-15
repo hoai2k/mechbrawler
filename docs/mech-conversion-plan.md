@@ -88,11 +88,16 @@ plays nothing like a platform fighter.
 
 ## Phase 4 — the arenas
 
-- [ ] A1. stages.js rebuilt: 12 arenas from D2, intake/arenas/*.png as
-        backdrops, platform layouts per design.
-- [ ] A2. stage_fx.js rebuilt: the D2 hazards (telegraphs, hit application,
-        camera cues); JJK gimmicks deleted.
-- [ ] A3. Arena select: painted cards, names, hazard blurbs.
+- [x] A1. stages.js rebuilt (12 arenas, arenas/*.jpg plates, per-palette
+        tints + `desc` blurbs; one plate serves both cameras — the flat/wide
+        split is gone).
+- [x] A2. stage_fx.js rebuilt (all 12 D2 hazards with telegraphs, warn
+        zones and camera cues; JJK gimmicks deleted; orbital low-grav rides
+        the existing `mods.gravityMul` seam; quarry's crystal-chime flavour
+        left as a TODO in the file).
+- [x] A3. Arena select: cards now show the arena plate + name + hazard
+        blurb (stages.js `desc`, wired in ui.js/styles.css). Painted-card art
+        swap can still follow if distinct card paintings are wanted.
 - [ ] A4. domains.js: replaced per D1's ult design; the JJK domain art
         pipeline deleted.
 

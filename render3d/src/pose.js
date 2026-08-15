@@ -46,6 +46,7 @@ export const DIALS = {
   // style. The dial survives for anyone who wants the old look back.
   onTwos: false,
   sampleHz: 13,               // used only when onTwos is turned back on
+  smoothHz: 30,               // the smooth path's own cache quantum
   onOnesStates: new Set(),    // states that step at full rate (see above)
   aim: true,                  // strikes pitch toward the target
   reach: true,                // ...and the striking limb solves onto it (ik.js)
@@ -101,8 +102,13 @@ const DEG = Math.PI / 180;
 export function sampleTime(animKey, animTime, beatOverride) {
   const t = clipTime(animKey, animTime);
   const name = clipNameFor(animKey);
-  if (!DIALS.onTwos || DIALS.onOnesStates.has(name)) return t;
-  const q = 1 / DIALS.sampleHz;
+  // Even "smooth" quantises — to 30 Hz, not the 13 Hz twos step. Unquantised
+  // time makes every offscreen render unique and the pose cache worthless,
+  // which is a 60-renders-a-second bill per fighter on the blit path. 30 Hz
+  // is indistinguishable from full rate at these clip speeds and halves it.
+  const q = (!DIALS.onTwos || DIALS.onOnesStates.has(name))
+    ? 1 / DIALS.smoothHz
+    : 1 / DIALS.sampleHz;
   let s = Math.floor(t / q) * q;
   const beat = beatOverride ?? STATES[name]?.beat;
   if (beat !== undefined && t >= beat && s < beat) s = beat;

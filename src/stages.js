@@ -1,118 +1,151 @@
-// 20 stages. Each is one "main" platform (solid ground, grabbable ledges, the
-// lowest surface) plus 2–6 drop-through platforms in a deliberate archetype —
-// arenas, skylines, galleries, towers, staircases, orbit fields (see
-// docs/stage-variety-plan.md, "Platform configurations"). Layout rules: tier
-// steps stay ≤140px (every fighter's single+air jump covers ~239px minimum),
-// and nothing sits above y≈235 so a full jump from the highest platform stays
-// on screen. tools/audit_stage_reach.mjs enforces both.
+// The 12 Mech Mayhem arenas (docs/arenas.md is the design source of truth).
+// Each stage is one "main" platform (solid ground, grabbable ledges, the
+// lowest surface) plus 2–5 drop-through platforms. Layout rules carried over
+// from the JJK engine: tier steps stay ≤145px comfortable / 175px hard (the
+// weakest jumper's single+air jump covers ~239px), and nothing sits above
+// y≈235 so a full jump from the highest platform stays on screen.
+// tools/audit_stage_reach.mjs enforces both.
 //
-// Proportions follow docs/level-design-review.md: platforms two fighters are
-// meant to contest are ≥ ~195px (about three body widths); shorter ones are
-// deliberate perches (Crosswalk's signs, Mist Pier's lantern post). Drop-
-// throughs are a 15px sliver so attacks read through them; mains stay 42 —
-// they are the ground and should read heavy. Main widths deliberately spread
-// from 560 (Bridge Duel, the small scary duel board) to 980 (Academy Hall,
-// the big crowd board).
+// Drop-throughs are a 15px sliver so attacks read through them; mains stay 42
+// — they are the ground and should read heavy. Backgrounds are the intake
+// paintings, one 2048×1152 plate per arena in assets/backgrounds/arenas/,
+// shared by the flat and 3D cameras alike (no wide/flat plate split any more).
 //
 // A stage's gameplay identity (hazards, platform motion — "Active Boards" in
 // Settings) lives in src/stage_fx.js, keyed by the stage key. The optional
 // `mods` field holds always-on-while-active field modifiers:
-//   gravityMul  — scales gravity for the whole match (Domain Core floats)
-//   frictionPow — exponent on ground friction; < 1 is slick (Sunken Crossing)
+//   gravityMul  — scales gravity for the whole match (Orbital Platform floats)
+//   frictionPow — exponent on ground friction; < 1 is slick (unused today)
+//
+// `tint` is the arena's colour wash — the flat renderer paints it over the
+// backdrop and the 3D rig reads it for the fighters' rim light, so it is
+// picked from each painting's palette. `desc` is the select screen's one-line
+// hazard blurb. `name` must match config_music.js BOARD_TRACKS exactly.
 
 export const STAGES = [
-  { key: "trainingBridge", name: "Training Bridge", bgFile: "training_bridge.jpg", tint: "rgba(87, 186, 129, 0.12)", platforms: [
-    { x: 248, y: 568, w: 784, h: 42, kind: "main" }, { x: 168, y: 424, w: 250, h: 15, kind: "side" }, { x: 862, y: 424, w: 250, h: 15, kind: "side" }, { x: 512, y: 302, w: 256, h: 15, kind: "top" }
-  ] },
-  { key: "quietHall", name: "Quiet Hall", bgFile: "quiet_hall.jpg", tint: "rgba(175, 128, 80, 0.12)", platforms: [
-    { x: 236, y: 572, w: 808, h: 42, kind: "main" }, { x: 250, y: 438, w: 270, h: 15, kind: "side" }, { x: 760, y: 452, w: 270, h: 15, kind: "side" }
-  ] },
-  { key: "floodedGate", name: "Flooded Gate", bgFile: "flooded_gate.jpg", tint: "rgba(107, 174, 214, 0.13)", platforms: [
-    { x: 220, y: 570, w: 840, h: 42, kind: "main" }, { x: 180, y: 446, w: 200, h: 15, kind: "side" }, { x: 900, y: 446, w: 200, h: 15, kind: "side" }, { x: 552, y: 336, w: 176, h: 15, kind: "top" }
-  ] },
-  { key: "shibuyaNight", name: "Shibuya Night", bgFile: "shibuya_night.jpg", tint: "rgba(88, 116, 220, 0.16)", platforms: [
-    { x: 250, y: 566, w: 780, h: 42, kind: "main" }, { x: 200, y: 452, w: 220, h: 15, kind: "side" }, { x: 860, y: 452, w: 220, h: 15, kind: "side" }, { x: 360, y: 342, w: 190, h: 15, kind: "side" }, { x: 730, y: 342, w: 190, h: 15, kind: "side" }, { x: 505, y: 240, w: 270, h: 15, kind: "top" }
-  ] },
-  { key: "curseMaw", name: "Curse Maw", bgFile: "curse_maw.jpg", tint: "rgba(60, 215, 218, 0.13)", platforms: [
-    { x: 258, y: 576, w: 764, h: 42, kind: "main" }, { x: 260, y: 442, w: 220, h: 15, kind: "side" }, { x: 800, y: 442, w: 220, h: 15, kind: "side" }
-  ] },
-  // Terraced like the garden's stone steps: each platform is one stair higher
-  // than the last, climbing left to right.
-  { key: "gardenSteps", name: "Garden Steps", bgFile: "garden_steps.jpg", tint: "rgba(111, 219, 147, 0.16)", platforms: [
-    { x: 212, y: 584, w: 856, h: 42, kind: "main" }, { x: 150, y: 474, w: 210, h: 15, kind: "side" }, { x: 470, y: 384, w: 210, h: 15, kind: "top" }, { x: 800, y: 294, w: 240, h: 15, kind: "side" }
-  ] },
-  { key: "lanternCorridor", name: "Lantern Corridor", bgFile: "lantern_corridor.jpg", tint: "rgba(255, 187, 93, 0.11)", platforms: [
-    { x: 252, y: 570, w: 776, h: 42, kind: "main" }, { x: 230, y: 428, w: 210, h: 15, kind: "side" }, { x: 535, y: 428, w: 210, h: 15, kind: "side" }, { x: 840, y: 428, w: 210, h: 15, kind: "side" }
-  ] },
-  { key: "sunkenCrossing", name: "Sunken Crossing", bgFile: "sunken_crossing.jpg", tint: "rgba(87, 196, 255, 0.12)", mods: { frictionPow: 0.35 }, platforms: [
-    { x: 160, y: 578, w: 960, h: 42, kind: "main" }, { x: 210, y: 452, w: 300, h: 15, kind: "side" }, { x: 770, y: 452, w: 300, h: 15, kind: "side" }
-  ] },
-  { key: "neonSplit", name: "Neon Split", bgFile: "neon_split.jpg", tint: "rgba(224, 82, 192, 0.12)", platforms: [
-    { x: 270, y: 568, w: 740, h: 42, kind: "main" }, { x: 220, y: 452, w: 230, h: 15, kind: "side" }, { x: 830, y: 452, w: 230, h: 15, kind: "side" }, { x: 270, y: 332, w: 200, h: 15, kind: "side" }, { x: 810, y: 332, w: 200, h: 15, kind: "side" }
-  ] },
-  { key: "boneSanctum", name: "Bone Sanctum", bgFile: "bone_sanctum.jpg", tint: "rgba(76, 221, 210, 0.1)", platforms: [
-    { x: 236, y: 574, w: 808, h: 42, kind: "main" }, { x: 190, y: 456, w: 190, h: 15, kind: "side" }, { x: 900, y: 456, w: 190, h: 15, kind: "side" }, { x: 400, y: 346, w: 180, h: 15, kind: "side" }, { x: 700, y: 346, w: 180, h: 15, kind: "side" }, { x: 315, y: 236, w: 200, h: 15, kind: "side" }, { x: 765, y: 236, w: 200, h: 15, kind: "side" }
-  ] },
-  { key: "bridgeDuel", name: "Bridge Duel", bgFile: "bridge_duel.jpg", tint: "rgba(49, 168, 134, 0.12)", platforms: [
-    { x: 360, y: 582, w: 560, h: 42, kind: "main" }, { x: 150, y: 448, w: 230, h: 15, kind: "side" }, { x: 900, y: 448, w: 230, h: 15, kind: "side" }
-  ] },
-  { key: "academyHall", name: "Academy Hall", bgFile: "academy_hall.jpg", tint: "rgba(140, 112, 80, 0.14)", platforms: [
-    { x: 150, y: 568, w: 980, h: 42, kind: "main" }, { x: 250, y: 446, w: 220, h: 15, kind: "side" }, { x: 810, y: 446, w: 220, h: 15, kind: "side" }, { x: 512, y: 320, w: 256, h: 15, kind: "top" }, { x: 560, y: 452, w: 160, h: 15, kind: "side" }
-  ] },
-  { key: "mistPier", name: "Mist Pier", bgFile: "mist_pier.jpg", tint: "rgba(178, 226, 255, 0.1)", platforms: [
-    { x: 252, y: 580, w: 776, h: 42, kind: "main" }, { x: 180, y: 462, w: 240, h: 15, kind: "side" }, { x: 840, y: 440, w: 240, h: 15, kind: "side" }, { x: 540, y: 352, w: 150, h: 15, kind: "top" }
-  ] },
-  { key: "crosswalkRush", name: "Crosswalk Rush", bgFile: "crosswalk_rush.jpg", tint: "rgba(76, 171, 255, 0.13)", platforms: [
-    { x: 230, y: 570, w: 820, h: 42, kind: "main" }, { x: 380, y: 430, w: 520, h: 15, kind: "side" }, { x: 180, y: 300, w: 150, h: 15, kind: "top" }, { x: 950, y: 300, w: 150, h: 15, kind: "top" }
-  ] },
-  { key: "cursedTeeth", name: "Cursed Teeth", bgFile: "cursed_teeth.jpg", tint: "rgba(42, 205, 204, 0.14)", platforms: [
-    { x: 274, y: 584, w: 732, h: 42, kind: "main" }, { x: 190, y: 452, w: 220, h: 15, kind: "side" }, { x: 870, y: 452, w: 220, h: 15, kind: "side" }, { x: 542, y: 330, w: 195, h: 15, kind: "top" }
-  ] },
-  { key: "riverGate", name: "River Gate", bgFile: "river_gate.jpg", tint: "rgba(91, 205, 176, 0.13)", platforms: [
-    { x: 230, y: 576, w: 820, h: 42, kind: "main" }, { x: 210, y: 448, w: 280, h: 15, kind: "side" }, { x: 800, y: 440, w: 200, h: 15, kind: "side" }, { x: 560, y: 310, w: 150, h: 15, kind: "top" }
-  ] },
-  { key: "schoolWing", name: "School Wing", bgFile: "school_wing.jpg", tint: "rgba(205, 148, 92, 0.1)", platforms: [
-    { x: 260, y: 570, w: 760, h: 42, kind: "main" }, { x: 200, y: 446, w: 200, h: 15, kind: "side" }, { x: 880, y: 446, w: 200, h: 15, kind: "side" }, { x: 340, y: 330, w: 130, h: 15, kind: "side" }, { x: 790, y: 330, w: 170, h: 15, kind: "side" }
-  ] },
-  { key: "emptyCity", name: "Empty City", bgFile: "empty_city.jpg", tint: "rgba(159, 189, 214, 0.15)", platforms: [
-    { x: 210, y: 574, w: 860, h: 42, kind: "main" }, { x: 170, y: 470, w: 210, h: 15, kind: "side" }, { x: 900, y: 446, w: 210, h: 15, kind: "side" }, { x: 360, y: 360, w: 190, h: 15, kind: "top" }, { x: 730, y: 326, w: 190, h: 15, kind: "top" }
-  ] },
-  { key: "billboardRoof", name: "Billboard Roof", bgFile: "billboard_roof.jpg", tint: "rgba(255, 83, 148, 0.1)", platforms: [
-    { x: 244, y: 580, w: 792, h: 42, kind: "main" }, { x: 210, y: 470, w: 150, h: 15, kind: "side" }, { x: 920, y: 470, w: 150, h: 15, kind: "side" }, { x: 470, y: 370, w: 340, h: 15, kind: "side" }, { x: 540, y: 262, w: 200, h: 15, kind: "top" }
-  ] },
-  { key: "domainCore", name: "Domain Core", bgFile: "domain_core.jpg", tint: "rgba(108, 255, 230, 0.13)", mods: { gravityMul: 0.88 }, platforms: [
-    { x: 196, y: 578, w: 888, h: 42, kind: "main" }, { x: 240, y: 458, w: 180, h: 15, kind: "side" }, { x: 860, y: 458, w: 180, h: 15, kind: "side" }, { x: 430, y: 338, w: 170, h: 15, kind: "side" }, { x: 680, y: 338, w: 170, h: 15, kind: "side" }
-  ] }
+  { key: "neon", name: "Neon District", bgFile: "arenas/neon.jpg",
+    tint: "rgba(255, 77, 216, 0.14)",
+    desc: "The maglev crosses the track platform every ~22s — high ground with a timetable.",
+    platforms: [
+      { x: 190, y: 570, w: 900, h: 42, kind: "main" },
+      { x: 250, y: 430, w: 780, h: 15, kind: "side" }, // the monorail track
+      { x: 545, y: 300, w: 190, h: 15, kind: "top" },  // the torii crossbeam
+    ] },
+  { key: "foundry", name: "Ironworks Foundry", bgFile: "arenas/foundry.jpg",
+    tint: "rgba(255, 158, 64, 0.14)",
+    desc: "The furnace pours onto the left floor every ~20s; only the grounded burn.",
+    platforms: [
+      { x: 220, y: 572, w: 840, h: 42, kind: "main" },
+      { x: 850, y: 445, w: 240, h: 15, kind: "side" }, // right-mid catwalk
+      { x: 560, y: 435, w: 170, h: 15, kind: "side" }, // the hanging hook platform (sways)
+      { x: 190, y: 320, w: 240, h: 15, kind: "side" }, // left-high catwalk
+    ] },
+  { key: "uptown", name: "Uptown Plaza", bgFile: "arenas/uptown.jpg",
+    tint: "rgba(146, 190, 255, 0.10)",
+    desc: "No hazard. The tournament flat in honest daylight.",
+    platforms: [
+      { x: 240, y: 570, w: 800, h: 42, kind: "main" },
+      { x: 250, y: 445, w: 230, h: 15, kind: "side" },
+      { x: 800, y: 445, w: 230, h: 15, kind: "side" },
+      { x: 525, y: 320, w: 230, h: 15, kind: "top" },
+    ] },
+  { key: "harbor", name: "Harbor Docks", bgFile: "arenas/harbor.jpg",
+    tint: "rgba(255, 138, 84, 0.12)",
+    desc: "The crane spreader traverses the top; every third pass it drops a container.",
+    platforms: [
+      { x: 200, y: 574, w: 880, h: 42, kind: "main" },
+      { x: 190, y: 460, w: 220, h: 15, kind: "side" }, // left container stack, low
+      { x: 240, y: 345, w: 190, h: 15, kind: "side" }, // left stack, high
+      { x: 870, y: 460, w: 220, h: 15, kind: "side" }, // right stack, low
+      { x: 850, y: 345, w: 190, h: 15, kind: "side" }, // right stack, high
+      { x: 540, y: 255, w: 200, h: 15, kind: "top" },  // the crane spreader (traverses)
+    ] },
+  { key: "skyterrace", name: "Sky Terrace", bgFile: "arenas/skyterrace.jpg",
+    tint: "rgba(120, 214, 255, 0.11)",
+    desc: "Every ~25s a gust crosses the terrace and re-prices every edge guard.",
+    platforms: [
+      { x: 320, y: 576, w: 640, h: 42, kind: "main" }, // the helipad — small and scrappy
+      { x: 280, y: 465, w: 210, h: 15, kind: "side" }, // HVAC bank left
+      { x: 790, y: 465, w: 210, h: 15, kind: "side" }, // HVAC bank right
+      { x: 330, y: 345, w: 160, h: 15, kind: "side" }, // deck perch left
+      { x: 790, y: 345, w: 160, h: 15, kind: "side" }, // deck perch right
+    ] },
+  { key: "scrapyard", name: "Scrapyard 7", bgFile: "arenas/scrapyard.jpg",
+    tint: "rgba(214, 160, 96, 0.13)",
+    desc: "The crane magnet stops over someone every ~18s and yanks them skyward.",
+    platforms: [
+      { x: 210, y: 578, w: 860, h: 42, kind: "main" },
+      { x: 330, y: 462, w: 190, h: 15, kind: "side" }, // the buried hand: index finger
+      { x: 550, y: 355, w: 180, h: 15, kind: "side" }, // middle finger
+      { x: 770, y: 470, w: 200, h: 15, kind: "side" }, // thumb
+    ] },
+  { key: "quarry", name: "Crystal Quarry", bgFile: "arenas/quarry.jpg",
+    tint: "rgba(180, 107, 255, 0.13)",
+    desc: "Mining charges detonate one-two-three every ~24s; read the sequence.",
+    platforms: [
+      { x: 230, y: 574, w: 820, h: 42, kind: "main" },
+      { x: 170, y: 460, w: 220, h: 15, kind: "side" }, // terrace bench, left low
+      { x: 150, y: 345, w: 200, h: 15, kind: "side" }, // terrace bench, left high
+      { x: 880, y: 450, w: 220, h: 15, kind: "side" }, // terrace bench, right
+      { x: 660, y: 370, w: 180, h: 15, kind: "side" }, // crystal outcrop
+    ] },
+  { key: "volcano", name: "Volcanic Forge", bgFile: "arenas/volcano.jpg",
+    tint: "rgba(255, 106, 61, 0.15)",
+    desc: "Flame jets erupt along the armed fissure every ~19s — the air is safe.",
+    platforms: [
+      { x: 250, y: 576, w: 780, h: 42, kind: "main" },
+      { x: 270, y: 448, w: 200, h: 15, kind: "side" }, // basalt column
+      { x: 750, y: 435, w: 230, h: 15, kind: "side" }, // the rock arch (pass-through beneath)
+    ] },
+  { key: "frozen", name: "Frozen Outpost", bgFile: "arenas/frozen.jpg",
+    tint: "rgba(84, 180, 255, 0.13)",
+    desc: "The centre third is sea ice; every ~26s it cracks, breaks, and refreezes.",
+    platforms: [
+      { x: 200, y: 574, w: 880, h: 42, kind: "main" },
+      { x: 210, y: 455, w: 260, h: 15, kind: "side" }, // pipeline run, left
+      { x: 810, y: 455, w: 260, h: 15, kind: "side" }, // pipeline run, right
+      { x: 540, y: 330, w: 200, h: 15, kind: "top" },  // the icebreaker's bow
+    ] },
+  { key: "ruins", name: "Desert Ruins", bgFile: "arenas/ruins.jpg",
+    tint: "rgba(255, 202, 110, 0.12)",
+    desc: "Heavy hits crack the colonnade's columns; break one and the lintel falls for the stock.",
+    platforms: [
+      { x: 220, y: 576, w: 840, h: 42, kind: "main" },
+      { x: 190, y: 445, w: 250, h: 15, kind: "side" }, // the colonnade lintel (collapsible)
+      { x: 560, y: 460, w: 220, h: 15, kind: "side" }, // the sphinx's back
+      { x: 610, y: 350, w: 150, h: 15, kind: "side" }, // the sphinx's head
+      { x: 870, y: 330, w: 200, h: 15, kind: "side" }, // the pylon gate top
+    ] },
+  { key: "jungle", name: "Jungle Temple", bgFile: "arenas/jungle.jpg",
+    tint: "rgba(98, 255, 154, 0.12)",
+    desc: "Every ~20s the lianas whip the right half — thrown INTO the fight, never off it.",
+    platforms: [
+      { x: 230, y: 576, w: 820, h: 42, kind: "main" },
+      { x: 500, y: 458, w: 280, h: 15, kind: "side" }, // pyramid tier one
+      { x: 555, y: 350, w: 170, h: 15, kind: "side" }, // pyramid tier two
+      { x: 200, y: 335, w: 190, h: 15, kind: "side" }, // the bough, high left
+    ] },
+  { key: "orbital", name: "Orbital Platform", bgFile: "arenas/orbital.jpg",
+    tint: "rgba(94, 200, 255, 0.13)",
+    mods: { gravityMul: 0.88 }, // Station VALKYRIE: gravity 12% lower for everyone
+    desc: "Low gravity, and station debris rakes the upper platforms every ~30s.",
+    platforms: [
+      { x: 240, y: 572, w: 800, h: 42, kind: "main" },
+      { x: 390, y: 430, w: 210, h: 15, kind: "side" }, // the robotic arm's forearm (drifts)
+      { x: 840, y: 452, w: 230, h: 15, kind: "side" }, // the shuttle's fuselage
+    ] },
 ];
 
 export function getStage(key) {
   return STAGES.find((s) => s.key === key) || STAGES[0];
 }
 
-// Every board ships TWO paintings of the same scene, because the two cameras
-// frame a backdrop differently and one plate cannot serve both:
-//
-//   assets/backgrounds/<bgFile>       the wide plate (3200×1800, round 18E)
-//   assets/backgrounds/flat/<bgFile>  the painting the game shipped before it
-//
-// The 3D camera over-fills its frustum on purpose (×1.5 height, ×1.35 width in
-// camera3d/stage_geo.js) so no dolly or yaw can swing past the backdrop's edge,
-// and the cost is that only ~49% of the plate's width is ever on screen. The
-// wide plates were repainted for exactly that crop. Flat mode has no frustum to
-// over-fill — it shows the whole plate — so on the wide plates it sees an outer
-// ring that was never composed as picture, and the boards read sparse and dim.
-// It draws the older paintings instead, which are the framing it was built for.
-//
-// Filenames match between the two directories, with one exception: the flat
-// Shibuya Night is still the `.webp` it shipped as (18E's replacement is the
-// file that became `.jpg`), so it names its own file below.
-const FLAT_BG_FILES = { shibuyaNight: "shibuya_night.webp" };
-
-/** The backdrop file for `stage` under the given camera. `flat` true asks for
- *  the flat camera's painting; anything else gets the wide 3D plate. */
-export function backgroundFile(stage, flat) {
-  if (!flat) return `assets/backgrounds/${stage.bgFile}`;
-  return `assets/backgrounds/flat/${FLAT_BG_FILES[stage.key] || stage.bgFile}`;
+/** The backdrop file for `stage`. Every arena has exactly ONE painting
+ *  (assets/backgrounds/arenas/<key>.jpg, 2048×1152) serving both cameras —
+ *  the `flat` flag is kept so callers didn't have to change, but it no longer
+ *  selects a different plate. */
+export function backgroundFile(stage, _flat) {
+  return `assets/backgrounds/${stage.bgFile}`;
 }
 
 // Where a match of `count` fighters lines up. Two, three and four are placed by
