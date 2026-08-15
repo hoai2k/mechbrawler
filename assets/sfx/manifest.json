@@ -1,0 +1,734 @@
+{
+ "hit": {
+  "file": "hit.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "hitHeavy": {
+  "file": "hitHeavy.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "block": {
+  "file": "block.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "whoosh": {
+  "file": "whoosh.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "whooshBig": {
+  "file": "whooshBig.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "slash": {
+  "file": "slash.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "slam": {
+  "file": "slam.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "land": {
+  "file": "land.mp3",
+  "category": "movement",
+  "sliced": true,
+  "loop": false
+ },
+ "jump": {
+  "file": "jump.mp3",
+  "category": "movement",
+  "sliced": true,
+  "loop": false
+ },
+ "dash": {
+  "file": "dash.mp3",
+  "category": "movement",
+  "sliced": true,
+  "loop": false
+ },
+ "bodyfall": {
+  "file": "bodyfall.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "servo": {
+  "file": "servo.mp3",
+  "category": "movement",
+  "sliced": true,
+  "loop": false
+ },
+ "footstep": {
+  "file": "footstep.mp3",
+  "category": "movement",
+  "sliced": true,
+  "loop": false
+ },
+ "footstepRun": {
+  "file": "footstepRun.mp3",
+  "category": "movement",
+  "sliced": true,
+  "loop": false
+ },
+ "gatling": {
+  "file": "gatling.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "missile": {
+  "file": "missile.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "mortar": {
+  "file": "mortar.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "mortarBig": {
+  "file": "mortarBig.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "railgun": {
+  "file": "railgun.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "plasma": {
+  "file": "plasma.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "dart": {
+  "file": "dart.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "wave": {
+  "file": "wave.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "zap": {
+  "file": "zap.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "thunder": {
+  "file": "thunder.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "flame": {
+  "file": "flame.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "beam": {
+  "file": "beam.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "freeze": {
+  "file": "freeze.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "freezeBig": {
+  "file": "freezeBig.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "shatter": {
+  "file": "shatter.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "shard": {
+  "file": "shard.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "cast": {
+  "file": "cast.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "charge": {
+  "file": "charge.mp3",
+  "category": "weapon",
+  "sliced": true,
+  "loop": false
+ },
+ "explosion": {
+  "file": "explosion.mp3",
+  "category": "destruction",
+  "sliced": true,
+  "loop": false
+ },
+ "explosionBig": {
+  "file": "explosionBig.mp3",
+  "category": "destruction",
+  "sliced": true,
+  "loop": false
+ },
+ "crumble": {
+  "file": "crumble.mp3",
+  "category": "destruction",
+  "sliced": true,
+  "loop": false
+ },
+ "crumbleBig": {
+  "file": "crumbleBig.mp3",
+  "category": "destruction",
+  "sliced": true,
+  "loop": false
+ },
+ "glassBreak": {
+  "file": "glassBreak.mp3",
+  "category": "destruction",
+  "sliced": true,
+  "loop": false
+ },
+ "metalWreck": {
+  "file": "metalWreck.mp3",
+  "category": "destruction",
+  "sliced": true,
+  "loop": false
+ },
+ "pause": {
+  "file": "pause.mp3",
+  "category": "ui",
+  "sliced": false,
+  "loop": false
+ },
+ "countBeep": {
+  "file": "countBeep.mp3",
+  "category": "ui",
+  "sliced": false,
+  "loop": false
+ },
+ "fightBell": {
+  "file": "fightBell.mp3",
+  "category": "ui",
+  "sliced": false,
+  "loop": false
+ },
+ "stingRound": {
+  "file": "stingRound.mp3",
+  "category": "ui",
+  "sliced": false,
+  "loop": false
+ },
+ "stingKO": {
+  "file": "stingKO.mp3",
+  "category": "ui",
+  "sliced": false,
+  "loop": false
+ },
+ "stingWin": {
+  "file": "stingWin.mp3",
+  "category": "ui",
+  "sliced": false,
+  "loop": false
+ },
+ "ultReady": {
+  "file": "ultReady.mp3",
+  "category": "ui",
+  "sliced": false,
+  "loop": false
+ },
+ "powerup": {
+  "file": "powerup.mp3",
+  "category": "ui",
+  "sliced": false,
+  "loop": false
+ },
+ "taunt": {
+  "file": "taunt.mp3",
+  "category": "ui",
+  "sliced": true,
+  "loop": false
+ },
+ "amb_neon": {
+  "file": "amb_neon.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_foundry": {
+  "file": "amb_foundry.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_uptown": {
+  "file": "amb_uptown.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_harbor": {
+  "file": "amb_harbor.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_skyterrace": {
+  "file": "amb_skyterrace.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_scrapyard": {
+  "file": "amb_scrapyard.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_quarry": {
+  "file": "amb_quarry.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_volcano": {
+  "file": "amb_volcano.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_frozen": {
+  "file": "amb_frozen.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_ruins": {
+  "file": "amb_ruins.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_jungle": {
+  "file": "amb_jungle.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "amb_orbital": {
+  "file": "amb_orbital.mp3",
+  "category": "ambience",
+  "sliced": false,
+  "loop": true
+ },
+ "step_water": {
+  "file": "step_water.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "step_lava": {
+  "file": "step_lava.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "step_ice": {
+  "file": "step_ice.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "step_mud": {
+  "file": "step_mud.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "step_oil": {
+  "file": "step_oil.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "step_sand": {
+  "file": "step_sand.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "step_grass": {
+  "file": "step_grass.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "step_ash": {
+  "file": "step_ash.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "step_crystal": {
+  "file": "step_crystal.mp3",
+  "category": "surface",
+  "sliced": true,
+  "loop": false
+ },
+ "burn_loop": {
+  "file": "burn_loop.mp3",
+  "category": "loop",
+  "sliced": false,
+  "loop": true
+ },
+ "shock_loop": {
+  "file": "shock_loop.mp3",
+  "category": "loop",
+  "sliced": false,
+  "loop": true
+ },
+ "booster_loop": {
+  "file": "booster_loop.mp3",
+  "category": "loop",
+  "sliced": false,
+  "loop": true
+ },
+ "howl": {
+  "file": "howl.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "cloak": {
+  "file": "cloak.mp3",
+  "category": "character",
+  "sliced": false,
+  "loop": false
+ },
+ "chestBeat": {
+  "file": "chestBeat.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "stackVent": {
+  "file": "stackVent.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "torchIgnite": {
+  "file": "torchIgnite.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "arcTaunt": {
+  "file": "arcTaunt.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "holoGlitch": {
+  "file": "holoGlitch.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "iceTaunt": {
+  "file": "iceTaunt.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "iceThaw": {
+  "file": "iceThaw.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "batSwarm": {
+  "file": "batSwarm.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "growLoop": {
+  "file": "growLoop.mp3",
+  "category": "character",
+  "sliced": false,
+  "loop": false
+ },
+ "sonicCroak": {
+  "file": "sonicCroak.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "clawSnap": {
+  "file": "clawSnap.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "gooSplat": {
+  "file": "gooSplat.mp3",
+  "category": "character",
+  "sliced": true,
+  "loop": false
+ },
+ "fenrir_taunt": {
+  "file": "fenrir_taunt.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "fenrir_cast": {
+  "file": "fenrir_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "fenrir_ult": {
+  "file": "fenrir_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "fenrir_hitHeavy": {
+  "file": "fenrir_hitHeavy.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "jerry_servo": {
+  "file": "jerry_servo.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "jerry_taunt": {
+  "file": "jerry_taunt.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "jerry_cast": {
+  "file": "jerry_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "jerry_ult": {
+  "file": "jerry_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "frogger_taunt": {
+  "file": "frogger_taunt.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "frogger_cast": {
+  "file": "frogger_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "frogger_ult": {
+  "file": "frogger_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "inferno_cast": {
+  "file": "inferno_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "inferno_ult": {
+  "file": "inferno_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "glacier_cast": {
+  "file": "glacier_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "glacier_ult": {
+  "file": "glacier_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "tempest_cast": {
+  "file": "tempest_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "tempest_ult": {
+  "file": "tempest_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "wraith_cast": {
+  "file": "wraith_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "wraith_hitHeavy": {
+  "file": "wraith_hitHeavy.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "cranky_cast": {
+  "file": "cranky_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "cranky_ult": {
+  "file": "cranky_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "konga_hitHeavy": {
+  "file": "konga_hitHeavy.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "konga_taunt": {
+  "file": "konga_taunt.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "konga_ult": {
+  "file": "konga_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "viper_cast": {
+  "file": "viper_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "viper_ult": {
+  "file": "viper_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "saurion_taunt": {
+  "file": "saurion_taunt.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "saurion_cast": {
+  "file": "saurion_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "saurion_ult": {
+  "file": "saurion_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "saurion_hitHeavy": {
+  "file": "saurion_hitHeavy.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "titanus_ult": {
+  "file": "titanus_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "vulcan_cast": {
+  "file": "vulcan_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "nullbot_ult": {
+  "file": "nullbot_ult.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "tritone_cast": {
+  "file": "tritone_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "tritone_taunt": {
+  "file": "tritone_taunt.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "rhino_cast": {
+  "file": "rhino_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ },
+ "aegis_cast": {
+  "file": "aegis_cast.mp3",
+  "category": "impact",
+  "sliced": true,
+  "loop": false
+ }
+}
