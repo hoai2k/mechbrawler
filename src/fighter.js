@@ -5,7 +5,7 @@ import { lightMove, heavyMove } from "./moves.js";
 import { spawnMelee, opponentOf, updateStatuses } from "./combat.js";
 import { performSpecial, updateSpecialState } from "./specials.js";
 import { performUltimate } from "./ultimates.js";
-import { performDomain, domainInput, canOpenDomain, activeDomain, domainSlotFor, domainSpecialSlot } from "./domains.js";
+import { domainInput, activeDomain } from "./domains.js";
 import { burst, dust, popup, banner, ring } from "./particles.js";
 import { playSfx, playGrunt, playKoCry, startShieldLoop, stopShieldLoop, noteFireBurning } from "./audio.js";
 import { rumbleEvent } from "./rumble.js";
@@ -27,18 +27,17 @@ import {
 } from "./constants.js";
 import { TRAIL_LEN, TRAIL_STEP, TURN_TIME, LAND_SQUASH_TIME, TAKEOFF_STRETCH_TIME } from "./config_tuning.js";
 import { mainPlatform, spawnXs } from "./stages.js";
-import { frameMeta } from "./assets.js";
 import { currentFrame } from "./render_backend.js";
 import { trailStrength } from "./motion.js";
 import { THROW_ENABLED } from "./flags.js";
 import { beginGrab, updateGrabReach, updateGrabHold, updateGrabbedFighter, clearGrabLinks } from "./grab.js";
 
-/** `dodge_roll` / `dodge_air` where the character has that art, else the old
- *  shared `dodge`. Round 6 delivered the new frames for only some of the
- *  roster; without this check the rest would draw NOTHING mid-dodge, because a
- *  missing frame makes `drawCharFrame` bail. */
+/** Dodge animation key. Every mech's rig covers every state (the 17
+ *  universal Mech Mayhem clips guarantee it), so there is nothing to gate on
+ *  any more — the sprite-era art check this replaces lived and died with
+ *  half-delivered sheets. */
 function dodgeAnim(f, key) {
-  return frameMeta(f.charKey, key) ? key : "dodge";
+  return key;
 }
 
 export function makeFighter(id, charKey, x, facing) {
@@ -1083,12 +1082,11 @@ export function updateFighter(f, dt, input) {
   // A Domain Expansion costs the entire bar, so silently eating the press
   // because the fighter was two frames into a jab is the worst possible
   // outcome. It buffers like everything else, ahead of the smaller actions.
-  const domainSlot = input.domainP ? domainSlotFor(f, input) : -1;
-  // Buffered whether it opens an Expansion or casts a Simple Domain (slot -1):
-  // both are the domain button, and eating either because the fighter was two
-  // frames into a jab is the outcome the buffer exists to prevent.
-  if (input.domainP && (domainSlot >= 0 || domainSpecialSlot(f))) {
-    f.bufferedAction = { kind: "domain", slot: domainSlot, t: ACTION_BUFFER };
+  // LB — the old Domain Expansion button — IS the Ultimate button now. Mechs
+  // have one full-bar super, played where a domain used to be, so both the
+  // dedicated ult input and LB land in the same place and buffer the same way.
+  if (input.domainP && f.meter >= ULT_METER_COST) {
+    f.bufferedAction = { kind: "ult", t: ACTION_BUFFER };
   } else if (input.tiltDir) {
     f.bufferedAction = { kind: "tilt", dir: input.tiltDir, t: ACTION_BUFFER };
   } else if (THROW_ENABLED && input.grabP) {
@@ -1207,30 +1205,17 @@ export function updateFighter(f, dt, input) {
 
     // Domain Expansion: LB, or U / ; on a keyboard. A fresh press wins;
     // otherwise a buffered one fires as soon as control returns.
-    const openSlot = domainSlot >= 0 ? domainSlot
-      : f.bufferedAction?.kind === "domain" ? f.bufferedAction.slot : -1;
-    // A fighter with no Domain Expansion may still have a domain — the Simple
-    // Domain the New Shadow Style teaches, which lives in their special list.
-    // The domain button casts it, at its own cooldown rather than a full bar,
-    // so "the domain button opens my domain" is true for everyone who has one.
-    const domainSpecial = (input.domainP || f.bufferedAction?.kind === "domain")
-      && openSlot < 0 ? domainSpecialSlot(f) : null;
     if (domainAte) {
       // consumed by the open domain
-    } else if (openSlot >= 0 && f.char.domains?.[openSlot]) {
+    } else if (f.bufferedAction?.kind === "ult" && f.meter >= ULT_METER_COST) {
       f.bufferedAction = null;
-      if (canOpenDomain(f, openSlot)) performDomain(f, openSlot);
-      else if (f.meter < DOMAIN_METER_COST) popup(f.x, f.y - 160, "NEEDS A FULL BAR", "#9aa4c0", 15);
-    } else if (domainSpecial) {
-      f.bufferedAction = null;
-      performSpecial(f, domainSpecial);
-    } else if (input.domainP) {
-      popup(f.x, f.y - 160, "NO DOMAIN", "#9aa4c0", 15);
+      performUltimate(f);
+    } else if (input.domainP && f.meter < ULT_METER_COST) {
+      popup(f.x, f.y - 160, "NEEDS FULL ENERGY", "#8fb4cc", 15);
     } else if (input.ultP && f.meter >= ULT_METER_COST) {
       performUltimate(f);
     } else if (input.ultP && f.meter < ULT_METER_COST) {
-      // Same wording as the domain refusal — they cost the same thing now.
-      popup(f.x, f.y - 160, "NEEDS A FULL BAR", "#9aa4c0", 15);
+      popup(f.x, f.y - 160, "NEEDS FULL ENERGY", "#8fb4cc", 15);
     } else {
       // A fresh press wins over a buffered one; the buffer only covers inputs
       // that arrived while the fighter was busy.
@@ -1476,9 +1461,11 @@ function updatePresentation(f, dt) {
   // HOLDS there. When the timer ends this branch stops matching and the
   // existing unwind below stands them back up — π/2 rounds to a target of 0 —
   // so the get-up animates for free.
-  if (f.prone > 0 && f.hitstun <= 0 && f.grounded && !frameMeta(f.spriteChar || f.charKey, "prone")) {
-    // Simulated only: a real delivered `prone` pose is already lying down and
-    // must not be tipped over on top of that.
+  if (f.prone > 0 && f.hitstun <= 0 && f.grounded && false) {
+    // Retired branch: every mech rig delivers a real knockdown clip, which is
+    // already lying down and must not be tipped over on top of that. The
+    // simulated sweep-to-flat only ever existed for sprite sets with no prone
+    // art; kept (dead) one release in case a rig ships without one.
     f.spin = 0;
     const flat = -f.facing * Math.PI / 2;
     f.spinAngle += (flat - f.spinAngle) * (1 - Math.pow(0.0005, dt));

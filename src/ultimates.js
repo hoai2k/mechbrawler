@@ -12,8 +12,6 @@ import { spawnMeleeScaled as spawnMelee, spawnProjectileScaled as spawnProjectil
 import { burst, dust, ring, popup, banner } from "./particles.js";
 import { applyInstall, spokenCast } from "./specials.js";
 import { spawnSummon } from "./summons.js";
-import { TRANSFORM_POSES, TRANSFORM_POSE_ALTERNATIVES } from "./config_transform.js";
-import { frameMeta } from "./assets.js";
 import { playSfx, playGrunt, moveCallFor, spokenLead } from "./audio.js";
 import { critFinisherFx, dismantleLatticeFx, steelInstallFx } from "./fx.js";
 import { CHAR_FX } from "./config_fx.js";
@@ -50,14 +48,13 @@ function beginUltAction(f, dur, opts = {}) {
   f.invuln = Math.max(f.invuln, Math.min(dur + 0.1, 1.2));
 }
 
-/** Does this actor own every pose anything animating it could ask for? A
- *  half-delivered set would pop holes mid-fight — a missing frame draws
- *  NOTHING — so both callers below use this to fall back to something whole
- *  rather than to a hole. */
+/** Does this actor own every pose anything animating it could ask for?
+ *  Always yes now: an actor is a mech rig, and every rig carries the full
+ *  universal clip set — the sprite-era "half-delivered sheet" failure this
+ *  guarded against cannot happen. Kept as the seam (both callers still ask)
+ *  so a future actor type with real gaps has somewhere to say so. */
 export function actorPosesReady(actorKey) {
-  const has = (pose) => !!frameMeta(actorKey, pose);
-  return TRANSFORM_POSES.every((pose) =>
-    has(pose) || (TRANSFORM_POSE_ALTERNATIVES[pose]?.every(has) ?? false));
+  return true;
 }
 
 // A transform only runs when it is switched on AND its actor's art is complete.
