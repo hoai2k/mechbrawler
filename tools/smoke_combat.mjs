@@ -55,8 +55,8 @@ await pressStart(page);
 
 // Through the menus the way a player would — the match entry is not exported,
 // and going round it would smoke-test something the game does not do.
-await page.waitForSelector('[data-character="gojo"]', { timeout: 60000 });
-await page.click('[data-character="gojo"]');
+await page.waitForSelector('[data-character="titanus"]', { timeout: 60000 });
+await page.click('[data-character="titanus"]');
 await page.waitForTimeout(400);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 5000 });
