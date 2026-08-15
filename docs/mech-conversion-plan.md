@@ -214,6 +214,21 @@ plays nothing like a platform fighter.
         air-jump <-hover. Supersedes K5's freeze-frame stopgap for jump/
         crouch (idle/charge freezes stay). AFTER K5 lands.
 
+- [ ] K9. WIRE THE DELIVERED ART (owner uploaded the full image-request
+        round to assets/intake/: 58 effect sprites + stock_chip, vs_flash,
+        wordmark_mech_brawler). Downscale/copy into assets/sprites/effects
+        (game path), wire: power-effect sprites onto the kit configs'
+        projectile/zone sprite refs (rocket_fist, arc_bolt, icicle_shard,
+        raptor_egg, tsunami_wall…), status FX (burn_flame, frost_rime,
+        shock_arc, venom_drip, glitch_shard, energy_flare, shield_dome/
+        burst, jet_flame, ko_burst), hazard sprites into stage_fx per
+        docs/arenas.md (ladle_pour, monorail_train, crane_hook+container,
+        magnet_crane+car_husk, blast_charge, ice_floe, vine_whip,
+        wind_streak, debris_sat, collapse_dust…), UI (stock chip, VS
+        flash; EVALUATE the painted wordmark vs the CSS neon title
+        side-by-side and keep whichever reads better, owner said the image
+        is optional).
+
 ## Phase 5 — polish and cleanup
 
 - [ ] X1. Brighter grade: toon ramp lift, stage light rigs per arena palette,
