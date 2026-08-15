@@ -12,11 +12,38 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # Let a deploy that is already RUNNING finish. `true` is the usual advice and
+  # it is wrong for a repo this busy: several sessions push to main within
+  # minutes of each other, and every push cancelled the deploy still running.
+  # On 2026-08-10 that starved the site for four commits in a row.
+  #
+  # But know what `false` actually buys, because the comment that used to sit
+  # here got it wrong and cost another afternoon. It does NOT queue every run.
+  # GitHub keeps at most ONE run in progress and ONE waiting; a third arrival
+  # cancels the one that was waiting. Last one wins, which is what the site
+  # wants — the newest commit is the one worth publishing.
+  #
+  # The failure mode that leaves for a busy repo: a run that never gets a
+  # runner. On 2026-08-11 one sat `queued` for 50 minutes, and because it held
+  # the in-progress slot, the two deploys behind it were cancelled and the
+  # site stayed four commits behind main. Nothing in this file can free a
+  # runner, so the recovery is manual and worth writing down:
+  #
+  #   gh run list --workflow=deploy-pages.yml   # find the run stuck in queued
+  #   gh run cancel <id>                        # the group drains immediately
+  #
+  # If the site is behind main, look there FIRST. It is not a browser cache
+  # (server.mjs sends no-store for source, and Pages sends its own headers) and
+  # it is not a bad merge — it is a deploy that never ran.
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # A deploy of a no-build static site takes about a minute. Anything past
+    # ten is hung, and a hung run holds the concurrency group — which is how
+    # the site goes stale without anything reporting a failure.
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -32,6 +59,31 @@ jobs:
       # root is published as-is. .nojekyll keeps Pages from filtering files.
       - name: Prepare artifact
         run: touch .nojekyll
+
+      # A stamp the published site can read back about itself.
+      #
+      # "My change isn't on the site" has two causes that look the same in a
+      # browser — the deploy has not run, or it ran and a cache is still serving
+      # the old file — and no way to tell them apart from the page. src/
+      # deploystamp.js reads this and puts the published commit in the header of
+      # every bench, so the SHA you pushed either matches or it does not.
+      #
+      # Written here rather than committed: it is per-deploy, and a tracked copy
+      # would conflict on every merge. It is in .gitignore for the same reason.
+      - name: Stamp the build
+        run: |
+          jq -n \
+            --arg sha "$GITHUB_SHA" \
+            --arg ref "$GITHUB_REF_NAME" \
+            --arg title "$(git log -1 --pretty=%s)" \
+            --arg committed "$(git log -1 --pretty=%cI)" \
+            --arg deployed "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg run "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --arg runNumber "$GITHUB_RUN_NUMBER" \
+            '{sha: $sha, short: $sha[0:7], ref: $ref, title: $title,
+              committed: $committed, deployed: $deployed,
+              run: $run, runNumber: ($runNumber | tonumber)}' > version.json
+          cat version.json
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

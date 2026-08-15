@@ -17,6 +17,7 @@
 
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 // src/assets.js loads the manifest over fetch, which does not do file URLs.
 // Serve it off disk instead — this is the only thing standing between the game
@@ -142,6 +143,39 @@ if (rStart < 0.3) {
     + `arms are free`);
 }
 
+// ------------------------------------------------------- 2b: dash attacks
+
+// The two attacks a run has (moves.js, variant "dash"). They are the same
+// forward geometry as the standing pair, so they inherit the grace margin
+// checked above — what needs watching is the TRADE, since a dash attack that
+// reached further AND recovered faster than the tilt it replaces would simply
+// retire the standing game.
+console.log("\n=== dash attacks vs the standing move they replace ===");
+console.log("char         lightTip  dashTip   lightEnd  dashEnd   heavyTip  dashHvyTip");
+for (const key of CHARACTER_KEYS) {
+  const char = CHARACTERS[key];
+  const side = lightMove(char, "side");
+  const dash = lightMove(char, "dash");
+  const heavy = heavyMove(char, "side");
+  const dashHeavy = heavyMove(char, "dash");
+  const tip = (m) => m.ox + m.w;
+  if (dash.recover <= side.recover) {
+    fail(`${key}: the dash attack recovers in ${n0(dash.recover * 1000)}ms against the side `
+      + `tilt's ${n0(side.recover * 1000)}ms — a run has to cost something`);
+  }
+  if (dashHeavy.recover <= heavy.recover) {
+    fail(`${key}: the heavy dash attack recovers faster than the side smash it skips the `
+      + `charge for`);
+  }
+  if (dash.dmg <= side.dmg) {
+    fail(`${key}: the dash attack hits for ${dash.dmg} against the side tilt's ${side.dmg} — `
+      + `it commits harder, so it has to pay better`);
+  }
+  console.log(key.padEnd(12), pad(n0(tip(side)), 9), pad(n0(tip(dash)), 8),
+    pad(n0(side.recover * 1000) + "ms", 9), pad(n0(dash.recover * 1000) + "ms", 8),
+    pad(n0(tip(heavy)), 9), pad(n0(tip(dashHeavy)), 11));
+}
+
 // ----------------------------------------------------------------------- 3
 
 console.log("\n=== bodies ===");
@@ -189,6 +223,48 @@ console.log(`  nobody can                : ${buckets.none.length} platforms  `
 console.log("\n  (a mix is fine and wanted — this is here so the mix stays a decision.\n"
   + "   'only the tall ones' is the interesting bucket: those gaps are where being\n"
   + "   drawn tall buys real stage control.)");
+
+// Hand-authored kit hitboxes. Special/ultimate `p` blocks write oy/w/h as
+// literals for the reference body and are height-scaled at spawn
+// (combat.js spawnMeleeScaled) — so the literals themselves must stay inside
+// a reference-body sanity band, or a typo'd offset floats a hit above every
+// head on the roster and nothing else would ever say so.
+console.log("\n=== hand-authored special hitboxes (reference-body literals) ===");
+let specialsChecked = 0;
+const checkBlock = (key, name, p) => {
+  if (!p || typeof p !== "object") return;
+  if (p.w == null && p.h == null) return; // not a melee rect block
+  specialsChecked++;
+  if (p.oy != null && (p.oy < -300 || p.oy > 60)) {
+    fail(`${key}.${name}: oy ${p.oy} is outside the reference band (-300..60) — `
+      + `authored offsets are per reference body and scale at spawn`);
+  }
+  if (p.h != null && (p.h <= 0 || p.h > 360)) {
+    fail(`${key}.${name}: h ${p.h} is outside the reference band (0..360)`);
+  }
+};
+for (const key of CHARACTER_KEYS) {
+  const char = CHARACTERS[key];
+  for (const [slot, cfg] of Object.entries(char.specials || {})) {
+    checkBlock(key, `specials.${slot}`, cfg?.p);
+  }
+  checkBlock(key, "ultimate", char.ultimate?.p);
+}
+console.log(`  ${specialsChecked} authored blocks checked against the reference band`);
+
+// Model-derived reach must not go stale: the rigs and pose libraries are in
+// flux, and a reach measured from a body that no longer exists is exactly the
+// hand-typed-number problem this audit was written to end. The derive tool's
+// --check recomputes the input fingerprint without a browser.
+console.log("\n=== model reach envelopes ===");
+try {
+  const toolPath = fileURLToPath(new URL("./derive_attack_envelopes.mjs", import.meta.url));
+  execFileSync(process.execPath, [toolPath, "--check"], { stdio: "pipe" });
+  console.log("  config_model_reach.js is current with the rigs and pose libraries");
+} catch (err) {
+  fail(`model reach config is stale or missing — `
+    + `${(err.stderr || err.stdout || "").toString().trim() || err.message}`);
+}
 
 console.log(`\nroster median art reach: ${n0(rosterReach())} px`
   + `   MELEE_GRACE.scale: ${MELEE_GRACE.scale}`);

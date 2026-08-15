@@ -3,8 +3,8 @@
 //
 //   - the main platform is the lowest surface
 //   - every stage has 2–6 platforms besides the main
-//   - every platform is reachable by the WEAKEST jumper (jump 710 @ g 2350:
-//     single hop rises 107 px, single + air jump ~198 px) via some chain of
+//   - every platform is reachable by the WEAKEST jumper (jump 780 @ g 2350:
+//     single hop rises 129 px, single + air jump ~239 px) via some chain of
 //     hops — max vertical rise per hop 175 px, with a horizontal-gap budget
 //     that shrinks as the rise grows
 //   - the highest platform sits at y ≥ 235, so a full jump from it cannot
@@ -14,7 +14,7 @@
 
 import { STAGES } from "../src/stages.js";
 
-const MAX_RISE = 175;        // hard ceiling per hop (weakest reach is ~198)
+const MAX_RISE = 175;        // hard ceiling per hop (weakest reach is ~239)
 const COMFY_RISE = 145;      // above this, flag as a warning
 const MIN_TOP_Y = 235;       // highest allowed platform
 const ORBIT_SLACK = 24;      // domainCore shards bob ±24 in y

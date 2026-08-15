@@ -20,6 +20,24 @@
 // never the same one twice in a row (specials.js) — so the technique is the
 // move and the creature is the draw.
 //
+// THE BOX IS THE DRAWING. A creature's `hitW`/`hitH` — what it can be hit on,
+// and what it hits with — used to be authored here, which meant they were
+// guesses: every one was written before the art existed, and once it arrived
+// they disagreed with it badly (a Divine Dog drawn 205 px long was hit on 90).
+// They are measured off the creature's own `idle_a` now (derivedBox in
+// summons.js), the same rule a fighter's hurtbox has followed since it started
+// coming off their art. Stating a pair here still works and still wins — it is
+// how you say "the drawing cannot be trusted for this".
+//
+// Seven creatures used to say exactly that, and it was not a judgement about
+// the design: their plates had arrived as CONTACT SHEETS of six figures
+// (tools/check_summon_plates.py), so the drawn rectangle was six creatures wide
+// and measuring it would have been nonsense. Round 20A redrew all forty-four
+// sheets as one figure each, so those seven pairs came out with it and every
+// creature in the pools is now hit on the shape it is drawn as. Nothing here
+// authors a box today — run that checker on any summon delivery before landing
+// it, because a sheet that gets in re-opens this by hand.
+//
 // A pool entry is a partial summon config: it is spread over the special's
 // base `p`, so it only says what makes that creature different. Balance is
 // kept by giving each entry a comparable job (a chaser trades reach for
@@ -102,7 +120,7 @@ export const SHIKIGAMI_POOL = [
   {
     name: "Divine Dogs", label: "Divine Dogs",
     behavior: "chaser", duration: 6, speed: 470, maxActive: 2,
-    faceRight: true, h: 118, hitW: 90, hitH: 96, standOff: 24,
+    faceRight: true, h: 118, standOff: 24,
     attack: { dmg: 6.5, base: 240, growth: 4.6, angle: 0.34, cd: 0.9, effect: "snare", sfx: "slash" },
     units: [
       { sprites: ["summon:divineDogWhite"], backOff: 40 },
@@ -113,7 +131,7 @@ export const SHIKIGAMI_POOL = [
     // Reach and speed, no snare and not much staying power: it is a knife.
     name: "Great Serpent", label: "Great Serpent",
     behavior: "chaser", duration: 6, speed: 540, maxActive: 1, hp: 38,
-    faceRight: true, h: 104, hitW: 158, hitH: 78, standOff: 34, bobAmp: 5,
+    faceRight: true, h: 104, standOff: 34, bobAmp: 5,
     sprites: ["summon:greatSerpent", "effect:curse_dragon"],
     attack: { dmg: 12, base: 320, growth: 5.6, angle: 0.3, cd: 1.1, sfx: "slash" },
   },
@@ -122,7 +140,7 @@ export const SHIKIGAMI_POOL = [
     // and lashes, which is cover rather than pressure.
     name: "Toad", label: "Toad",
     behavior: "support", duration: 7, maxActive: 1, hp: 40,
-    h: 92, hitW: 78, hitH: 70, hover: { back: 64, up: 96 },
+    h: 92, hover: { back: 64, up: 96 },
     sprites: ["summon:toad", "effect:cursed_spirit_orb"],
     attack: {
       cd: 1.0,
@@ -134,7 +152,7 @@ export const SHIKIGAMI_POOL = [
     // there.
     name: "Max Elephant", label: "Max Elephant",
     behavior: "chaser", duration: 7, speed: 250, maxActive: 1, hp: 96,
-    h: 190, hitW: 156, hitH: 156, standOff: 46, knockTake: 0.45,
+    h: 190, standOff: 46, knockTake: 0.45,
     sprites: ["summon:maxElephant", "effect:triceratops"],
     attack: { dmg: 14, base: 440, growth: 6.4, angle: 0.44, cd: 1.4, sfx: "slashHeavy" },
   },
@@ -143,7 +161,7 @@ export const SHIKIGAMI_POOL = [
     // all of them in the way.
     name: "Rabbit Escape", label: "Rabbits",
     behavior: "bomber", duration: 5, speed: 560, maxActive: 3, hp: 12,
-    h: 62, hitW: 48, hitH: 54, knockTake: 1.7,
+    h: 62, knockTake: 1.7,
     sprites: ["summon:rabbitEscape", "effect:curse_a"],
     attack: { dmg: 5, base: 200, growth: 3.6, angle: 0.5, r: 64 },
     units: [
@@ -159,7 +177,7 @@ export const TRANSFIGURED_POOL = [
   {
     name: "Transfigured Human", label: "Transfigured Human",
     behavior: "bomber", duration: 4.5, speed: 330, maxActive: 2,
-    h: 104, hitW: 64, hitH: 88,
+    h: 104,
     sprites: ["summon:transfiguredHuman", "effect:soul_isomer"],
     attack: { dmg: 12, base: 400, growth: 6.8, angle: 0.6, r: 90, effect: "soulMark" },
   },
@@ -167,7 +185,7 @@ export const TRANSFIGURED_POOL = [
     // Reshaped for mass. It does not burst — it walks over and keeps hitting.
     name: "Bloated Hulk", label: "Bloated Hulk",
     behavior: "chaser", duration: 6, speed: 265, maxActive: 1, hp: 74,
-    h: 152, hitW: 96, hitH: 132, standOff: 32, knockTake: 0.5,
+    h: 152, standOff: 32, knockTake: 0.5,
     sprites: ["summon:transfiguredHulk", "effect:soul_isomer"],
     attack: { dmg: 11, base: 400, growth: 6.4, angle: 0.42, cd: 1.2, effect: "soulMark", sfx: "slashHeavy" },
   },
@@ -175,7 +193,7 @@ export const TRANSFIGURED_POOL = [
     // Reshaped for speed: two of them, low to the ground, cheap to lose.
     name: "Crawlers", label: "Crawler",
     behavior: "bomber", duration: 4.5, speed: 480, maxActive: 2, hp: 12,
-    h: 70, hitW: 62, hitH: 56, knockTake: 1.6,
+    h: 70, knockTake: 1.6,
     sprites: ["summon:transfiguredCrawler", "effect:curse_b"],
     attack: { dmg: 7, base: 280, growth: 5.0, angle: 0.5, r: 72, effect: "soulMark" },
     units: [{ backOff: 44 }, { backOff: 96, firstAttackDelay: 0.3 }],
@@ -185,7 +203,7 @@ export const TRANSFIGURED_POOL = [
     // it was made from.
     name: "Spitter", label: "Spitter",
     behavior: "support", duration: 6, maxActive: 1, hp: 32,
-    h: 108, hitW: 66, hitH: 92, hover: { back: 72, up: 148 },
+    h: 108, hover: { back: 72, up: 148 },
     sprites: ["summon:transfiguredSpitter", "effect:soul_isomer"],
     attack: {
       cd: 1.0,
@@ -200,7 +218,7 @@ export const CURSE_POOL = [
   {
     name: "Rainbow Dragon", label: "Rainbow Dragon",
     behavior: "chaser", duration: 5, speed: 380, maxActive: 1,
-    faceRight: true, h: 170, hitW: 130, hitH: 130, standOff: 40,
+    faceRight: true, h: 170, standOff: 40,
     sprites: ["summon:rainbowDragon", "effect:curse_dragon"],
     attack: { dmg: 11, base: 380, growth: 6.6, angle: 0.42, cd: 1.05, effect: "curseDrain", sfx: "slashHeavy" },
   },
@@ -208,7 +226,7 @@ export const CURSE_POOL = [
     // Plague at a distance: it never closes, it just keeps coughing on you.
     name: "Smallpox Deity", label: "Smallpox Deity",
     behavior: "support", duration: 6.5, maxActive: 1, hp: 36,
-    h: 128, hitW: 76, hitH: 112, hover: { back: 78, up: 162 },
+    h: 128, hover: { back: 78, up: 162 },
     sprites: ["summon:smallpoxDeity", "effect:curse_c"],
     attack: {
       cd: 1.0,
@@ -219,7 +237,7 @@ export const CURSE_POOL = [
     // The cheap curses he keeps by the handful. Two, fast, disposable.
     name: "Curse Hounds", label: "Curse Hound",
     behavior: "chaser", duration: 5.5, speed: 505, maxActive: 2, hp: 32,
-    h: 96, hitW: 84, hitH: 84, standOff: 22,
+    h: 96, standOff: 22,
     sprites: ["summon:curseHound", "effect:curse_a"],
     attack: { dmg: 6, base: 240, growth: 4.4, angle: 0.34, cd: 0.85, effect: "curseDrain", sfx: "slash" },
     units: [{ backOff: 46 }, { backOff: 96, firstAttackDelay: 0.8 }],
@@ -228,7 +246,7 @@ export const CURSE_POOL = [
     // One trip across the stage and one detonation, and it hurts.
     name: "Cursed Womb", label: "Cursed Womb",
     behavior: "bomber", duration: 5, speed: 300, maxActive: 1, hp: 26,
-    h: 120, hitW: 82, hitH: 100, knockTake: 0.8,
+    h: 120, knockTake: 0.8,
     sprites: ["summon:cursedWomb", "effect:curse_d"],
     attack: { dmg: 14, base: 430, growth: 7.0, angle: 0.58, r: 104, effect: "curseDrain" },
   },
@@ -251,7 +269,7 @@ export const INVENTORY_POOL = [
     // The one he lets off the leash: it goes and gets them.
     name: "Coil Curse", label: "Coil Curse",
     behavior: "chaser", duration: 5.5, speed: 480, maxActive: 1, hp: 42,
-    h: 112, hitW: 96, hitH: 100, standOff: 26,
+    h: 112, standOff: 26,
     sprites: ["summon:coilCurse", "effect:chain"],
     attack: { dmg: 8, base: 300, growth: 5.2, angle: 0.32, cd: 0.95, effect: "heavenly", sfx: "slash" },
   },
@@ -259,7 +277,7 @@ export const INVENTORY_POOL = [
     // A husk with a tool still in it. It carries the blade over and lets go.
     name: "Husk Curse", label: "Husk Curse",
     behavior: "bomber", duration: 4.5, speed: 380, maxActive: 1, hp: 20,
-    h: 100, hitW: 70, hitH: 88,
+    h: 100,
     sprites: ["summon:huskCurse", "effect:cursed_spirit_orb"],
     attack: { dmg: 13, base: 410, growth: 6.6, angle: 0.5, r: 92, effect: "weaponBreak" },
   },

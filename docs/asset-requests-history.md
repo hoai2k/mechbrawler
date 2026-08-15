@@ -25,11 +25,17 @@ why the numbering is not strictly chronological.
 | 12B/12C | The four-frame run cycle and the `prone` pose, roster-wide (120 sprites) | Delivered — all 24 fighters |
 | 12D | Three install auras | Never delivered; moved to round 13 as 13E |
 | 13 | Roster-wide sweep of the attack and crouch rows, plus the three install auras (44 sprites) | Delivered — the first round to land through the approval step |
+| 18E | Twenty stage backgrounds repainted at 3200×1800 for the 3D camera (20 images) | Delivered ahead of the rest of round 18 |
 | 15A (part), 15B, 15D (part) | Three of the four new fighters — Mechamaru, Yuki Tsukumo and Dagon — with all nine technique effects and three hero cards (120 assets) | Delivered — Kurourushi's set, the summons and Dagon's domain backdrop stay open |
 | 14 | Heavy strike frames that extend, a consistent idle stance, and five workbench catches (41 sprites) | Delivered in two batches — the first was approved pose by pose and the rejections answered by the second |
 | 15 | Four new fighters, nine technique effects, four summon minions, four hero cards and a domain backdrop (129 assets) | Delivered — Kurourushi's set closes it |
 | 16 | Six-pose animation sets for seventeen summoned creatures (102 sprites) | Delivered — every creature in the pools now animates |
-| 17 | Hanami redrawn to canon, Mahoraga's three poses, two round-13 catches, and Hanami's hero card (41 sprites, 1 card) | Delivered — **17D, the simplified card set, stays open** |
+| 17 | Hanami redrawn to canon, Mahoraga's three poses, two round-13 catches, Hanami's hero card and a simplified roster tile for all 27 fighters (41 sprites, 28 images) | Delivered |
+| 20B | Twenty backgrounds re-extended from the paintings 18E replaced (20 images) | Delivered — the composition taken back, the resolution kept |
+| 18 | The audit round: workbench catches from four placement passes, poses drawing somebody else's art, two Uro alternates, and fourteen near-field cards for the 3D camera (28 sprites, 14 images) | Delivered complete in one batch; the Uro alternates were discarded on review |
+| 20A | The forty-four summon plates that shipped as contact sheets of six creatures, redrawn as one figure each (44 sprites) | Delivered — every plate in the tree passes `check_summon_plates.py`, and the seven authored hit boxes came out with them |
+| 20C | The grab set — `grab_reach`, `grab_hold`, `grabbed` — for the `?throw=true` mechanic (81 sprites asked, 78 + Mahoraga delivered) | Delivered for 26 fighters; Yuji's three are 20E |
+| 20D | The dash attack pose, one drawing serving both running attacks (27 sprites asked, 26 + Mahoraga delivered) | Delivered for 26 fighters; Yuji's is 20E |
 
 ---
 
@@ -39,7 +45,7 @@ Seventeen 1254×1568 character sheets on a 4×5 grid (cell ≈ 313.5×313.6 px;
 rows: idle / run / air / techniques / crouch). `tools/extract_sprites.py`
 rebuilt these into per-frame trimmed PNGs with connected-component labelling,
 majority-cell assignment and per-frame anchors. The full rationale is in
-[asset-pipeline.md](asset-pipeline.md) and is still the authority on how the
+[asset-pipeline.md](../sprites/docs/asset-pipeline.md) and is still the authority on how the
 sheet era works.
 
 ## Round 2 — character-wide design splits
@@ -102,8 +108,10 @@ This round also introduced:
 
 - the **intake pipeline** (`tools/intake.py` → `intake_sheets.py` →
   `intake_import.py`), so a delivery is checked before it reaches the game;
-- **alternate sprite sets** (`manifest.alternates`), first used for Hanami's
-  redesign — 8 frames, opted into via Settings → Sprites;
+- **alternate sprite sets** (`manifest.alternates`), first and only used for
+  Hanami's redesign — 8 frames, opted into via Settings → Sprites. Removed
+  after round 17A redrew him to canon; the frames are archived at
+  [`assets/reference/hanami_alt/`](../assets/reference/hanami_alt/);
 - `dodge_roll` / `dodge_air` art, initially for 8 of 17 characters and later
   completed for all 17.
 
@@ -125,8 +133,8 @@ semantic pose key via `SEMANTIC_ANIMS` in `src/characters.js`.
 
 - **Art arrives raw.** Every delivery came as untrimmed RGB plates on a grey or
   magenta field with no alpha channel. That is expected; it just has to go
-  through `tools/intake.py` before reaching `assets/sprites/`. Uploading raw
-  plates directly into `assets/sprites/<char>/` makes the game try to draw a
+  through `tools/intake.py` before reaching `sprites/assets/`. Uploading raw
+  plates directly into `sprites/assets/<char>/` makes the game try to draw a
   1024×1536 background as a sprite. This is why deliveries now go to
   `assets/intake/` — see that directory's README.
 - **A brand-new character has no frame to inherit placement from.**
@@ -147,7 +155,7 @@ semantic pose key via `SEMANTIC_ANIMS` in `src/characters.js`.
 - **Effects need keying too**, with the same routine as character art, then
   `tools/prep_effects.py` to trim and downscale.
 - **Watch the spelling of directory names.** Gakuganji's art arrived in
-  `assets/sprites/gakuganjii/` (double "i"); the character key, his card and
+  `sprites/assets/gakuganjii/` (double "i"); the character key, his card and
   the wiki are all `gakuganji`. Renamed on import.
 
 ## Round 8 — summon minions
@@ -255,6 +263,132 @@ cases and is otherwise round 11B.
 **Summoning system worklog.** The persistent-minion system (`src/summons.js`)
 for Megumi, Geto, Mahito and Toji. Feature complete and merged; its art was
 round 8.
+
+---
+
+# Round 21 — the walk cycle
+
+**Delivered complete: 54 sprites, `walk_a` and `walk_b` for all twenty-seven.**
+Keyed and measured through `tools/intake.py` (one frame arrived facing left and
+was mirrored), imported, anchored, auto-tuned and given a seeded pose read
+apiece. They are BRAND-NEW pose keys, so nothing was replaced and nothing waits
+in the approval queue — every fighter draws its own walk the moment it loads,
+where before they all replayed the run cycle at a walking cadence.
+
+**Sprite round only, by design.** The 3D and 2.5D renderers play a hand-authored
+four-phase cycle (`render3d/src/walk_cycle.js`) and ignore `walk_a`/`walk_b`
+entirely; the reasoning is kept in full below. Nothing in 3D changed.
+
+**One fighter's pair is worth a second look.** Maki's naginata is carried
+blade-down-and-forward in `walk_a` and blade-up-and-back in `walk_b`, so the
+weapon turns over once per stride. Every other armed fighter carries theirs the
+same way in both frames — Gakuganji's guitar is the check — so this is hers
+alone rather than a fault in the brief. It landed with the rest because the
+alternative is her old fallback, which is the run cycle at half speed, and a
+walk that carries its weapon oddly still reads better than a jog that does not
+walk. A redraw of the two frames would settle it.
+
+**The request, as written**
+
+- **21A** — a walk cycle for every fighter (54 sprites)
+
+**54 sprites, none of it blocking.** Every fighter walks today; the pose they
+walk in is their run cycle replayed at a walking cadence, which is exactly what
+they drew before the walk existed.
+
+## 21A. A walk cycle for every fighter — 54 sprites
+
+### Why
+
+**The game grew a walk and has nothing to draw it with.** Ground movement used
+to be one speed: `dirX` was ±1 past a deadzone, so any input accelerated to the
+same run. It is analog now — a partial stick tilt walks at 34–62% of run speed,
+scaled by how far it is pushed, and a full tilt or a flick runs, which is how
+Smash has always done it ([SmashWiki](https://www.ssbwiki.com/Walk)).
+
+That was not a cosmetic addition. It is what makes the **ledge brake** possible:
+a fighter walking into the lip of a platform stops there and will not step off
+until the stick is pushed to a run — Smash's teeter
+([SmashWiki](https://www.ssbwiki.com/Teeter)) — and a teeter needs a walk to
+protect. Both are in `docs/game-mechanics.md § 2`.
+
+So there is a new movement state with real presence in play, and no art. It
+currently borrows the run.
+
+### What is already wired
+
+**Nothing is blocked and nothing needs a code change when this lands.** `walk`
+is a state on both renderers already, falling back the way the round-20C grab
+set did:
+
+- **Sprites** — `WALK_ANIM` in `src/characters.js` names `walk_a` / `walk_b` and
+  falls back to the four-frame run cycle (then the old `run_a`/`run_b` pair) at
+  a walking cadence. A fighter who has the pair never plays the fallback.
+- **3D** — `walk` is a state in `render3d/src/states.js`, aliased to the run
+  clip. No rig owes a new clip today. See the note below on when it should.
+- **Cadence** — the stride now plays at the speed the fighter is actually
+  travelling (`strideRate`, `src/fighter.js`), so a walk does not skate and
+  neither does anyone snared or slowed.
+
+Delivery therefore upgrades the roster fighter by fighter, in any order.
+
+### The brief
+
+**Two contacts, not four.** The run is a four-frame cycle (reach and pass on
+each leg) because a sprint needs the extension. A walk reads at half the cadence
+and half the extension, and two frames is what the roster's other held cycles —
+idle, crouch — use for the same reason.
+
+`walk_a` and `walk_b` are **the same walk half a cycle apart**: opposite legs
+leading, mirrored in gait but NOT mirrored as images — each is drawn facing
+right, with the costume on its correct side, exactly as `run_reach_a` and
+`run_reach_b` are.
+
+| File | Pose line |
+|---|---|
+| `assets/intake/<char>/walk_a.png` | "walking at an unhurried pace, RIGHT leg forward and the heel just making contact, left leg trailing straight behind, arms swinging naturally in opposition — left arm forward — torso upright and relaxed, no lean" |
+| `assets/intake/<char>/walk_b.png` | "the same unhurried walk half a stride later, LEFT leg forward and the heel just making contact, right leg trailing straight behind, arms swinging in opposition — right arm forward — torso upright and relaxed, no lean" |
+
+What separates these from the run poses, and the thing most likely to come back
+wrong:
+
+- **Upright, not driving.** A run leans into the direction of travel and throws
+  its weight ahead of the leading foot. A walk carries the torso vertically over
+  the hips. If the pose would read as a slow run, it is the wrong pose.
+- **A short stride.** Feet roughly shoulder-width apart at contact, not the
+  full split of `run_reach_*`. Both feet stay near the ground; a walk has no
+  airborne phase at all, which is the definition of one.
+- **Relaxed arms.** Swinging from the shoulder in opposition to the legs, elbows
+  soft and near the body — not the pumped, high-elbow carriage of the run.
+- **Weapons carried, not readied.** A fighter who runs with a weapon up should
+  walk with it lowered or shouldered. This is the calm approach, not the charge.
+
+Otherwise the standard spec: the character's own key screen colour, facing
+right, one zoom matched to their own `idle_a`, at least 600 px of body, one
+subject per file. Character blocks and canonical references are above;
+[pose-brief.md](../sprites/docs/pose-brief.md) is the standing brief.
+
+### The 3D gaits are already authored, and ignore these
+
+**The 3D and 2.5D renderers do not use `walk_a`/`walk_b` and will not.** They
+play a hand-authored four-phase cycle instead — `render3d/src/walk_cycle.js` —
+and that is a deliberate divergence rather than an interim.
+
+The reason is the cost of a pose. In 2D a pose is a drawing, so two contacts is
+the right ask; in 3D a pose is eight joint angles, so the phases a sheet cannot
+afford are free. A rig interpolated between two contacts scissors its legs
+through each other with the knees straight and the hips never rising — the
+DOWN and PASSING positions are what make a walk read as carrying weight, and
+they are exactly the two frames a two-frame sheet leaves out.
+
+So this round is a sprite round only, and delivery changes nothing in 3D. The
+note above about raising a D- or B-numbered round does not apply: it was
+written before the cycle existed and the cycle is the answer to it.
+
+The RUN is now the same, for the same reason: the four-frame sprint cycle is a
+reach and a pass, mirrored, and `render3d/src/run_cycle.js` plays contact, down,
+passing and up instead. The sprite path keeps both sets of drawings; the rigs
+read neither gait off the sheet.
 
 ---
 
@@ -408,7 +542,7 @@ of re-pointing fixes it, because there is no fourth sprite to point at.
 
 Counts differ because round 9B already delivered some of the technique frames.
 **On-disk filenames are the resume authority** — anything already in
-`assets/sprites/<char>/` is done, whatever a total elsewhere says.
+`sprites/assets/<char>/` is done, whatever a total elsewhere says.
 
 | Fighter | Key | Missing | Poses |
 |---|---|---|---|
@@ -1580,7 +1714,7 @@ assets/intake/effects/aura_indigo.png
 
 Three complete 36-pose sets, the nine technique effects, and three hero cards:
 **120 assets**, and the first delivery drawn against
-[pose-brief.md](pose-brief.md). The three fighters came out of
+[pose-brief.md](../sprites/docs/pose-brief.md). The three fighters came out of
 `STAGED_CHARACTER_KEYS` and onto the select screen the same day — Mechamaru with
 the students, Yuki with the other sorcerers, Dagon with the curses. Their kits
 had been live and testable in code since before any art existed, so promoting
@@ -1628,7 +1762,7 @@ Every set missed the same criterion — `attack_heavy_b` extending a third of
 standing height past the fighter's own idle. Yuki's reached 9%, Dagon's 16%,
 Mechamaru's 20%. Dagon's `crouch_b` drops 21% where a quarter is asked, and
 Mechamaru's `run_reach_a` arrived as a four-figure contact sheet and was not
-imported. They are [18A](asset-requests.md#18a-caught-while-placing-the-round-15-sets--13-sprites), with the rest of what the placement passes found.
+imported. They are [18A](#18a-caught-while-placing-the-round-15-sets--12-sprites), with the rest of what the placement passes found.
 
 Everything else landed: the crouch pairs, the light pairs, the idles, the run
 cycles, the costumes and all nine effects.
@@ -1667,7 +1801,7 @@ look correct as they are. They need no art and none should be made for them.
 held-back replacement, so the pose points at the new drawing for the workbench
 to place while `awaitingApproval.live` still names the old one, and that is what
 a match draws. What is left on those 38 is the **approval pass** — open each
-pose in the [sprite workbench](../workbench/), stand it beside what is shipping,
+pose in the [sprite workbench](../sprites/workbench/), stand it beside what is shipping,
 and say yes or keep.
 
 Still outstanding: **`choso/attack_light_b` and `geto/attack_down`**, the two
@@ -1896,7 +2030,7 @@ worth shipping and worth redrawing at the same time.
 `attack_air_a` is the first use of **Request alternate**: it comes back as a
 second option on the pose rather than overwriting what is there, the chevron in
 the workbench gets a dot, and nothing on screen changes until somebody picks.
-See [asset-pipeline.md](asset-pipeline.md#request-alternate).
+See [asset-pipeline.md](../sprites/docs/asset-pipeline.md#request-alternate).
 
 `uro/prone` is a costume note on a pose that is otherwise fine, so a redraw
 should keep the pose and the framing and only correct the outfit.
@@ -1953,7 +2087,7 @@ ult_a  ult_b
 hurt  dizzy  prone  victory
 ```
 
-**The pose lines are in [pose-brief.md](pose-brief.md), and that file is what
+**The pose lines are in [pose-brief.md](../sprites/docs/pose-brief.md), and that file is what
 these four should be drawn from.** It is the standing brief for a whole set —
 every pose line, the `_a`/`_b` flip test, the framing rule, and the list of
 faults that have each cost the roster a re-request. It exists because the pose
@@ -1987,7 +2121,7 @@ anything:
 
 **Framing counts double**, for the same reason: a pose that
 extends needs the margin drawn for it, rather than the figure enlarged until the
-reach falls off the plate. See [the reach margin](pose-brief.md#1-the-rules-that-hold-for-every-pose).
+reach falls off the plate. See [the reach margin](../sprites/docs/pose-brief.md#1-the-rules-that-hold-for-every-pose).
 
 ### What each fighter is holding, and what their poses are of
 
@@ -2164,7 +2298,7 @@ single still, so a creature that changes size or floats up between `idle_a` and
 `move_a` will visibly jitter. Draw the six as one sheet-in-spirit even though
 they are delivered as six files.
 
-The general rules in [pose-brief.md](pose-brief.md) hold for creatures too —
+The general rules in [pose-brief.md](../sprites/docs/pose-brief.md) hold for creatures too —
 one zoom, margin on all four sides, no painted-in motion, and `attack` extends
 past the creature's own `idle_a`. Only the pose *lines* differ, and those are in
 the table above.
@@ -2292,10 +2426,10 @@ nothing else to register.
 
 ---
 
-# Round 17 — Hanami to canon, Mahoraga, and the last two round-13 catches
+# Round 17 — Hanami to canon, Mahoraga, the last two round-13 catches, and the roster tiles
 
-Delivered except **17D**, the simplified card set, which is still open in
-[asset-requests.md](asset-requests.md).
+**Delivered in full.** 17A–17C and 17E landed first; **17D**, the simplified
+card set, followed and is recorded below — all 27 tiles are in the repo.
 
 **17A is the fourth time a fighter has been drawn as the wrong character** — after
 Gakuganji, Reggie and Uro in 9E — and the first time it was caught in the request
@@ -2356,7 +2490,7 @@ other fighter carries (`SEMANTIC_ANIMS` in `src/characters.js`, and any fighter
 delivered at round 11B or later is the model). The design is the rewritten
 character block above plus `assets/reference/canon/hanami_anime.png`.
 
-**Draw it from [pose-brief.md](pose-brief.md)**, which is the standing brief for
+**Draw it from [pose-brief.md](../sprites/docs/pose-brief.md)**, which is the standing brief for
 a whole set: the pose lines, the measurable criteria for the idle, the crouches
 and the two strike frames, and the faults that keep coming back. Redrawing whole
 rather than piecemeal is most of the reason to do it — every round-14 brief
@@ -2440,6 +2574,173 @@ drawn to fill the canvas and the reach is what falls off. Round 15A now says so
 where the four new sets are asked for.
 ---
 
+## 17D. A simplified card for every fighter — 27 images
+
+### Why
+
+**The hero cards do not survive being made small.** Each one is a full-bleed
+640×820 illustration with a painted scene behind the fighter — Gojo on a neon
+skyline, Panda outside a shrine at dusk, Nanami against tower blocks at golden
+hour. At hero size, on the right of the select screen, that is exactly right and
+it should stay.
+
+The same file is also the **roster tile**, and there it is doing a different
+job: the player is scanning two dozen thumbnails for the one they want, and the
+scene is noise. It is already costing something. `styles.css` carries a
+per-card brightness table — `--card-lift`, defaulting to 1.18, with a heavier
+tier for Nanami, Toji, Geto, Reggie, Mei Mei and Gakuganji and a saturation-only
+case for Panda — that exists solely because the art was not all painted at the
+same key and the tiles read murky next to each other. That table is a patch on
+using scene illustrations as icons.
+
+**And it gets worse with every fighter added.** `layoutCharacterGrid()` fits the
+roster by walking depths and then *cropping*: `ROSTER_ASPECTS` runs
+`3/4 → 1/1 → 5/4 → 3/2 → 2/1`, and the tile is `object-fit: cover` anchored to
+the **top**. A bigger roster reaches the wide end of that list sooner, so the
+tile becomes a **letterbox strip off the top of a portrait** — and `object-position: top`
+means it keeps the head and throws the body away. `MIN_CARD_WIDTH` is 96 px, so
+at the far end each fighter is a 96 px-wide band of a painting.
+
+Round 15 takes the roster from 23 to 27, which is the point of asking now rather
+than later. This request is the art that is drawn for that job from the start.
+
+### What this is not
+
+- **Not a replacement.** Every existing `assets/cards/<key>_card.jpg` stays
+  exactly where it is and keeps being the hero card. Nothing is flagged, nothing
+  is deleted, and `assets/reference/cards_previous/` is untouched.
+- **Not wired up.** The game does not read the new directory and this section
+  does not ask for the code that would. It is art banked ahead of a roster big
+  enough to need it — the switch is a one-line change in `buildCharacterCard()`
+  when that day comes, and it can be made per-surface (tiles simplified, hero
+  card and in-match portrait still the painting).
+- **Not a redesign.** Same character, same costume, same palette family as their
+  hero card, so the two read as the same fighter seen at two distances.
+
+### The brief
+
+**A portrait icon, not a scene.** One fighter, chest-up, filling the frame, on a
+plain background. Think a roster icon in a fighting game's character select, or
+an app icon of a person: legible at a glance, legible at a glance *small*, and
+distinguishable from twenty-six others at the same size.
+
+| | |
+|---|---|
+| **Crop** | Head and shoulders to mid-chest. The head is large in the frame — roughly the top half of the image — and centred horizontally |
+| **Background** | Flat or a single soft vertical gradient in the fighter's theme colour (the `theme` field in `src/characters.js`). No scenery, no buildings, no sky, no props behind the figure, no logo, no text |
+| **Lighting** | Even and front-lit. Bright enough to need **no** `--card-lift` correction: the whole point is that all 27 come back at the same key and the brightness table can be deleted |
+| **Detail** | Fewer, larger shapes than the hero card. Simplify folds, hair strands and pattern; keep the two or three things that identify the fighter and drop the rest |
+| **Silhouette** | Readable as a shape. Squint at it: Gojo's blindfold, Nanami's glasses, Maki's ponytail and glasses, Todo's topknot, Momo's hat, Jogo's volcano head should still be the thing you see |
+| **Format** | JPEG, **640 × 820** (3:4), same as the hero cards, so the two are interchangeable in every slot |
+
+**Two crops must both work, because the fitter chooses between them at runtime.**
+Before delivering, check each image twice:
+
+1. **Full 3:4** — the shallow-roster case.
+2. **The top half only, at 2:1** — the crowded-roster case, which is what
+   `object-fit: cover` with `object-position: top` produces at the wide end of
+   `ROSTER_ASPECTS`. The fighter must still be recognisable, which in practice
+   means **the whole head sits inside the top 45% of the image** and nothing that
+   identifies them lives below the shoulders.
+
+**Keep the bottom sixth quiet.** The name plate is drawn over it — white caps on
+a dark gradient — so anything with detail down there is covered up.
+
+### Prompt formula
+
+`[CHARACTER BLOCK]`, head-and-shoulders portrait icon facing the viewer, chest-up
+crop, head filling the upper half of the frame, flat `[THEME COLOUR]` background
+with no scenery or props, even front lighting, simplified shapes and reduced
+detail, `[STYLE SUFFIX]`.
+
+Character blocks are in [Character blocks](asset-requests.md#character-blocks) and are used
+verbatim, exactly as for sprites — **including Hanami's, which was rewritten for
+[17A](asset-requests-history.md#17a-a-full-hanami-set--36-sprites)**. His tile is the pale humanoid curse,
+not the tree.
+
+`[THEME COLOUR]` is the fighter's `theme` in `src/characters.js` — the colour the
+game already uses for their HUD accent and hit flashes, so a tile painted on it
+matches what happens when they land a hit.
+
+| Group | Fighter | Key | Theme |
+|---|---|---|---|
+| Students | Yuji | `yuji` | `#ff8264` |
+| | Nobara | `nobara` | `#d86a4a` |
+| | Megumi | `megumi` | `#7c8cff` |
+| | Yuta | `yuta` | `#9fc7ff` |
+| | Maki | `maki` | `#69d0a8` |
+| | Inumaki | `inumaki` | `#d7d9e7` |
+| | Panda | `panda` | `#8ea0b8` |
+| | Todo | `todo` | `#b66cff` |
+| | Momo | `momo` | `#b7b8ff` |
+| Faculty | Gojo | `gojo` | `#62dcff` |
+| | Nanami | `nanami` | `#ffd35a` |
+| | Mei Mei | `meimei` | `#d8b95c` |
+| | Gakuganji | `gakuganji` | `#d89b3f` |
+| Other Sorcerers | Hakari | `hakari` | `#ff62cf` |
+| | Toji | `toji` | `#a8aeb8` |
+| | Uro | `uro` | `#8fd7e8` |
+| | Reggie Star | `reggie` | `#86d67c` |
+| Curses and Curse Users | Mahito | `mahito` | `#b56cff` |
+| | Jogo | `jogo` | `#ff7a2f` |
+| | Hanami ⚠ | `hanami` | `#9bb36b` |
+| | Geto | `geto` | `#7d58d8` |
+| | Choso | `choso` | `#c22e4a` |
+| | Sukuna | `sukuna` | `#ff4c55` |
+| **Staged (round 15)** | Mechamaru | `mechamaru` | `#63c7b0` |
+| | Yuki Tsukumo | `yuki` | `#ffb703` |
+| | Dagon | `dagon` | `#2f8fd8` |
+| | Kurourushi | `kurourushi` | `#8f3b4e` |
+
+**The last four depend on round 15.** They have no delivered art at all, so
+their tile is drawn from the same wiki render as their hero card in
+[15D](asset-requests-history.md#15d-kurourushis-hero-card--1-image) — and it is worth drawing the two together,
+since the questions are the same and the answer to one settles the other. If
+15A's sprite sets have landed by then, prefer the delivered `idle_a` as every
+other fighter's tile does.
+
+Four themes are close enough to a neighbour's to be worth checking side by side
+before delivering — Todo `#b66cff` against Mahito `#b56cff` are all but
+identical, and Mei Mei `#d8b95c` against Gakuganji `#d89b3f` are near. The
+background is a supporting cue, not the identifier; if two tiles come back
+reading as the same card, it is the *figure* that has to carry the difference.
+
+**Mahoraga is deliberately not in it** — he is a `SPRITE_ACTOR`, nobody selects
+him, and he has no hero card either.
+
+### Where it goes
+
+Deliver to:
+
+```
+assets/intake/cards/simple/<key>_tile.jpg
+```
+
+and it lands at:
+
+```
+assets/cards/simple/<key>_tile.jpg
+```
+
+**`_tile`, not `_card`, and the reason is not cosmetic.** The per-card
+brightness rules in `styles.css` are written as filename suffix matches
+(`img[src$="nanami_card.jpg"]`), which would match `simple/nanami_card.jpg` just
+as happily as the hero card. A simplified card that silently inherited a 1.34×
+lift meant for a murky painting would arrive blown out, and it would take a
+while to work out why. A distinct suffix makes that impossible.
+
+Cards take the short path through the pipeline — no keying, no measuring, no
+manifest entry — so landing these is a move and nothing else.
+
+### Delivered
+
+All 27 tiles are in `assets/cards/simple/<key>_tile.jpg`. They are **banked, not
+wired up**, exactly as the request asked: `buildCharacterCard()` still draws the
+hero painting in every slot, and switching the roster grid to the tiles is the
+one-line change described above whenever the roster is big enough to want it.
+
+---
+
 ## 17E. Hanami's hero card, redrawn to canon — 1 image
 
 ### Why
@@ -2448,7 +2749,7 @@ where the four new sets are asked for.
 bark-and-vine giant lit through a forest canopy, a glowing lotus in one hand —
 and it is the same wrong design as every one of his sprites.
 [17A](#17a-a-full-hanami-set--36-sprites) replaces the sprites and
-[17D](asset-requests.md#17d-a-simplified-card-for-every-fighter--27-images) draws his tile from
+[17D](#17d-a-simplified-card-for-every-fighter--27-images) draws his tile from
 canon; without this the card is the last place in the game still showing the old
 character, and it is the **largest** place — the hero panel on the select screen
 and the portrait in the match HUD both draw it at full size.
@@ -2494,5 +2795,964 @@ has been approved that the tile and the fighter on the stage agree with it;
 landing it first just moves the mismatch somewhere else.
 
 ---
+
+---
+
+---
+
+## 18E — twenty backgrounds, repainted for the 3D camera
+
+Twenty stage paintings, redelivered at **3200×1800** against the brief kept
+verbatim below. They replaced the old plates under the same filenames, so
+nineteen boards needed no code change at all; **Shibuya Night** was the twentieth
+and the exception, arriving as `shibuya_night.jpg` where the stage registered a
+`.webp`, which is the one string in `src/stages.js` the request predicted.
+
+**The previous paintings are kept**, at
+`assets/reference/backgrounds_previous/` — all twenty, at the sizes they shipped
+at. That is not ceremony: they are the only copies of art the game wore for
+months, three of them were never 1600×900 to begin with (`curse_maw` at
+1920×1640, `flooded_gate` at 800×437, `shibuya_night` at 1200×675), and a board
+that turns out worse in flat mode can be put back by copying one file.
+
+### What it fixed
+
+The 3D camera over-fills its frustum on purpose, so only the centre half of a
+backdrop is ever on screen — **49.4% of the image's linear extent**, which put
+about 790 source pixels across 1280 CSS pixels on the old plates. That 1.62×
+upscale (3.24× at DPR 2) was the most visible art deficit in `?camera=3d`. At
+3200×1800 the same crop is 1600 source pixels wide: a slight downscale rather
+than a blur, and flat mode gains the outer ring as extra framing.
+
+Checked on delivery: all twenty are exactly 3200×1800 JPEG, the centre
+1600×900 crop stands as a finished picture in each, and no plate paints a
+foreground element into that crop — which is the constraint that matters, since
+the garnish layer draws the near field in 3d.
+
+### The brief, as it was written
+
+The `?camera=3d` mode (see [2.5d-camera-plan.md](2.5d-camera-plan.md)) puts the
+stage painting on a plane in a real 3D scene. It works today with the existing
+art, and this is not a bug report — the plates are fine. But the mode changes
+what a backdrop has to *be*, in one measurable way and three compositional ones,
+and repainting to that spec is the single largest visible win available to the
+camera. §10 of the plan has the full measurement; the short version:
+
+**The 3D camera only ever shows the middle of the picture.** The backdrop plane
+deliberately over-fills the frustum (×1.5 height, ×1.35 width) so that no dolly,
+yaw or roll can swing past its edge. The cost is that **only 49.4% of the
+image's linear extent is on screen** — a 1600×900 plate puts about **790 source
+pixels across 1280 CSS pixels, a 1.62× upscale (3.24× at DPR 2)**, where flat
+mode shows the whole plate at a slight *down*scale. That softness is currently
+the most visible art deficit in 3d mode.
+
+### The one rule that is new
+
+> **Paint at 3200×1800. The 3D camera crops to the centre 1600×900 — the size
+> the current backgrounds already are — so that centre box has to be a finished
+> picture on its own, and the outer ring is what flat mode adds around it.**
+
+Both crops ship. Flat mode (the default) shows the whole 3200×1800 frame; 3d
+mode shows the centre half. Neither is a "safe area" to be padded with filler —
+they are two framings of one painting, and both are seen by players. The crop is
+centred to within 2.4% of image height, so treating it as exactly centred is
+correct.
+
+### Three things the 3D scene changes about composition
+
+- **Paint mid-ground and far ground only. No foreground.** Anything painted at
+  the very front of frame lands on the same flat plane as the horizon, 14 world
+  units back, and then contradicts the real near-field cards the camera draws
+  *between* the lens and the fight (traffic, lanterns, leaves — §7c of the
+  plan). Foreground is the garnish layer's job now; a plate that paints its own
+  fights it. Overhanging branches, near pillars, near railings: leave them out.
+- **Keep a calm value band across the middle.** The fight happens there, and in
+  3d the platforms are extruded boxes with lit top faces sitting in front of it.
+  The band from roughly 45% to 85% down the *centre box* should be the quietest
+  part of the painting — low contrast, no hard edges, no bright speculars. Put
+  the detail and the drama above and to the sides of it.
+- **Avoid a strong one-point perspective aimed at the centre of frame.** A
+  painted vanishing point is rigid; a real camera is not. In normal play this
+  camera moves so little (±0.88° of yaw — the sim clamps it) that a baked VP is
+  harmless, but the drama shots swing to ±4° and a dead-centre VP is where that
+  reads worst. An off-centre or open composition is safer and crops better.
+
+### What has not changed
+
+Same filenames, same folder, same JPEG format, so **nineteen of the twenty need
+no code change at all** — the loader reads `stage.bgFile` and picks them up
+as-is. The exception is Shibuya Night, which is registered as `.webp`: deliver
+it as `shibuya_night.jpg` and one string in `src/stages.js` changes with it, or
+keep the `.webp` extension and nothing does.
+
+Landscape, full-bleed, no characters, no text, no border, no UI. Keep the
+mid-tones open: the renderer lays a 30% black wash and the stage's own colour
+tint over the plate before anything else draws, so a plate that arrives already
+dark and already saturated has nowhere to go.
+
+```
+assets/intake/backgrounds/<name>.jpg      3200×1800, JPEG, full-bleed
+```
+
+### Prompt formula
+
+`[BOARD LINE]`, `[COMPOSITION SUFFIX]`, `[STYLE SUFFIX]`
+
+**Composition suffix** — append to every board line:
+
+> wide establishing shot, mid-ground and distance only with no foreground
+> elements, empty stage floor across the lower middle of the frame, quiet
+> low-contrast band through the middle third, detail and interest in the upper
+> half and toward the edges, open mid-tones, no characters, no text
+
+**Style suffix** — the same one the rest of the game uses:
+
+> clean Japanese anime key-art style matching the Jujutsu Kaisen TV anime,
+> painted background art, crisp rendering, cel shading with soft gradient
+> accents, atmospheric depth, high detail, no text
+
+### The twenty boards
+
+Each line is the setting to paint. The **tint** column is the colour the engine
+already washes over the plate — paint *toward* it rather than against it, or the
+grade fights the art. The **gimmick** column is what the board does during a
+match ([stage_fx.js](../src/stage_fx.js)); the painting should look like a place
+where that could happen, and must leave room for it.
+
+| # | File | Board | Tint | The setting to paint | Gimmick it has to host |
+|---|---|---|---|---|---|
+| 1 | `training_bridge.jpg` | Training Bridge | green | A long arched wooden bridge over a green ravine at a temple school, late afternoon, heavy summer canopy on both banks, tiled roofs beyond. The calmest board in the game and the one the camera is tuned on — it should read as *ordinary*. | Leaves fall constantly; the camera adds more near the lens |
+| 2 | `quiet_hall.jpg` | Quiet Hall | warm amber | A long empty tatami hall, shoji screens down one side throwing hard warm rectangles across the floor, a heavy bronze bell hanging in the far dark. Stillness is the subject. | Every ~25 s the bell seals techniques for 4 s; camera pushes in |
+| 3 | `flooded_gate.jpg` | Flooded Gate | cool blue | A great stone torii gate standing in knee-deep floodwater, submerged steps, rain-heavy sky, the waterline the dominant horizontal. **Currently 800×437 — the lowest-resolution plate in the game and the most urgent of the twenty.** | A surge wave sweeps the length of the floor |
+| 4 | `shibuya_night.webp` | Shibuya Night | indigo | The Shibuya scramble at night from street level, neon towers stacked deep, wet asphalt throwing colour back up. The busiest board — but the busy has to sit *above* the fight band. **Deliver as JPEG at 3200×1800; currently 1200×675 webp.** | An 8 s "curtain" seals the arena and floods everyone's meter |
+| 5 | `curse_maw.jpg` | Curse Maw | cyan | The inside of an enormous curse: a ribbed organic cavern, wet cyan bioluminescence in the recesses, a throat receding into dark. **Currently 1920×1640 at a 1.17 aspect — it is cropped hard before 3d crops it again; reframe to true 16:9.** | Fangs snap up at both outer thirds of the floor |
+| 6 | `garden_steps.jpg` | Garden Steps | bright green | A terraced temple garden climbing left to right, moss, stone risers, a still pond below, blossom. The one board whose *layout* the 3D camera flatters most — the terracing should read in the painting too. | A flower blooms on a random platform and heals whoever reaches it |
+| 7 | `lantern_corridor.jpg` | Lantern Corridor | warm orange | A covered wooden veranda running into the distance, paper lanterns strung the length of it, warm pools of light on dark boards, night garden past the posts. Keep the lanterns *mid-distance and beyond* — the camera hangs its own into the top of frame. | A lantern shakes loose, falls and burns a patch of floor |
+| 8 | `sunken_crossing.jpg` | Sunken Crossing | pale blue | A flooded city crossing at dusk, a few centimetres of standing water turning the whole street into a mirror, drowned kerbs, signage doubled in the reflection. The slickness is a mechanic here, so sell the wet. | The floor is genuinely slippery; the camera glides and overshoots |
+| 9 | `neon_split.jpg` | Neon Split | magenta | A narrow back alley between two neon-clad blocks, signage crowding in from both sides, a dark gap straight up the centre. Leave the centre line clear — something stands in it. | An energy wall strikes down the centre line and holds |
+| 10 | `bone_sanctum.jpg` | Bone Sanctum | pale teal | A cathedral built from bone: ribbed vaults, vertebral columns, cold teal light from high openings, ossuary dark below. | Drop-through platforms rattle, phase out for 3 s, re-knit |
+| 11 | `bridge_duel.jpg` | Bridge Duel | sea green | A high suspension span in sea mist, cables climbing out of frame, water far below, distant headland. Emptiness on all sides — the floor here moves, and the surroundings are what make that legible. | The whole main platform drifts side to side under the fight |
+| 12 | `academy_hall.jpg` | Academy Hall | brown | A grand school hall — dark timber, a gallery, tall windows down one side, dust in the light. Institutional and a little too big. | On a bell, the platforms glide into a whole new arrangement |
+| 13 | `mist_pier.jpg` | Mist Pier | pale ice | A wooden pier running out into flat water under heavy fog, pilings fading by depth, a sun disc barely through. Depth by *fade*, not by detail — this is the board where atmospheric perspective does all the work. | Fog rolls in for 6 s; the camera pushes in rather than out |
+| 14 | `crosswalk_rush.jpg` | Crosswalk Rush | blue | A wide city intersection at blue hour, zebra bars running away, signals and streetlights, towers behind. Traffic is drawn by the game, not painted — leave the near lane **empty**. | Cars run the floor; the 3D camera adds more between lens and fight |
+| 15 | `cursed_teeth.jpg` | Cursed Teeth | cyan-teal | A gullet: concentric rings of teeth receding into a throat, wet violet-cyan glow deep inside, something breathing. | Fangs drop from above; every 25 s the stage inhales |
+| 16 | `river_gate.jpg` | River Gate | jade | A river shrine gate at dawn, mist off the water, reeds bending consistently one way, petals in the air. The wind is a mechanic — paint the world already leaning. | A crosswind alternates direction; the camera rolls with it |
+| 17 | `school_wing.jpg` | School Wing | tan | A school corridor after hours — lockers, a run of windows, late sun down the length of it, nothing where there should be somebody. Quiet and slightly wrong. | A weak curse wanders out; pop it for meter |
+| 18 | `empty_city.jpg` | Empty City | grey-blue | A derelict city block under an overcast sky, empty windows, weeds through the tarmac, no people and no traffic. Flat grey light. | Two rooftops crumble under weight and re-form |
+| 19 | `billboard_roof.jpg` | Billboard Roof | hot pink | A rooftop above a neon city in a storm — plant housings, aerials, hoardings stepping back into rain haze, cloud lit from within. The camera adds its own hoardings behind the stage, so keep the skyline readable and not too crowded. | Lightning takes the top platform; the strongest shake in the game |
+| 20 | `domain_core.jpg` | Domain Core | aqua | The inside of a Domain Expansion: a non-place. Geometry that does not resolve, aqua light with no source, fragments hanging at rest. Gravity is low here — nothing should look like it is sitting on anything. | Side platforms orbit slowly; everyone floats |
+
+### Deliver in this order
+
+Not one batch — the first three change what a player sees most.
+
+1. **`flooded_gate`, `shibuya_night`, `curse_maw`** — the three that are below
+   the current norm *before* the 3D crop is applied. Flooded Gate at 800×437 is
+   soft even in flat mode.
+2. **`crosswalk_rush`, `lantern_corridor`, `training_bridge`** — the three
+   boards that already have near-field garnish, so they are where the depth
+   the repaint supports is most visible.
+3. The remaining fourteen, any order.
+
+Flat mode is the default and is unaffected either way, so nothing here is
+blocking and a partial delivery is genuinely useful.
+
+---
+
+# Round 18 — delivered
+
+Round 18 arrived complete in one batch: **28 sprites and 14 images**, every
+section below answered, plus the five render3d image inputs (DI1–DI4). The
+sprites landed through the [approval step](../assets/intake/README.md#the-confirm-step),
+so 25 of them are decisions waiting in the sprite workbench rather than changes
+already on screen.
+
+| Section | Asked for | Outcome |
+|---|---|---|
+| 18A | 12 caught while placing the round-15 sets | Delivered — including `mechamaru/run_reach_a`, which was **new rather than a replacement** (the round-15 delivery was an unusable contact sheet), so it went straight into the game and completed his four-frame run cycle |
+| 18B | 4 caught while placing Kurourushi | Delivered — his four stand-ins can be retired at approval |
+| 18C | 3 that fell through the round renumbering | Delivered, `uro/prone` included — see the note below on whether the re-request worked |
+| 18D | 2 Uro alternates, the right pose in the wrong costume | Delivered and **discarded**: the costume was not improved, only differently wrong, so it no longer matched the rest of her set any better than what it would have replaced. Plates kept at `assets/reference/round19/uro_alt_rejected/`; no variant option remains in the manifest |
+| 18E | 20 backgrounds repainted at 3200×1800 | Delivered earlier — [its own history entry](#18e--twenty-backgrounds-repainted-for-the-3d-camera) |
+| 18F | 14 near-field cards for the garnish layer | Delivered, all fourteen — every procedural stand-in in `src/camera3d/garnish.js` is now a painting |
+| 18G | 7 where a pose is drawing somebody else's art | Delivered |
+
+**What the delivery cost in code, which is the part worth keeping.** The
+garnish cards exposed a placement bug that had nothing to do with the art: the
+3D camera's *standing* scenery — Crosswalk Rush's signal gantry, Billboard
+Roof's hoardings — is placed once per match, and the flag saying "placed" was
+set before the placement was attempted. The shared art group is a long queue, so
+the gantry lost that race every time and the board stood bare for the whole
+round. Placement now retries until the art is decoded or the loader has settled,
+and `tools/smoke_camera3d.mjs` counts standing cards separately from passing
+ones so a car can never stand in for a gantry that never arrived.
+
+**18D is the useful failure.** Her block was rewritten before the round went
+out — two separate bands, midriff bare, never one joined garment — on the theory
+that the old wording ("a wrap … across her chest and hips") described a dress at
+least as naturally as it described two bands. The redraws came back in a costume
+that was different but no closer to canon, which says the wording was not the
+whole problem. `uro/prone` is the remaining test: it is in the approval queue in
+the same round, and if it comes back dressed too, the reclining pose is a
+generator limitation rather than a brief fault, exactly as
+[18C](#uroprone-is-worth-understanding-before-re-requesting-it) predicted.
+
+---
+
+## 18A. Caught while placing the round-15 sets — 12 sprites
+
+The three new fighters arrived with complete 36-pose sets drawn against
+[pose-brief.md](../sprites/docs/pose-brief.md). These are what the placement passes found — a
+pose reads differently at real size against a real stage than it does on a
+review board — plus the brief's headline criterion, which all three missed.
+
+| Fighter | Key | Pose | Kind | What is wrong |
+|---|---|---|---|---|
+| Yuki Tsukumo | `yuki` | `attack_heavy_b` | Pose | The hook extends **9%** of standing height past her idle where the brief asks for a third — the shortest heavy on the roster. She is a boxer with no weapon, so the whole body has to be behind it: hips through, shoulder past the lead foot. **Her `ult_b` is standing in** meanwhile, so she has a heavy that reaches while this is redrawn. |
+| Mechamaru | `mechamaru` | `attack_heavy_b` | Pose | Extends **20%**. The forearm blade should be the furthest thing forward in the frame. |
+| Mechamaru | `mechamaru` | `run_reach_a` | Quality | **Delivered as a contact sheet** — four small figures of the run cycle on one canvas rather than one pose. Nothing in it is separable at full resolution and none of the four clears the 600 px body minimum alone, so it was never imported: he runs on the other three cycle frames until this lands. |
+| Dagon | `dagon` | `run_reach_a` | Pose | **Reaches with the arm instead of the leg.** The reach frame is the full stride — the leading heel is the thing out in front, arms only counterbalance it. |
+| Dagon | `dagon` | `run_reach_b` | Pose | The same, on the other lead. |
+| Yuki Tsukumo | `yuki` | `run_reach_a` | Pose | The same fault again — reaching with the arm. |
+| Yuki Tsukumo | `yuki` | `run_reach_b` | Pose | The same, on the other lead. |
+| Dagon | `dagon` | `crouch_b` | Pose | Drops **21%** of standing height where the brief asks for a quarter, and reads *taller* than `crouch_a` beside it. The pair is one held crouch a breath apart, not a descent. |
+| Dagon | `dagon` | `attack_light_a` | Pose | Not a wind-up. `_a` is the coil before the strike — weight on the back foot, striking hand drawn back — and this reads as a second strike. |
+| Mechamaru | `mechamaru` | `crouch_attack_b` | Pose | The forearm blade never reaches full extension. `_b` is the strike; the blade should be the furthest thing forward, out past the knee. |
+| Dagon | `dagon` | `crouch_attack_b` | Pose | Flagged during the placement pass. |
+| Yuki Tsukumo | `yuki` | `crouch_attack_b` | Pose | Flagged during the placement pass. |
+
+The reach numbers are measured the way the engine measures reach: the forward
+edge of the art past the centre of the body's core columns (`bodyRight` against
+`coreLeft`/`coreRight`), as a fraction of the idle's own height. They are
+comparable within a fighter regardless of placement, because every pose of a set
+is drawn at one zoom.
+
+**Three faults repeated across fighters, which is what a missing rule looks
+like** rather than three bad drawings: the heavy that does not extend (all
+three), the reach frame that reaches with the arm (two), and the `ledge_hang`
+with the ledge drawn into it (two). All three are now stated in the pose brief,
+so Kurourushi's set will not be asked for without them.
+
+### Fixed in the repo instead of requested
+
+Three of the faults found in this pass were **file** faults rather than drawing
+faults, and were fixed here rather than sent back:
+
+- **Dagon's `ult_a` had four arms.** The extra one lay over background for most
+  of its length and its own ink line gave the cut a natural boundary at the
+  shoulder, so it came out with nothing repainted.
+- **`dagon/ledge_hang` and `mechamaru/ledge_hang` had the ledge drawn in.** The
+  bar was a flat grey slab across the top of the plate with the hands gripping
+  over it, so removing it leaves the hands closed on nothing — which is the
+  pose as asked for. The stage supplies the edge.
+
+Each frame was re-measured afterwards (`bodyTop`, the body and core spans, the
+centre of mass) so reach and width read off the art that is actually there. The
+untouched originals are in `assets/reference/round15/`. That is the whole
+difference between an `improvement` flag and a `replacement` flag: these were
+recoverable in the file, and Yuta's cut-off sword in 17C was not.
+
+
+---
+
+## 18B. Caught while placing Kurourushi — 4 sprites
+
+Kurourushi's set was the last of the round-15 four to be placed, and it went
+through with all 36 poses approved. Four of the delivered drawings were flagged
+`quality` in the same pass, and this is the part that makes them non-blocking:
+**each of the four poses is drawn today by another frame of his own set**,
+chosen in the workbench rather than left broken. He plays complete. What is
+missing is that four poses share art with four others, so a fight shows the same
+silhouette in two places.
+
+| Key | Pose | Kind | What is wrong | Standing in |
+|---|---|---|---|---|
+| `attack_heavy_b` | `sideHeavy` | Quality | **The blade is drawn back over the shoulder** — this is the wind-up, not the strike. `_b` is the contact frame, and nothing in it extends forward past the robe. | `attack_light_b` — the only frame in the set with the blade fully out |
+| `attack_light_b` | `light` | Quality | Rejected in the same pass, and then promoted into the heavy slot above because it was the better of the two. The light now needs its own drawing. | the archived round-15 `attack_air_b` |
+| `crouch_attack_b` | `crouchAttack` | Quality | A low sprawl with the blade along the ground, which is very close to what `dash` shows. `_b` is the strike out of the crouch — the blade forward and clear of the body. | the archived round-15 `dash` |
+| `dash` | `dash` | Quality | Flagged during the placement pass. | the archived round-15 `dodge_roll` |
+
+**The heavy fault is the fourth one this round.** Yuki, Dagon and Mechamaru all
+delivered an `attack_heavy_b` that does not extend (18A), and Kurourushi's does
+not extend either — his for a different reason, being a wind-up rather than a
+short strike, but the frame on screen is the same problem: the heavy does not
+read as the biggest thing the fighter does. The rule is in
+[pose-brief.md](../sprites/docs/pose-brief.md); this is the evidence it needs to stay there.
+
+### Repo work, not a request: `kurourushi/ledge_hang` — done
+
+The ledge is drawn into the plate — a slab under the hands, the same fault
+`dagon/ledge_hang` and `mechamaru/ledge_hang` had in round 15 and the reason the
+rule went into the brief. It is flagged `wantsImprovement: "alpha"` with the
+note "Remove the ledge", so the workbench shows it and
+`tools/list_replacements.py` tracks it. As with the other two, the hands are
+closed on the bar and cutting it leaves them closed on nothing, which is the
+pose as asked for — **the stage supplies the edge.** No redelivery needed.
+
+**This has now been done**, along with `hanami/ledge_hang`, which had been
+flagged as a redraw rather than repo work and did not need to be: his was the
+same flat slab with the hands over it. Four of the roster's ledge grips have now
+been cut this way (Dagon, Mechamaru, Kurourushi, Hanami) and the rule is in the
+pose brief, so a future set should not need it.
+
+---
+
+## 18C. Three that fell through the round renumbering — 3 sprites
+
+Flagged in the workbench, but named in no request section — they were written
+into rounds that were later split, renumbered or moved to history, and the flags
+outlived the sections. An audit of the manifest against this file found them:
+the workbench knew about all three the whole time, and nobody drawing from this
+file could have.
+
+| Fighter | Key | Pose | Kind | What is wrong |
+|---|---|---|---|---|
+| Suguru Geto | `geto` | `attack_down` | Pose | "Should be straight down instead of down and right." `downHeavy` is a committed smash at the floor in front — the arc ends under him, not off to the side. Asked for once as 14C and again after the round-13 redraw was approved-and-reflagged. |
+| Mei Mei | `meimei` | `special_down` | Pose | Flagged during a placement pass with no note. Her down special is the crow swarm gathering low; the drawing does not read as a technique starting. |
+| Takako Uro | `uro` | `prone` | Character | **The costume is a full pale-blue bodysuit** — covered arms, covered legs — where every other pose in her set draws the canon cloud wrap over bare limbs. See the note below: this is the generator's doing rather than the brief's, and it may not be fixable by asking again. |
+
+### `uro/prone` is worth understanding before re-requesting it
+
+Her other **seven** poses are on-model: `idle_a`, `run_reach_a`, `crouch_a`,
+`dodge_roll`, `hurt`, `attack_light_b` and `victory` all draw the pale-cyan
+cloud vapour across chest and hips with bare arms and legs, exactly as her
+character block asks. Only `prone` comes back dressed, and it comes back dressed
+in something that is not in the block at all — a full-length bodysuit.
+
+So this is **not** a prompt fault we can see: the block is explicit ("her only
+covering a wrap of pale-cyan cloud vapour clinging across her chest and hips,
+bare arms and legs"), the canonical reference shows it, and the pose line for
+`prone` says nothing about clothing. What is different about `prone` is that it
+is the one pose where the figure is **lying down, horizontal, full-length** —
+and a generator handed a reclining, minimally-dressed figure tends to add
+clothing on its own. `dodge_roll` is on the ground too and comes back correct,
+which suggests it is the reclining read rather than the ground.
+
+That makes it worth **one** re-request with the costume restated inside the pose
+line rather than left to the block — and worth knowing it may come back dressed
+again. If it does, the honest options are to keep the drawing (a knockdown is on
+screen for well under a second) or to draw the pose from a different angle that
+is less likely to trip it, e.g. seen more from the feet. It is a limitation of
+the generator, not of the request.
+
+---
+
+## 18D. Uro, the right pose in the wrong costume — 2 sprites
+
+**Asked for as alternates, not replacements.** Both poses are good and are
+staying in the game; what is wrong is the costume, so the delivery lands *beside*
+the current drawing and the better of the two is picked by eye in the workbench.
+Nothing changes on screen until somebody chooses.
+
+| Fighter | Key | Pose | Kind | What is wrong |
+|---|---|---|---|---|
+| Takako Uro | `uro` | `attack_heavy_b` | **Alternate** | The cloud reads as one strapless dress — the chest band and the hip band have merged. Keep the pose exactly: braced wide, the cursed-energy cloud thrown forward off the lead hand. |
+| Takako Uro | `uro` | `crouch_b` | **Alternate** | The cloud has become a one-piece dress from chest to thigh. Keep the pose exactly: down on one knee, weight on the trailing hand, head low. |
+
+### The block was ambiguous, and that is the actual fault
+
+Her block used to read *"a wrap of pale-cyan cloud vapour clinging across her
+chest and hips"* — which describes **one** garment reaching from chest to hips
+at least as naturally as it describes two bands. The canon is two: a band across
+the chest, a band at the hips, and a **bare midriff between them**
+(`assets/reference/canon/uro_idle.png`).
+
+Read that way, the deliveries were not wrong so much as obedient. Both of these
+drew the sentence, and `uro/prone` in [18C](#18c-three-that-fell-through-the-round-renumbering--3-sprites)
+went further and put her in a full bodysuit. Her block now says two separate
+bands, with the midriff bare, and that a single joined garment is wrong — so
+these two are the first test of whether the wording was the whole problem. If
+they come back right and `prone` still comes back dressed, the reclining pose is
+its own separate limitation.
+
+**Four of her poses were already correct under the old wording** — `idle_a`,
+`run_reach_a`, `hurt`, `victory` — which is why this took a workbench pass to
+notice rather than showing up on the review board.
+
+---
+
+## 18F. Near-field cards for the garnish layer — 14 images, optional
+
+**Lower priority than 18E was, and genuinely optional** — every one of these has a
+procedural stand-in drawing in the game right now, so nothing is missing. But
+this is where depth actually comes from, and it is worth saying why, because it
+is the opposite of the intuitive answer.
+
+Measured (§10 of [2.5d-camera-plan.md](2.5d-camera-plan.md)): splitting a
+*backdrop* into parallax layers buys **2.3 px** of differential shift in normal
+play, because this camera barely translates — the sim clamps it to ±0.88° of
+yaw. A card at `z = +2`, between the lens and the fight, separates from the
+backdrop by **14 px** at that same yaw and **64 px** in a drama shot. Proximity
+to the lens is the whole term. So the depth budget is better spent here than on
+layering the paintings, and 18E asked for *bigger* backgrounds rather than
+*split* ones for exactly this reason.
+
+These are the elements the camera already flies past the lens
+([garnish.js](../src/camera3d/garnish.js)), currently drawn with canvas
+primitives. Real art would replace the procedural texture and nothing else —
+the motion, depth, spawning and per-board wiring already exist.
+
+### Delivery — keyed plates, like sprites, not full-bleed like backgrounds
+
+```
+assets/intake/garnish/<name>.png
+```
+
+PNG, one subject per file, on a **flat magenta `#FF00FF` key screen** (grey
+`#808080` for the warm ones — marked below), same rules as the sprite spec
+above: perfectly flat unlit screen, no colour bounce onto edges, margin on all
+four sides, nothing touching the canvas edge. **At least 1000 px on the long
+edge.** These are seen close to the lens and get magnified.
+
+Anything travelling sideways should be drawn **facing/pointing LEFT**, same as
+the projectile rule — the renderer mirrors for the other direction.
+
+| File | Board | What it is | Screen |
+|---|---|---|---|
+| `leaf_green.png` | Training Bridge | One broad summer leaf, seen flat-on, slight curl. Simple silhouette — it is 30 px on screen half the time. | magenta |
+| `leaf_gold.png` | Training Bridge | The same leaf turning: yellow-gold, edge curling, one side catching light. | grey |
+| `lantern_paper.png` | Lantern Corridor | A paper lantern hanging on its cord, lit from within but seen against brighter light — mostly silhouette with a warm rim. Cord running off the top of the frame. | grey |
+| `lantern_iron.png` | Lantern Corridor | An iron temple lantern on a bracket, heavier, colder, unlit. Variety against the paper one. | magenta |
+| `car_sedan.png` | Crosswalk Rush | A car in near-total silhouette, side-on, pointing **left**, headlights blown out, faint lit windows. It passes in front of the whole fight for well under a second — read at a glance, no detail. | magenta |
+| `car_van.png` | Crosswalk Rush | A tall delivery van, same treatment, taller and blockier so two passes never look identical. | magenta |
+| `car_bike.png` | Crosswalk Rush | A motorcycle and rider, low and fast, single headlight, hard lean. | magenta |
+| `rubble_a.png` … `rubble_c.png` | Empty City | Three chunks of broken concrete and rebar, angular, unlit, no two alike. Small and dark — these tumble toward the lens. (3 files) | magenta |
+| `hoarding_a.png` … `hoarding_c.png` | Billboard Roof | Three lit advertising hoardings on steel gantries, seen from below and slightly to one side, legs and bracing visible. Abstract light and colour, **no legible text or logos**. These sit *behind* the stage, so they are the one entry here that is far rather than near. (3 files) | magenta |
+| `signal_gantry.png` | Crosswalk Rush | A traffic signal on its arm, dark against the sky, lamps lit. Hangs into the top of frame. | magenta |
+
+Fourteen files. Any subset is useful — each one replaces its procedural
+stand-in independently, and a board with no delivery keeps the drawing it has.
+
+---
+
+## 18G. Seven a pose is drawing somebody else's art — 7 sprites
+
+[18C](#18c-three-that-fell-through-the-round-renumbering--3-sprites) audited the
+**flags** against this file. This is the other half of that audit: the poses that
+are outstanding *without* a flag, because the fault was answered by pointing the
+pose at a different drawing instead of marking the drawing bad.
+
+That happens at approval. A delivered pose that is rejected leaves a hole, and a
+hole draws nothing at all, so the workbench picks another frame of the same
+fighter's set to stand in — the game keeps working and the pose keeps being
+outstanding. Nothing reports it: `tools/list_replacements.py` reads flags, and a
+stand-in raises none. The only way to see them is to ask which poses are drawing
+a file that is not their own, which is now how the count at the top of this file
+is derived.
+
+Five of the seven below are that. Two are ordinary flags that no round had
+picked up.
+
+| Fighter | Key | Pose | Kind | What is wrong |
+|---|---|---|---|---|
+| Hanami | `hanami` | `crouch_attack_b` | Pose | Flagged at approval, and it is the frame two of the three below are borrowing — so it is the one to draw first. `_b` is the strike out of the crouch: blade of the arm forward at ankle-to-knee height, hips through, head no higher than in `_a`. |
+| Hanami | `hanami` | `attack_light_a` | **Standing in** on `run_reach_b` | The delivered wind-up was rejected. His jab now winds up on a sprinting frame, so a light attack shows him mid-stride. |
+| Hanami | `hanami` | `attack_light_b` | **Standing in** on `special_neutral` | Rejected in the same pass. The strike frame is his neutral-special pose — a different action, a different arm, and one that does not extend past the body the way a light has to. |
+| Hanami | `hanami` | `crouch_b` | **Standing in** on `crouch_attack_b` | Rejected. The held crouch is drawn by the crouch *attack*, so holding down reads as a repeated swing. `crouch_b` is `crouch_a` a breath later — weight settled a touch further forward, head a touch lower, nothing else. |
+| Gakuganji | `gakuganji` | `attack_air_a` | **Standing in** on `attack_air` | Round 14C asked for this as an alternate because the delivered hands were malformed; neither drawing was taken, so the pose still draws the legacy single that the `_a`/`_b` pair was meant to supersede. His aerial has a wind-up frame that is not a wind-up. |
+| Toji Fushiguro | `toji` | `attack_heavy_b` | Quality | *"Should show full sword extended to the right in attack. (alt has a spear which is wrong)"* — both drawings on this pose are wrong in different ways, so it needs a third. Same criterion as every other heavy: a third of standing height past his own idle, sword tip leading. |
+| Choso | `choso` | `attack_light_b` | Quality | Flagged in the workbench. `_b` is the contact frame of the jab — the blood-arm out past the body, shoulders rotated through, weight on the front foot. |
+
+**Hanami's four are one delivery.** They are all from the round-17 set, all
+rejected in the same approval pass, and three of them are borrowing from each
+other — `crouch_b` borrows `crouch_attack_b`, which is itself flagged. Drawn
+together they settle each other; drawn one at a time the borrowing moves around.
+
+
+---
+
+# Round 20 — the summon sheets, the grab set and the dash attack
+
+**152 sprites in one delivery, and the largest sprite round since 12.** Three of
+round 20's four sections landed together: the forty-four summon plates that had
+shipped as contact sheets (20A), three grab poses across the roster (20C) and
+the dash attack the roster had never had (20D). 20B, the twenty backgrounds,
+followed in its own delivery — see
+[20B](#20b-twenty-backgrounds-re-extended--delivered) — and four sprites of
+Yuji are still outstanding.
+
+**What the round settled**
+
+- **Every summon plate in the game is one creature.** `tools/check_summon_plates.py`
+  passes on all 114, where it used to fail on 44. Seven creatures had an
+  authored `hitW`/`hitH` pair in `src/config_summons.js` purely because their
+  `idle_a` was a sheet and measuring it would have given a box six creatures
+  wide; all seven pairs came out with this delivery, and **no creature in the
+  pools has an authored box any more** — every one is hit on the shape it is
+  drawn as, which is the rule fighters have followed since their hurtboxes
+  started coming off their art.
+- **The grab mechanic reads.** `grab_reach`, `grab_hold` and `grabbed` are drawn
+  for twenty-six fighters, and the grip point 20C was written around — fist and
+  prying hands at chest height on the leading edge — held across all of them,
+  checked in the game with two fighters posed in a hold rather than on the
+  boards alone.
+- **Both dash attacks have their own pose.** Nothing needed a code change:
+  `attack_dash` was already named by `dashAttack` and `dashAttackHeavy` with the
+  standing strike as the fallback, so the pose started being drawn the moment
+  the manifest knew about it.
+- **Nothing waited for an approval.** All 108 sprite frames are new pose keys,
+  and a key with no incumbent has nothing to compare against, so they went
+  straight in rather than into the queue ([the confirm
+  step](../assets/intake/README.md#the-confirm-step)). The approval queue is
+  still round 18's 25 and only those.
+
+**What the round cost, and what it taught**
+
+- **The delivery covered the wrong twenty-seven.** 20C and 20D each asked for
+  one file per fighter and each arrived as 27 — with **Mahoraga in Yuji's
+  place**. Mahoraga is a summon animated out of a character sprite set, so he
+  has an intake directory and a full sheet and looks exactly like a fighter to
+  every tool in the pipeline; he is not on `CHARACTER_KEYS`. The count was right
+  and the roster was wrong, twice, and nothing downstream could tell. It is now
+  a row in [pose-brief.md § 5](../sprites/docs/pose-brief.md#5-the-faults-that-keep-coming-back)
+  and a `ROSTER COVERAGE` report that `tools/intake.py` prints on every
+  delivery, naming who is missing and who is not a fighter. Yuji's four are
+  [20E](asset-requests.md#20e-yujis-four-round-20-poses--4-sprites), still open.
+- **Quality was the best of any round so far.** 152 plates: no low-resolution
+  figure, no contact sheet, no mirrored strike, seven plates flipped to face
+  right by the detector, and four canvas edges touched
+  (`gakuganji/grab_hold`, `megumi/grab_reach`, `meimei/grab_hold` — all a braid
+  or a sleeve at the left — and `uro/grab_hold`, hair at the top). None was
+  worth a redraw and all four are recorded here rather than re-requested.
+- **A round that adds pose keys needs pose reads.** Every frame in the manifest
+  owes one (`node tools/check_pose_reads.mjs`), and `tools/pose_seed.py` would
+  only seed a character who had no read file at all — so 108 new frames were red
+  and the only way through was `--force`, which reseeds a whole sheet and throws
+  its hand reads away. Seeding is additive now: existing poses are kept, only
+  the new frames are fitted, and it is step 6 of
+  [the intake flow](../assets/intake/README.md#what-happens-to-it).
+
+**The requests, as they were written.** All three are reproduced below verbatim,
+because a later redraw of one frame has to agree with the others.
+
+## 20A. Summon plates that are contact sheets — 44 sprites
+
+**Forty-four of the hundred and fourteen summon plates hold six creatures
+instead of one**, and the game draws the whole file as one summon. A six-across
+strip of dogs is painted at the dog's height, so what walks the stage is six
+dogs in a row at a sixth of the size each — and it changes mid-animation,
+because one pose of a creature is a sheet and the next is not.
+
+It shipped because a sheet is invisible at review size: a strip of six dogs in a
+thumbnail looks like a dog. It is the same fault as `mechamaru/run_reach_a` in
+round 15, which was caught only because the importer refused it, and summon art
+has no importer to refuse it — it is a file drop.
+
+So it is a tool now rather than an eye. **`python3 tools/check_summon_plates.py`**
+counts the separate figures in each plate's alpha and fails on three or more of
+comparable size; detached art (a floating wheel, a thrown chain) reads as one
+big blob and some small ones and passes. Run it on any summon delivery before
+importing. This table is its output.
+
+| Creature | Sheets | Poses |
+|---|---|---|
+| `divine_dog_white` | 2 | `move_a`, `hurt` |
+| `great_serpent` | 4 | `idle_a`, `idle_b`, `move_a`, `move_b` |
+| `inventory_curse` | 4 | `idle_b`, `move_a`, `attack`, `hurt` |
+| `max_elephant` | 4 | `idle_a`, `move_a`, `move_b`, `hurt` |
+| `rabbit_escape` | 5 | `idle_a`, `idle_b`, `move_a`, `move_b`, `hurt` |
+| `rainbow_dragon` | 3 | `move_b`, `attack`, `hurt` |
+| `toad` | 4 | `idle_a`, `move_a`, `move_b`, `hurt` |
+| `transfigured_crawler` | 6 | all six |
+| `transfigured_hulk` | 6 | all six |
+| `transfigured_human` | 6 | all six |
+
+**What to deliver: the same pose, as one figure.** Not a redesign, not a new
+pose — every one of these sheets contains the right drawing several times over,
+so the brief is the pose line it was drawn against
+([round 16 in the history](asset-requests-history.md#round-16--the-summons-animate-delivered)),
+with **one creature on the canvas**. Where a sheet has an obviously best figure
+in it, that figure at full resolution is a complete answer.
+
+Same rules as the round-16 summon art: one subject per file, flat key screen, at
+least 600 px of creature, one zoom across all six poses of a creature, delivered
+to `assets/intake/summons/<file>_<pose>.png`.
+
+### It is also what is holding up seven hit boxes
+
+A creature's hit box is **measured off its own `idle_a`** now — 85% of the drawn
+rectangle — rather than authored in `src/config_summons.js`, which is the rule a
+fighter's hurtbox has followed since it started coming off their art. Ten
+creatures measure theirs today.
+
+The seven whose `idle_a` is on this list cannot: measuring a sheet would give a
+box six creatures wide. They keep an authored pair with a comment naming this
+round, and **each pair comes out when the plate lands** — at which point the
+creature starts being hit on the shape it is drawn as, with no further code
+change.
+
+---
+
+## 20C. The grab poses — 81 sprites
+
+**Three new poses per fighter, all 27 fighters**, for the Smash-style grab and
+throw mechanic that shipped behind `?throw=true` (`src/grab.js`,
+[game-mechanics.md §8](game-mechanics.md#grabs--throws--on-by-default-throwfalse-turns-them-off)).
+The mechanic is fully playable now on **reused art** — the table below is what
+each state draws in the meantime — so nothing is blocked; this request is what
+makes a grab look like a grab instead of a frozen light attack.
+
+| Pose key | What it must read as | Drawing in the meantime |
+|---|---|---|
+| `grab_reach` | A committed forward lunge with one open, grasping hand leading — reaching to seize, not to strike. The other arm guards. | first light-attack frame |
+| `grab_hold` | Gripping an (unseen) opponent at arm's length by the collar — front hand closed in a fist at chest height, weight planted, coiled to heave. The opponent is NOT in the drawing: the game places the victim's own body in the grip. | `charge` |
+| `grabbed` | Seized and struggling: body arched back from the collar, feet scrabbling, both hands prying at an (unseen) grip at their own chest. Also unlocks: this doubles as the pose for any future "held/dragged" effects. | `hurt` |
+
+The four throw states (`throw_fwd`, `throw_back`, `throw_up`, `throw_down`)
+are **registered but not requested**: each currently plays the heavy attack
+swung that way, which reads correctly because a throw IS a heave in that
+direction. If a fighter's grab set ever gets a bespoke throw pose, deliver it
+under those keys and it is picked up with no code change — but 20C is complete
+without them.
+
+**The critical constraint is the grip point.** `grab_hold`'s closed fist and
+`grabbed`'s prying hands must both sit at **chest height on the leading edge of
+the body**, because the game overlaps the two drawings at a fixed gap
+(`holdGap` in `src/grab.js`) — a fist drawn high on one fighter and low on
+another makes every pairing look like they are holding different arguments.
+Chest height, front edge, both poses, whole roster.
+
+Same spec as every sprite round: one subject per file, flat key screen (grey
+for the warm-palette fighters — see the list at the top), facing right, one
+zoom per character matched to their own `idle_a`, at least 600 px of body,
+delivered to `assets/intake/<character>/<pose_key>.png`. Read
+[pose-brief.md](../sprites/docs/pose-brief.md) first, and the
+[canonical reference](asset-requests.md#the-canonical-reference-image--one-per-fighter) rule
+applies as always.
+
+**The 2.5D/3D side of the same mechanic is aliased, not owed:** the rig states
+`grabReach`, `grabHold`, `grabbed` and the four throws currently play the
+`light` / `charge` / `hurt` / heavy clips (`STATE_ALIASES` in
+`render3d/src/states.js`). Bespoke grab clips would be a B-/D-round request
+if the mechanic graduates from its flag; nothing is asked of the model tracks
+yet.
+
+---
+
+## 20D. The dash attack pose — 27 sprites
+
+**A pose the roster has never had, for two attacks it did not have until now.**
+Attacking out of a dash or a sprint throws a **dash attack** — light for the
+lunge, heavy for the running shoulder-charge (see §4 of
+[game-mechanics.md](game-mechanics.md)). Both are in the game and both are
+correct in every way except what they look like: they draw the fighter's
+standing strike, because that is the only attack art there is. A committed
+forward lunge drawn as a jab thrown on the spot reads as a fighter sliding
+along the floor while punching the air in front of them.
+
+**Nothing is waiting on this.** `dashAttack` and `dashAttackHeavy` already name
+`attack_dash` in `src/characters.js`, with the strike each move draws today as
+their `fallback`. So a fighter with no dash pose keeps exactly the drawing they
+have now, a fighter who gets one starts using it the moment the manifest knows
+about it, and **the delivery can land one fighter at a time** with no code
+change at any point.
+
+### The two attacks, so the pose can be drawn to fit both
+
+One drawing serves both dash attacks. That is deliberate — it is the same
+motion at two weights, and asking for two poses would double a round to buy a
+distinction a player reads from the hit, not the frame.
+
+| | Light, running | Heavy, running |
+|---|---|---|
+| Reads as | a lunging strike carried by the run | the same lunge, thrown with everything |
+| Active | 0.13 s | 0.15 s |
+| Recovery | ~1.7× the side tilt's | ~1.4× the side smash's |
+
+So the drawing wants to be the **committed** end of that range: it stands in
+for a smash-weight blow as well as a quick one, and a pose that reads as a
+light poke will look weak on the heavy version. When in doubt, draw the heavy.
+
+### What the pose has to show
+
+Read [pose-brief.md](../sprites/docs/pose-brief.md) first — it is the standing
+brief for every sprite, and this pose is measured by the same four criteria.
+On top of it, this one specifically:
+
+- **Weight ahead of the lead foot.** The whole point is momentum: the body is
+  travelling and the strike is going with it. A dash attack drawn balanced over
+  the hips is a tilt.
+- **No wind-up.** The run WAS the wind-up. This is a single held pose, not the
+  `_a`/`_b` wind-up-then-strike pair the light and heavy attacks use — draw the
+  moment of the blow, arm or weapon already extended along the line of travel.
+- **Low and driving**, not upright: shoulder or hip leading, back leg extended
+  behind, the trailing arm counterweighting. A shoulder-charge silhouette reads
+  at game size where a punch does not.
+- **The character's own weapon.** Whoever fights with something leads with it
+  — Maki's naginata levelled along the run, Nanami's cleaver driving forward,
+  Mei Mei's axe carried low, Gakuganji's guitar swung through. A weapon
+  character drawn throwing a shoulder is a different fighter.
+- **Facing RIGHT**, one zoom per character (this pose at the same figure scale
+  as the rest of their set — it is the criterion that costs the most to fix
+  later), flat key screen per the [delivery spec](asset-requests.md#delivery-spec), at
+  least 600 px of body.
+
+Prompt formula, as always: `[CHARACTER BLOCK]` (the table above — use it
+verbatim), the pose line, facing right, `[STYLE SUFFIX]`.
+
+> **Pose line:** "sprinting forward and striking at the same moment, body low
+> and driving, weight thrown ahead of the leading foot, back leg extended
+> behind, striking arm or weapon fully extended forward along the direction of
+> the run, trailing arm swept back, at the instant of impact"
+
+### The canonical reference is their own `idle_a`
+
+Same rule as every other request in this file (see
+[there](asset-requests.md#the-canonical-reference-image--one-per-fighter)): open the fighter's
+`idle_a` and match its costume, proportions, palette, line weight and shading.
+Hanami and Mahoraga are the two exceptions the table there records, and they
+are exceptions here too.
+
+### Delivery, and how the old drawing is kept
+
+`assets/intake/<character>/attack_dash.png` — one file per fighter, 27 in all
+(`CHARACTER_KEYS`). Standard intake: `tools/intake.py` keys and measures it,
+`tools/intake_sheets.py` boards it for approval, `tools/intake_import.py
+--approve` registers it in `manifest.json`, then it is placed in the sprite
+workbench like any other pose.
+
+**The current art stays, in both of the ways this repo keeps art:**
+
+1. **In code, as the fallback.** `attack_dash` is a NEW pose key, so nothing is
+   replaced and nothing is overwritten. The light and heavy strikes stay
+   exactly where they are, still drawn by their own attacks, and still standing
+   in for the dash attacks of every fighter whose pose has not landed or has
+   been rejected. Delete a delivered `attack_dash` and the game is back to
+   today's look with no other edit.
+2. **In the manifest, as a banked variant.** A second drawing of the pose banks
+   beside the first rather than replacing it — the workbench's **`alternate`**
+   kind (`ALTERNATE_KIND` in `sprites/src/sprites.js`, routed by
+   `tools/intake_variants.py`), the same mechanism that lets a pose keep an
+   older drawing selectable after a redraw. So if a delivered dash pose turns
+   out worse than the strike it replaced for some fighter, that is a click in
+   the workbench, not a re-request.
+
+### Checked on delivery
+
+Per sprite: it is the same character at the same figure scale as their
+`idle_a`; the body is travelling rather than planted; nothing is clipped at
+the canvas edge; the key screen is flat and has not bounced colour into hair or
+cloth. `python3 tools/check_summon_plates.py` does not apply here — that is
+creature art — but the same fault is worth a glance: one figure per file.
+
+### Not part of this round: the 3D clips
+
+The 2.5D billboard path and the live-3D path both know these two states now,
+and both **alias** them to the strike clips they already have (`STATE_ALIASES`
+in `render3d/src/states.js`, beside the grab states 20C describes) exactly as
+the sprites fall back. A bespoke pair of
+dash-attack clips is a billboard round (B-numbers) if anyone wants one; it is
+not a hole in the roster today, and no rig is missing anything because of it.
+
+---
+
+## What 20A delivered
+
+All forty-four, one figure each, at the resolution the sheets were painted at —
+between 600 and 1400 px on the long edge before `prep_effects.py` brought them
+down to the 700 px the summon tree runs at. They are keyed by `intake.py` like
+any sprite and then take the short path: no manifest entry, no placement, no
+approval, because a creature belongs to no fighter. The raw plates are in
+`assets/reference/round20/summons/`.
+
+The seven hit-box pairs this was holding up came out in the same change
+(`src/config_summons.js`), so the Great Serpent is now hit on 112×88 measured
+from its own rearing coil rather than the authored 158×78, Max Elephant on
+229×162 rather than 156×156, and so on down the seven. Those are different
+numbers, deliberately: the authored pairs were written before the art existed,
+which is the whole reason the rule changed.
+
+## What 20C and 20D delivered
+
+Twenty-six fighters of twenty-seven, plus Mahoraga, for each of the four poses —
+108 frames. Landed with `intake_variants.py --auto` into `intake_import.py`,
+anchored, auto-tuned, and seeded with pose reads. Every one is a new key, so
+nothing was overwritten and the "All Recently Updated Poses" list is a round's
+worth of new art to place rather than of tuning to redo.
+
+Yuji is the exception in both, and is [20E](asset-requests.md#20e-yujis-four-round-20-poses--4-sprites).
+
+# 20B. Twenty backgrounds, re-extended — delivered
+
+All twenty came back at 3200×1800, exactly 16:9, and are in the game. The ask
+was unusual and worth keeping the record of, because it was a re-request of a
+round that had been *delivered to spec and still missed*: 18E asked for twenty
+boards repainted at 3200×1800 and got exactly that, but each was drawn fresh
+from the board's brief, so twenty scenes were re-invented at the same time as
+they were enlarged. Against the 3D camera's centre crop the result read sparser
+and darker than the paintings players knew.
+
+20B asked for the opposite of a repaint — **keep the source painting as the
+picture, extend it outward 30% a side** — and named the input as a file rather
+than a description, on the reasoning that any wording paraphrasing a painting
+is a chance to drift.
+
+**It worked.** Every delivery carries its source's composition. Shibuya Night
+is the clearest case and was the furthest gone: the previous painting is a high
+aerial of the scramble crossing, 18E's replacement was a street-level view down
+a wet avenue — a different vantage entirely — and the delivery is the aerial
+again, brighter and more detailed. What a player sees in 3d is now the board
+they knew, very slightly cropped.
+
+**Checking it needed eyes, and nearly did not get them.** A greyscale
+correlation of each delivery's centre against its source scored Shibuya Night
+at 0.016 — no correlation at all — which would have condemned the single best
+plate in the set. The metric was measuring brightness and fine detail on a
+painting that had legitimately got brighter. Twenty side-by-sides settled in a
+minute what the number got backwards.
+
+The previous 18E plates are archived at `assets/reference/backgrounds_18e/`,
+verified byte-identical to what they replaced before the copy. Nothing in
+`assets/backgrounds/flat/` was touched: that directory is the FLAT camera's
+runtime art, not an archive, and the two cameras have wanted different
+paintings of the same scene since 20B was written.
+
+## The request, as written
+
+**This is a re-request of 18E against a different input: the old painting
+itself.** 18E asked for twenty boards repainted at 3200×1800 and got exactly
+that — the resolution problem it was written to fix is fixed, and nothing here
+is a complaint about sharpness. What it did not ask for, and so did not get, is
+*the same picture*. Each plate was drawn fresh from the board's brief, so twenty
+scenes were re-invented at the same time as they were enlarged, and the result
+against the 3D camera's crop reads **sparser and darker than the paintings it
+replaced** — more empty middle distance, less of the lit, busy, close detail the
+old boards put right behind the fighters.
+
+So: keep the resolution win, take the composition back. **Extend each previous
+painting outward instead of replacing it.**
+
+### The previous paintings are the input
+
+They are in the repo, at **`assets/backgrounds/flat/`** — moved there from
+`assets/reference/backgrounds_previous/` when this request was written, because
+they are runtime art again: the flat camera now draws them (`backgroundFile()`
+in `src/stages.js`), which is the half of this that needed no art at all. Flat
+mode shows a whole plate, so pointing it back at the paintings composed for a
+whole plate fixed flat mode the same afternoon. 3d mode is what this request is
+for.
+
+**The input image is the brief.** There is no scene description below and there
+should not be one — the board being asked for is the board that is already
+there, and any wording paraphrasing it is a chance to drift. Open the file.
+
+### The one rule
+
+> **Keep the source painting as the picture. Extend the scene outward by 30% on
+> each of the four sides — same place, same moment, more of it — and deliver the
+> whole thing at 3200×1800 or larger, exactly 16:9.**
+
+30% on each side is **1.6× linear**, so the source painting ends up as the
+**centre 62.5%** of the delivered plate, in both dimensions:
+
+| delivered plate | the source painting occupies | new ring |
+|---|---|---|
+| 3200×1800 (minimum) | centre **2000×1125** | 600 px left/right, 337 px top/bottom |
+| 4096×2304 (preferred) | centre **2560×1440** | 768 px left/right, 432 px top/bottom |
+
+**Why 30% and not more.** The 3D camera over-fills its frustum on purpose
+(×1.5 height, ×1.35 width — `src/camera3d/stage_geo.js`), so only the centre
+**49.4%** of a plate's width is ever on screen. Against a 1.6× extension that
+visible crop is **79% of the source painting**, centred — so what a player sees
+in 3d becomes the old board, very slightly cropped, instead of a different
+painting. The ring is not scenery anybody is meant to look at: it exists so no
+dolly, yaw or roll can swing past the edge. Extending further would push the old
+composition back out of frame, which is the fault being fixed.
+
+The 3D crop of a 3200×1800 delivery is 1581 source pixels across 1280 CSS
+pixels — still a downscale, so 18E's sharpness holds. 4096×2304 gives 2023 and
+is comfortable at DPR 2, which is why it is preferred.
+
+### What the ring may contain
+
+- **More of the same scene, continued.** Same architecture, materials, weather,
+  time of day, light direction and colour temperature; the same painterly style
+  and line weight. A wall keeps going, a street keeps receding, a canopy of
+  branches keeps spreading.
+- **Nothing that reads as a second picture.** No new focal subject, no character,
+  no creature, no large new light source, no text, watermark, border or vignette.
+  If the ring is interesting enough to look at on its own, it is wrong.
+- **Nothing painted at foreground depth in the centre 49.4%.** That is 18E's
+  standing rule and it still holds: the near field belongs to the garnish layer
+  (`src/camera3d/garnish.js`), which draws cards in front of the backdrop and
+  will overlap anything painted there. Where a source painting already has a
+  foreground element in its centre, **leave it** — it is the board players know,
+  and the garnish placement is checked per board after delivery.
+
+### Do not re-light the middle
+
+The other half of what feels wrong is exposure. Match the source plate's
+**brightness, contrast and palette exactly** where the ring meets it, and do not
+take the opportunity to grade the centre — no darkening, no desaturating, no
+"cinematic" cool cast. Note that the renderer already lays a 30% black wash and
+the stage's tint over the plate before a player sees it
+(`drawBackdrop()` in `src/render.js`), so a plate that looks a little bright and
+a little saturated on its own is the one that lands correctly in the game.
+
+Resampling the centre is unavoidable — a 1600×900 source becomes 2000×1125 at
+the minimum delivery size — so upscale it cleanly and keep its detail. **Do not
+repaint it.**
+
+### The twenty, and what to open
+
+Filenames are the ones `src/stages.js` registers, so nineteen boards need no
+code change and Shibuya Night needs none either as long as it is delivered as
+`.jpg` (the source is the older `.webp`; the live plate is already `.jpg`).
+
+| Board | Stage key | Source file (under `assets/backgrounds/flat/`) | Source size | Region to extend |
+|---|---|---|---|---|
+| Training Bridge | `trainingBridge` | `training_bridge.jpg` | 1920×1080 | whole image |
+| Quiet Hall | `quietHall` | `quiet_hall.jpg` | 1920×1080 | whole image |
+| Flooded Gate | `floodedGate` | `flooded_gate.jpg` | 800×437 | centre **777×437** ⚠ |
+| Shibuya Night | `shibuyaNight` | `shibuya_night.webp` | 1200×675 | whole image |
+| Curse Maw | `curseMaw` | `curse_maw.jpg` | 1920×1640 | centre **1920×1080** ⚠ |
+| Garden Steps | `gardenSteps` | `garden_steps.jpg` | 1600×900 | whole image |
+| Lantern Corridor | `lanternCorridor` | `lantern_corridor.jpg` | 1600×900 | whole image |
+| Sunken Crossing | `sunkenCrossing` | `sunken_crossing.jpg` | 1600×900 | whole image |
+| Neon Split | `neonSplit` | `neon_split.jpg` | 1600×900 | whole image |
+| Bone Sanctum | `boneSanctum` | `bone_sanctum.jpg` | 1600×900 | whole image |
+| Bridge Duel | `bridgeDuel` | `bridge_duel.jpg` | 1600×900 | whole image |
+| Academy Hall | `academyHall` | `academy_hall.jpg` | 1600×900 | whole image |
+| Mist Pier | `mistPier` | `mist_pier.jpg` | 1600×900 | whole image |
+| Crosswalk Rush | `crosswalkRush` | `crosswalk_rush.jpg` | 1600×900 | whole image |
+| Cursed Teeth | `cursedTeeth` | `cursed_teeth.jpg` | 1600×900 | whole image |
+| River Gate | `riverGate` | `river_gate.jpg` | 1600×900 | whole image |
+| School Wing | `schoolWing` | `school_wing.jpg` | 1600×900 | whole image |
+| Empty City | `emptyCity` | `empty_city.jpg` | 1600×900 | whole image |
+| Billboard Roof | `billboardRoof` | `billboard_roof.jpg` | 1600×900 | whole image |
+| Domain Core | `domainCore` | `domain_core.jpg` | 1600×900 | whole image |
+
+**The two ⚠ rows are the boards whose source is not 16:9.** Take the centred
+16:9 region first — that is what the game has always shown of them, since
+`drawBackdrop()` cover-fits — and extend *that*, so the delivery is 16:9
+throughout and nothing the player knows is cropped by the change.
+
+**Flooded Gate is the hard one.** Its source is 800×437, so the centre of a
+3200×1800 delivery is a 2.6× upscale of a small, soft image and clean
+resampling will not carry it. This is the one board where **re-detailing inside
+the kept composition is expected**: same gate, same water, same framing, same
+palette and light, painted at the delivered resolution. It is also the board
+where a 4096×2304 delivery buys the least, so 3200×1800 is fine for it.
+
+### Delivery
+
+`assets/intake/backgrounds/<file>.jpg` — JPEG, high quality, the filenames in
+the table above (Shibuya Night as `shibuya_night.jpg`). No alpha, no key screen:
+a background is a finished picture, not a subject on a field, and it takes the
+short path through intake — no keying, no measuring, no manifest entry (see
+[assets/intake/README.md](../assets/intake/README.md)).
+
+**On landing, archive the plate being replaced** into
+`assets/reference/backgrounds_18e/`, the same way 18E archived what it replaced.
+`assets/backgrounds/flat/` is **not** an archive and must not be touched: the
+flat camera draws those twenty files every match.
+
+Checked on delivery, per plate:
+
+1. exactly 16:9, at least 3200×1800;
+2. the centre 62.5% is the source painting — not a redraw of it — at matching
+   brightness and palette;
+3. the centre 49.4% stands as a finished picture, which follows from (2);
+4. no text, border, watermark or signature anywhere, ring included.
 
 ---

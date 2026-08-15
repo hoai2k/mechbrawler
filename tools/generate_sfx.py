@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""Generate every sound in docs/audio-requests-history.md via the ElevenLabs API.
+"""Generate every sound in the audio request docs via the ElevenLabs API.
+
+Spoken lines are its sibling tools/generate_voice.py's job; see parse_doc.
 
 Parses the doc (filename + prompt + target length), requests raw PCM, then
 applies the same post-processing the doc asks a human supplier for: trim
@@ -20,27 +22,86 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
-# The prompts live in the HISTORY doc: that round is delivered, but a prompt is
-# how a file gets regenerated or re-rolled, so they stay this tool's input
-# rather than becoming a record nobody reads.
-DOC = os.path.join(ROOT, "docs", "audio-requests-history.md")
+# Delivered prompts live in the HISTORY doc: that round is delivered, but a
+# prompt is how a file gets regenerated or re-rolled, so they stay this tool's
+# input rather than becoming a record nobody reads.
+#
+# The OPEN requests doc is read too, and that is the whole point of reading two:
+# a round that has not landed yet cannot have its prompts in a file named
+# "history" without the status line lying, and a round nobody can generate is
+# not a request, it is a wish. Both files use the same entry format; open
+# prompts move across to the history file when the round lands.
+DOCS = [
+    os.path.join(ROOT, "docs", "audio-requests.md"),
+    os.path.join(ROOT, "docs", "audio-requests-history.md"),
+]
 OUT = os.path.join(ROOT, "assets", "sfx")
 SR = 44100
 PEAK_TARGET = 10 ** (-3.0 / 20)      # -3 dBFS
 SILENCE_FLOOR = 10 ** (-50.0 / 20)   # -50 dBFS counts as silence
 
 # Sounds that must stay full length and un-faded: they loop in game.
-LOOPING = {"energy_charge.wav", "hazard_fire_patch.wav", "fire_burn_loop.wav"}
+LOOPING = {"energy_charge.wav", "hazard_fire_patch.wav", "fire_burn_loop.wav",
+           "domain_interior.wav"}
+
+
+ENTRY = re.compile(
+    r"\*\*`([a-z_0-9]+\.wav)`\*\*([^\n]*?·\s*([0-9.]+)\s*s[^\n]*)\n```\n(.*?)\n```",
+    re.S)
+
+# A `· voice `id` ·` field marks an entry as speech, not sound: the same shape
+# in the same doc, but a different endpoint and a cast performer. Those belong
+# to tools/generate_voice.py, and skipping them here is what stops a domain
+# call-out being rendered as a sound effect — which is the one mistake round 10
+# was written to avoid.
+VOICE_FIELD = re.compile(r"·\s*voice\s+`")
+
+# ------------------------------------------------------------------ pruning
+#
+# A take that was auditioned and rejected gets DELETED from assets/sfx/ — but
+# its prompt stays in the docs, because a prompt is the record of how the file
+# was made and this repo keeps those verbatim even for work that did not land.
+#
+# Those two facts fight. Both generators are idempotent by "does the file
+# exist", so a deleted file is indistinguishable from an undelivered one, and
+# the next run would faithfully recreate all 33 takes somebody had just spent
+# an evening listening to and throwing out. The prompt has to survive without
+# the entry staying live.
+#
+# So the pruned list is the third state: delivered, judged, and gone on
+# purpose. Both tools read it and skip those filenames — including under
+# --force, which is the flag for re-rolling a take you are keeping, not for
+# undoing a decision. Putting a name back in play means taking it off this
+# list, which is one edit and a deliberate one.
+PRUNED_DOC = os.path.join(ROOT, "docs", "audio-pruned.md")
+PRUNED_LINE = re.compile(r"^\s*[-*]\s+`([a-z_0-9]+\.wav)`", re.M)
+
+
+def pruned():
+    """-> set of filenames deleted on purpose and not to be regenerated."""
+    if not os.path.exists(PRUNED_DOC):
+        return set()
+    return set(PRUNED_LINE.findall(open(PRUNED_DOC).read()))
 
 
 def parse_doc():
-    """-> [(filename, seconds, prompt)] in document order."""
-    text = open(DOC).read()
-    pat = re.compile(
-        r"\*\*`([a-z_0-9]+\.wav)`\*\*[^\n]*?·\s*([0-9.]+)\s*s[^\n]*\n```\n(.*?)\n```",
-        re.S)
-    return [(m.group(1), float(m.group(2)), m.group(3).strip())
-            for m in pat.finditer(text)]
+    """-> [(filename, seconds, prompt)] in document order, open requests first.
+
+    A filename appearing in both docs is taken from the OPEN one: that is the
+    re-roll case (a delivered sound being re-requested with a new prompt), and
+    the open wording is the newer intent.
+    """
+    out, seen, gone = [], set(), pruned()
+    for doc in DOCS:
+        if not os.path.exists(doc):
+            continue
+        for m in ENTRY.finditer(open(doc).read()):
+            name, header = m.group(1), m.group(2)
+            if name in seen or name in gone or VOICE_FIELD.search(header):
+                continue
+            seen.add(name)
+            out.append((name, float(m.group(3)), m.group(4).strip()))
+    return out
 
 
 def request_pcm(prompt, seconds, key):
@@ -61,7 +122,11 @@ def request_pcm(prompt, seconds, key):
         return r.read()
 
 
-def post_process(raw, target, looping):
+def post_process(raw, target, cap=True):
+    """`cap` trims a runaway result back towards `target` with a short fade.
+    Two kinds of sound must not be cut that way and pass cap=False: a loop,
+    which needs its full period, and a spoken line, whose length is the
+    performance's to decide — a cap there lands mid-word."""
     x = np.frombuffer(raw, dtype="<i2").astype(np.float32) / 32768.0
     if x.size == 0:
         return None
@@ -79,7 +144,7 @@ def post_process(raw, target, looping):
         end = min(x.size, idx[-1] + int(0.01 * SR))
         x = x[start:end]
 
-    if not looping:
+    if cap:
         # Cap runaway length so combos don't turn to mush, with a short fade
         # so the cut never clicks.
         cap = int(target * 1.35 * SR)
@@ -132,7 +197,7 @@ def one(entry, key, force):
     for attempt in range(4):
         try:
             raw = request_pcm(prompt, seconds, key)
-            x = post_process(raw, seconds, name in LOOPING)
+            x = post_process(raw, seconds, cap=name not in LOOPING)
             if x is None:
                 return name, "EMPTY", 0
             write_mp3(dest, x)

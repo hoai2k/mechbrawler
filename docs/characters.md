@@ -731,20 +731,24 @@ Round 15's four, at the same glance:
 
 The pinnacle of jujutsu: a barrier that manifests the sorcerer's innate domain
 and, inside it, bends the fight to their technique. In game it is the **second,
-larger super** — **any D-pad direction** on a controller, **U** (P1) / **;**
-(P2) on keyboard, costing a **full** Cursed Energy bar where an ultimate costs
-half. (A fighter with two would split the pad, up/left and down/right; none
-has two yet.)
+larger super** — **LB** on a controller, **U** (P1) / **;** (P2) on keyboard,
+costing a **full** Cursed Energy bar, the same as an ultimate (RB). (A fighter
+with two would pick between them by holding the left stick up or down with LB;
+none has two.)
 
-Seven fighters have one. The design rule for all of them: **a domain you watch
+Eight fighters have one, and two more — Mechamaru and Yuki — carry the New
+Shadow Style's **Simple Domain** instead. That is a special, not an Expansion:
+its own cooldown, no meter. The domain button casts it for them all the same,
+because the button opens whatever domain a fighter has. The design rule for all of them: **a domain you watch
 is a cutscene, a domain you operate is a move.** Every one binds a live
 interaction to SPECIAL while it is open, so the player is still playing rather
 than waiting out an animation. The in-game moves screen carries the same
 "How it plays" text as the table below.
 
-`char.domains` is an array, so a fighter with more than one can bind them to
-different d-pad directions (◀ and ▶). Nobody has two yet; the input path and
-the moves screen already handle it.
+`char.domains` is an array, so a fighter with more than one could split them
+across the left stick held with LB. Nobody has two; the input path and the
+moves screen already handle it (`domainSlotFor` / `domainStickFor` in
+`src/domains.js`, which the moves screen asks rather than restating).
 
 When two or more human players are on different fighters, the move list opens
 as a **column per player** so everyone reads their own kit — domain included —

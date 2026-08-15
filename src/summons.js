@@ -50,7 +50,8 @@ import { isFoe } from "./teams.js";
 import { burst, dust, ring, popup, emit } from "./particles.js";
 import { playSfx } from "./audio.js";
 import { getImage } from "./assets.js";
-import { drawCharFrame, currentFrame } from "./sprites.js";
+import { sharedAdjust, sharedAttack } from "./shared_sprites.js";
+import { drawCharFrame, currentFrame } from "./render_backend.js";
 import { SUMMON_ANIMS } from "./config_summons.js";
 import { MOTION } from "./config_tuning.js";
 import { METER_MAX } from "./constants.js";
@@ -198,6 +199,72 @@ function poseKeyOf(sprites) {
 /** The drawing for one pose of one summon, or null if it was never delivered. */
 function poseImage(baseKey, pose) {
   return baseKey ? getImage(`${baseKey}:${pose}`) : null;
+}
+
+/** The drawing a creature's BOX is measured from: its resting pose, or its
+ *  single still where no pose art has landed. One pose, not whichever frame is
+ *  showing — a box that grew on the attack frame and shrank on the idle would
+ *  make the same creature hittable at different sizes a fifth of a second
+ *  apart. */
+function canonicalImage(cfg) {
+  return poseImage(poseKeyOf(cfg.sprites), "idle_a") ?? summonImage(cfg.sprites);
+}
+
+/**
+ * A creature's box, measured off the drawing.
+ *
+ * The numbers used to be authored per creature in config_summons.js, which
+ * meant they were guesses: most were written before any of this art existed,
+ * and once it arrived they disagreed with it badly — a Divine Dog drawn 205 px
+ * long was hit on 90, and a Husk Curse drawn 35 px wide was hit on 70. A
+ * fighter has not had that problem since their hurtbox started coming off
+ * their own art (src/silhouette.js); this is the same rule for creatures.
+ *
+ * It follows everything the drawing follows, including the workbench's size
+ * control, because it is derived from the drawn rectangle rather than stored
+ * beside it.
+ *
+ * `BOX_INSET` trims the fringe: fur, wisps, cursed-energy glow and the soft
+ * edge of the key cut are part of the picture and should not be part of the
+ * target. It is the creature equivalent of HURTBOX.standH stopping short of a
+ * fighter's hair.
+ */
+const BOX_INSET = 0.85;
+
+function derivedBox(cfg, drawnH) {
+  const img = canonicalImage(cfg);
+  if (!img || !img.height) return null;
+  return {
+    w: Math.round(img.width * (drawnH / img.height) * BOX_INSET),
+    h: Math.round(drawnH * BOX_INSET),
+  };
+}
+
+/**
+ * What a creature hits with, when nobody has placed its box by hand.
+ *
+ * Its hurt box is the whole drawing (derivedBox above) and its attack box is
+ * not: a dog bites with its head. The default is the FRONT of the creature —
+ * the leading 44% of its length, most of its height — which is the right end
+ * of every quadruped, serpent and hulk in the pools, because the art is drawn
+ * facing right and the renderer mirrors it.
+ *
+ * A bomber is the exception and gets its whole body: it detonates on contact,
+ * and the thing that touches you is whichever part of it got there first.
+ */
+const DEFAULT_ATTACK = { x: 0.28, y: 0.52, w: 0.44, h: 0.76 };
+const BOMBER_ATTACK = { x: 0, y: 0.5, w: 1, h: 1 };
+
+/** The creature's attack box in world pixels, mirrored to its facing. */
+function attackRect(s, cfg) {
+  const box = sharedAttack(poseKeyOf(cfg.sprites) || cfg.sprites?.[0])
+    ?? cfg.attackBox
+    ?? (s.behavior === "bomber" ? BOMBER_ATTACK : DEFAULT_ATTACK);
+  const w = s.drawW || s.hitW;
+  const h = s.drawH || s.hitH;
+  const cx = s.x + s.dir * box.x * w;
+  const cy = s.y - box.y * h;
+  return { x: cx - (box.w * w) / 2, y: cy - (box.h * h) / 2, w: box.w * w, h: box.h * h };
 }
 
 /** The frame an animation is showing at `t`, skipping poses that do not exist
@@ -352,8 +419,41 @@ export function spawnSummon(owner, cfg) {
     adapted: false,
     // The box it occupies, published on the entity so combat.js can test
     // against it without reaching into this module's config.
+    //
+    // Measured off the drawing (derivedBox) unless the kit states one. A kit
+    // that states one is saying the art cannot be trusted for it — which was
+    // the seven creatures whose plates arrived as sheets of six figures, where
+    // the drawn rectangle was six creatures wide. Round 20A redrew those, so no
+    // kit states a pair today and every creature is hit on its own art. Art
+    // loads asynchronously, so this is re-measured until it lands.
     hitW: cfg.hitW ?? 70,
     hitH: cfg.hitH ?? 90,
+    boxFromArt: false,
+    // The drawn rectangle, for the attack box to be a fraction of. Falls back
+    // to the hurt box for an authored creature or an actor summon.
+    drawW: 0,
+    drawH: 0,
+
+    /** Take the box from the drawing, once the drawing is there. A kit that
+     *  states `hitW`/`hitH` keeps them: that is a deliberate override, and the
+     *  measurement is not attempted. */
+    measureBox() {
+      if (cfg.hitW !== undefined && cfg.hitH !== undefined) { this.boxFromArt = true; return; }
+      // Actor summons (Mahoraga) are drawn from a fighter's sprite set through
+      // drawCharFrame, not from one image, so their box stays with the kit.
+      if (this.actor) { this.boxFromArt = true; return; }
+      const drawnH = (cfg.h ?? 110) * sharedAdjust(poseKeyOf(cfg.sprites) || cfg.sprites?.[0]).scale;
+      const box = derivedBox(cfg, drawnH);
+      if (!box) return;                       // art still loading — try again next step
+      this.hitW = box.w;
+      this.hitH = box.h;
+      // The drawn rectangle itself, which the ATTACK box is a fraction of. Kept
+      // separate from the hurt box because that one is inset (BOX_INSET) and an
+      // attack box placed on the mouth should be placed against the drawing.
+      this.drawW = Math.round(box.w / BOX_INSET);
+      this.drawH = Math.round(drawnH);
+      this.boxFromArt = true;
+    },
 
     /** Where the body is drawn this frame: the arrival still has it falling in,
      *  and the departure lifts it as it comes apart. A flyer only settles the
@@ -510,6 +610,7 @@ export function spawnSummon(owner, cfg) {
 
     update(dt) {
       this.bob += dt * 5;
+      if (!this.boxFromArt) this.measureBox();
 
       // Coming apart: nothing else runs. It is already out of the fight.
       if (this.vanishT > 0) {
@@ -845,12 +946,15 @@ export function spawnSummon(owner, cfg) {
 
     // What touching an enemy means, for both the automatic hunt and a piloted
     // drive. Bombers spend themselves; chasers bite on a cooldown.
+    /** The box it hits with, for the debug overlay and anything else that wants
+     *  to draw what the contact test actually uses. */
+    attackRect() { return attackRect(this, cfg); },
+
     tryContact(target) {
-      const rect = {
-        x: this.x - this.hitW / 2, y: this.y - this.hitH,
-        w: this.hitW, h: this.hitH,
-      };
-      if (!rectsOverlap(rect, hurtbox(target))) return;
+      // What it HITS with, not what it can be hit on: the front of the creature
+      // by default, and wherever the workbench put it when somebody has placed
+      // one. Its hurt box is still the whole drawing (combat.js summonBox).
+      if (!rectsOverlap(attackRect(this, cfg), hurtbox(target))) return;
 
       if (this.behavior === "bomber") {
         this.dead = true;
@@ -1031,14 +1135,21 @@ export function spawnSummon(owner, cfg) {
       // fighters and several summons on screen, the player needs to see at a
       // glance which one their stick is actually moving.
       ctx.shadowBlur = this.piloted ? 26 : 14;
-      const h = cfg.h ?? 110;
+      // A creature's height comes from `h` in config_summons.js, not from a
+      // kit's `spriteH`, so the workbench's size never reached it until this
+      // read was added: the number was stored, shown, and inert. The nudge
+      // moves the drawing only — the creature's hitbox and its footing on the
+      // stage are `hitW`/`hitH` and this.y, and they do not move.
+      const adj = sharedAdjust(poseKeyOf(cfg.sprites) || cfg.sprites?.[0]);
+      const h = (cfg.h ?? 110) * adj.scale;
       if (img) {
         const w = img.width * h / img.height;
-        ctx.drawImage(img, -w / 2, -h, w, h);
+        if (adj.rot) ctx.rotate(adj.rot);
+        ctx.drawImage(img, -w / 2 + adj.dx, -h + adj.dy, w, h);
         if (flash > 0) {
           ctx.globalCompositeOperation = "lighter";
           ctx.globalAlpha = alpha * flash;
-          ctx.drawImage(img, -w / 2, -h, w, h);
+          ctx.drawImage(img, -w / 2 + adj.dx, -h + adj.dy, w, h);
         }
       } else {
         // no art at all: glowing orb silhouette
@@ -1055,6 +1166,9 @@ export function spawnSummon(owner, cfg) {
   if (flies) {
     s.y = owner.y - (cfg.hover?.up ?? 150);
   }
+  // Measured before it is on the board, so the first frame is already the right
+  // size. If the art has not loaded yet this is a no-op and update() retries.
+  s.measureBox();
   state.entities.push(s);
   // The caster's end of it, kept light: the summon's own arrival is the loud
   // part, and it announces itself when it lands (stepAppear).

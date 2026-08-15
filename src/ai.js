@@ -9,6 +9,7 @@ import { mainPlatform } from "./stages.js";
 import { METER_MAX } from "./constants.js";
 import { heavyMove } from "./moves.js";
 import { bodyMetrics } from "./silhouette.js";
+import { THROW_ENABLED } from "./flags.js";
 
 const LEVELS = [
   { name: "Easy", planMin: 0.5, planMax: 0.9, attack: 0.3, special: 0.18, defend: 0.1, ult: 0.4, dmgMul: 0.62 },
@@ -36,6 +37,32 @@ export function aiInput(f) {
     !best || Math.abs(o.x - f.x) < Math.abs(best.x - f.x) ? o : best
   , null);
   const input = blankInput();
+
+  // Grabs (?throw=true) preempt every plan: a held CPU mashes like a player
+  // would, and a holding CPU spends the grab rather than sitting on it.
+  if (THROW_ENABLED && f.grabbedBy) {
+    // Mash rate scales with difficulty — the same lever the defense rolls use.
+    const mash = 0.06 + lvl.defend * 0.18;
+    if (chance(mash)) input.lightP = true;
+    if (chance(mash * 0.6)) input.jumpP = true;
+    return input;
+  }
+  if (THROW_ENABLED && f.grab) {
+    const v = f.grab.victim;
+    if (f.grab.t < 0.28) {
+      // a beat of pummel while the hold is fresh
+      if (chance(0.15)) input.lightP = true;
+    } else if (v.damage < 45 && chance(0.4)) {
+      input.down = true;          // down throw: the combo starter
+    } else if (chance(0.2)) {
+      input.up = true;
+    } else {
+      // toss them toward the nearer blast line
+      if (f.x < 640) input.left = true; else input.right = true;
+    }
+    return finishPlan(f, input, opp);
+  }
+
   if (!opp) return input;
 
   const dt = 1 / 60;
@@ -73,6 +100,7 @@ export function aiInput(f) {
   plan.specialP = false;
   plan.ultP = false;
   plan.jumpP = false;
+  plan.grabP = false;
 
   return finishPlan(f, out, opp);
 }
@@ -139,7 +167,12 @@ function makePlan(f, opp, lvl) {
   const close = adx < melee * 1.05;
   const mid = adx >= melee * 0.8 && adx < 460;
   if (close && chance(lvl.attack)) {
-    if (chance(0.3)) {
+    if (THROW_ENABLED && f.grounded && opp.grounded &&
+        (opp.shielding ? chance(0.6) : chance(0.12))) {
+      // Grab beats shield, so a turtling opponent invites one; the occasional
+      // raw grab keeps shield honest even when they are not.
+      input.grabP = true;
+    } else if (chance(0.3)) {
       input.heavyP = true;
       input.heavyHeld = true; // held for the plan's lifetime -> real charge
     } else {

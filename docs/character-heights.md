@@ -51,9 +51,14 @@ the tallest — while holding the spread to about 1.25x. `HEIGHT_MIN_RATIO` /
 `HEIGHT_MAX_RATIO` are a guard against a future outlier rather than something the
 current roster reaches.
 
-`HEIGHT_BASE_PX` (175.3) is what a fighter at ratio 1.0 renders at. It was chosen
-so the roster's *average* drawn height is unchanged from before heights were
-canon: fighters redistribute around it, the game does not globally resize.
+`HEIGHT_BASE_PX` (149) is what a fighter at ratio 1.0 renders at. It was 175.3 —
+chosen so the roster's *average* drawn height was unchanged from before heights
+were canon — until the level-design pass ([level-design-review.md](level-design-review.md),
+G1) shrank the roster ~15%: at the old size no fighter could jump their own
+height and boards had no room for Smash-style spacing. The dynamic camera
+(`camera.js`) zooms in on close fights so fighters still read large. The
+"Rendered" column below predates the change — scale by 149/175.3 (×0.85) for
+current values.
 
 All four dials are in `src/config_tuning.js`.
 

@@ -7,6 +7,7 @@
 // CHROMIUM_PATH if yours is elsewhere. Start the game first (node server.mjs),
 // then: node tools/smoke_stages.mjs [baseUrl]
 import { chromium } from "playwright";
+import { pressStart } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 const STAGE_KEYS = [
@@ -39,7 +40,8 @@ page.on("response", (r) => {
 });
 let current = "boot";
 
-await page.goto(BASE, { waitUntil: "load" });
+await page.goto(`${BASE}/index.html?camera=flat`, { waitUntil: "load" });
+await pressStart(page);
 // wait for asset load -> menu phase
 await page.waitForSelector('[data-character="gojo"]', { timeout: 60000 });
 await page.click('[data-character="gojo"]');

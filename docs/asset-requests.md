@@ -1,34 +1,65 @@
 # Asset Requests — open requests
 
+**To DRAW from, use [image-requests.md](image-requests.md), not this file.**
+That is the single image-request document for every render mode — this round is
+reproduced in it whole, alongside the 3D track's, resolved against what is
+actually on disk. This file stays where the sprite rounds are AUTHORED: edit a
+round here and re-run `node tools/build_image_requests.mjs`.
+
 Everything in this file is **outstanding**. Delivered rounds are recorded in
 [asset-requests-history.md](asset-requests-history.md) — including the round
 numbers, so a commit or code comment citing "round 5 art" still resolves.
 
-**Current status: rounds 1–16 delivered. Round 17 is delivered except its card
-set. Round 18 is open.**
+(This file is 2D art — sprites, cards, effects, backdrops. Requests for the
+2.5D path's rigged 3D models live in
+[billboards/docs/asset-requests.md](../billboards/docs/asset-requests.md),
+numbered B1, B2…; the live-3D anime path's model requests live in
+[render3d/docs/asset-requests.md](../render3d/docs/asset-requests.md),
+numbered D1, D2…, and its 2D image inputs — turnaround boards for
+image-to-3D, face sheets, shade palettes — in
+[render3d/docs/image-requests.md](../render3d/docs/image-requests.md),
+numbered DI1, DI2… — so the tracks never collide. All of them are gathered into
+[image-requests.md](image-requests.md), which is what to read to draw any of
+them; these files are where each is written.)
 
-**Round 18 is the one to add to** — 17D is being drawn against, so anything found
-from here goes into 18.
+**Current status: rounds 1–21 delivered. Round 22 is open** — one pose key for
+every fighter, 27 sprites, below. Nothing is blocked by it.
+Round 21's walk cycle landed complete — 54 sprites, two frames for each of the
+twenty-seven — and is
+[in the history](asset-requests-history.md#round-21--the-walk-cycle).
 
-**The approval queue is empty.** Rounds 14, 16 and 17 all landed through the
-[approval step](../assets/intake/README.md#the-confirm-step) — a delivery is in
+**Round 22 is the round to add to** — 19 was used for the intake of round 18 and
+is not a request number. Anything found from here goes into 22.
+
+**How the sprite count is derived.** A pose is outstanding if it carries a
+workbench flag *or* is drawing a file that is not its own. The second half is
+the one that goes missing: a pose rejected at approval is pointed at another
+frame of the same set so the game keeps drawing something, and that raises no
+flag for `tools/list_replacements.py` to report. Both halves are checked against
+the manifest, not against this file — [18C](asset-requests-history.md#18c-three-that-fell-through-the-round-renumbering--3-sprites)
+is what the first found and [18G](asset-requests-history.md#18g-seven-a-pose-is-drawing-somebody-elses-art--7-sprites)
+is what the second did.
+
+**The approval queue holds round 18's 25 sprites.** Rounds 14, 16 and 17 all
+landed through the [approval step](../assets/intake/README.md#the-confirm-step) — a delivery is in
 the repo before it is in the game, and each pose is a decision waiting in the
-sprite workbench — and every one of those decisions has now been made. What a
-player sees is what was approved, Hanami's canon set included.
+sprite workbench — and every one of those decisions has been made. What a
+player sees is what was approved, Hanami's canon set included — round 18's own
+decisions are the queue that is open now.
 
 **Kurourushi is shipped.** His 36-pose set, his hero card, his simplified tile
 and both his summons landed with round 15; the set was placed and approved pose
 by pose, and his key now sits in the Curses group in `src/config_menus.js`, so
 `STAGED_CHARACTER_KEYS` in `src/characters.js` is empty for the first time since
-round 15. The roster is 27 fighters. What his placement pass found is **18B**
-below.
+round 15. The roster is 27 fighters. What his placement pass found became
+**18B**, now delivered.
 
 The roster is complete and **every fighter now has one sprite per action** —
 round 11 finished the conversion that round 5 started, so the 4×5 sprite sheet
 is retired and no action anywhere plays a grid cell. Nothing outstanding blocks
 play.
 
-Read **[pose-brief.md](pose-brief.md)** before drawing a fighter. It is the
+Read **[pose-brief.md](../sprites/docs/pose-brief.md)** before drawing a fighter. It is the
 standing brief — what every pose has to be, the four criteria the engine
 measures, and the faults that have each cost the roster a re-request — and it is
 cumulative, so it is the reason a new set should arrive better than the last one.
@@ -43,7 +74,7 @@ canonical reference: 16A matches the existing still, and 16B is new design.)
 
 ## Where to deliver
 
-**Upload art to `assets/intake/`, never to `assets/sprites/`.**
+**Upload art to `assets/intake/`, never to `sprites/assets/`.**
 
 ```
 assets/intake/<character>/<pose_key>.png    sprites
@@ -51,9 +82,10 @@ assets/intake/effects/<name>.png            technique effects
 assets/intake/summons/<name>.png            summon minions
 assets/intake/cards/<key>_card.jpg          hero cards
 assets/intake/backgrounds/<name>.jpg        stage / domain backgrounds
+assets/intake/garnish/<name>.png            near-field cards for ?camera=3d (18F)
 ```
 
-`assets/sprites/` holds **finished runtime art only** — keyed, trimmed, alpha,
+`sprites/assets/` holds **finished runtime art only** — keyed, trimmed, alpha,
 registered in `manifest.json`. Generated art arrives as an untrimmed plate on a
 flat colour field with no alpha, so a raw file landing there makes the game try
 to draw a 1024×1536 background as a sprite. Every round so far has arrived that
@@ -81,7 +113,7 @@ the [asset-requests-history.md](asset-requests-history.md).)
   Our generator **cannot output a true alpha channel** — every delivery is an
   opaque plate on a flat colour field, which is why the repo talks about green,
   magenta and grey screens rather than transparency. So the key screen is not a
-  fallback, it is the format, and the transparency in `assets/sprites/` is
+  fallback, it is the format, and the transparency in `sprites/assets/` is
   something `tools/intake.py` cuts on import. That makes the *quality of the
   screen* the thing that decides whether a sprite comes out clean: pick a
   screen colour that appears nowhere in the character, keep it perfectly flat
@@ -160,7 +192,7 @@ and a recipe for fetching more in that directory's README.
 | yuji | "Yuji Itadori from Jujutsu Kaisen, athletic teenage boy with short spiky salmon-pink hair and brown eyes, wearing a dark navy high-collared jujutsu school uniform jacket over a red hoodie, matching dark trousers and white sneakers" *(grey key)* |
 | choso | "Choso from Jujutsu Kaisen, pale serious young man with long black hair tied into two high loose buns with strands framing his face, a dark horizontal marking across the bridge of his nose, wearing a loose black robe-like tunic with pale trim, wide sleeves, dark trousers and simple shoes" *(grey key)* |
 | meimei | "Mei Mei from Jujutsu Kaisen, tall elegant woman with very long silver-lavender hair worn in thick loose braids, calm confident expression, wearing a fitted black high-collared long-sleeved dress with gold buttons and dark tights, carrying a large single-headed battle axe" |
-| uro | "Takako Uro from Jujutsu Kaisen, lean athletic woman with a fierce confident grin, pale violet-pink hair sweeping upward and outward in wild flame-like curling points, sharp violet eyes with heavy dark eyeliner, large gold cylindrical drop earrings, a black choker and a black band on each wrist, her only covering a wrap of pale-cyan cloud vapour clinging across her chest and hips with soft drifting edges, bare arms and legs, barefoot with violet-painted nails" *(grey key)* |
+| uro | "Takako Uro from Jujutsu Kaisen, lean athletic woman with a fierce confident grin, pale violet-pink hair sweeping upward and outward in wild flame-like curling points, sharp violet eyes with heavy dark eyeliner, large gold cylindrical drop earrings, a black choker and a black band on each wrist, her only covering **two separate bands of pale-cyan cloud vapour with soft drifting edges — one wrapped across the chest, one at the hips — with the midriff BARE between them and never a single garment joining the two**, bare arms and legs, barefoot with violet-painted nails" *(grey key)* |
 | reggie | "Reggie Star from Jujutsu Kaisen, tall lean man with straight shoulder-length blond hair parted at the side, heavy-lidded tired eyes and a narrow pointed chin beard, wearing a shaggy knee-length tunic and matching shoulder cape built from layered rows of torn white paper receipts with small pale mint-green printed tabs, bare arms and bare lower legs, barefoot" |
 | mechamaru | "Ultimate Mechamaru from Jujutsu Kaisen, a tall humanoid cursed-corpse puppet with a smooth clay-brown carved head, two round glowing green lens eyes and a small third lens on the forehead, a fixed grin of bared square teeth, a thick white puffy scarf around the neck, wearing a dark navy high-collared jujutsu uniform tunic with a white sash and very wide baggy navy trousers, bare carved wooden hands and bare wooden feet" |
 | yuki | "Yuki Tsukumo from Jujutsu Kaisen, tall athletic young woman with very long straight blonde hair falling past her waist with two tufts framing her face and brown eyes, wearing a sleeveless dark indigo mandarin-collar top with gold frog clasps at the shoulder, a grey buttoned corset belt at the waist, high-waisted light blue jeans and brown ankle boots" |
@@ -174,9 +206,9 @@ and a recipe for fetching more in that directory's README.
 round 9 — see **9E**; art made against their old wording is being replaced. The
 four `mechamaru` / `yuki` / `dagon` / `kurourushi` rows are round 15 and were
 written from the wiki's **(Anime)** renders, archived in
-[`assets/reference/canon/`](../assets/reference/canon/) — they are the only
-blocks with no delivered art behind them, so the render IS the authority for
-them.)*
+[`assets/reference/canon/`](../assets/reference/canon/). They were the only
+blocks with no delivered art behind them; all four have shipped since, so they
+now have a `<char>_idle.png` and are matched against it like everyone else.)*
 
 
 ---
@@ -302,287 +334,164 @@ single addition: **no drawn shadow of any kind** — the game casts its own.
 
 ---
 
-# Round 17 — 40 of 41 sprites and 1 of 28 cards delivered
+---
 
-**Everything except 17D has landed**, and its art is in the repo awaiting
-approval. What is left in this round is the simplified card set.
+# Round 22 — open
 
-| Part | Scope | State |
-|---|---|---|
-| 17A | A full Hanami set — 36 sprites | **Delivered.** Redrawn to canon; awaiting approval pose by pose |
-| 17B | Mahoraga's three light/crouch poses — 3 sprites | **Delivered**, awaiting approval — the karma wheel is present this time |
-| 17C | Two caught while placing round 13 — 2 sprites | **Delivered**, awaiting approval |
-| 17D | A simplified card for every fighter — 27 images | **Open**, below |
-| 17E | Hanami's hero card, redrawn to canon — 1 image | **Delivered and in the game.** A card has no approval step |
+## 22A. Balanced on the lip: the teeter — 27 sprites
 
-The three keys outside 17A's 36 — `attack_air`, `run_a` and `run_b` — were not
-drawn. They are standby fallbacks nothing reaches, so Hanami's set is answered;
-they are noted in
-[the history entry](asset-requests-history.md#round-17--hanami-to-canon-mahoraga-and-the-last-two-round-13-catches)
-in case the set is ever redrawn whole again.
+**One new pose key, `teeter`, for every fighter.** Nothing is blocked by it:
+until it lands the state draws the fighter's own IDLE frames with a procedural
+lean supplied by `src/motion.js`, so the read exists today and the drawing
+upgrades it.
 
-**17D is drawn against the new Hanami.** His block was rewritten for 17A and his
-tile is the pale humanoid curse, not the tree — the hero card the tile has to
-agree with is already in the game.
+**What it is for.** The ledge brake (`brakeAtLedge` in `src/fighter.js`) stops
+a fighter dead on the last pixel of a platform whenever momentum would have
+carried them off — that is its entire job, and it happens constantly. Nothing
+drew it, so the most common thing that happens at an edge looked exactly like
+standing in the middle of the stage. It is also the answer to when a fighter
+should NOT be hanging: someone who stopped at the edge has not left it, and a
+ledge hang would be telling the player they fell when they did not.
 
-## 17D. A simplified card for every fighter — 27 images
+**The brief.** A standing pose, weight shifted BACK from the drop, arms out for
+balance, front foot at or just over the lip, head turned down toward the fall.
+Not alarmed — this roster does not panic — but caught: the moment after
+realising the ground ran out. It reads at a glance against the idle beside it,
+which is the test: a player should be able to tell from the silhouette that
+they are on the edge.
 
-### Why
+**Facing.** Drawn facing RIGHT like every other pose, with the drop on the
+right. The engine mirrors it for the left-hand lip and leans it the correct way
+either side (`teeterLean` in `src/config_tuning.js`), so one drawing serves
+both edges.
 
-**The hero cards do not survive being made small.** Each one is a full-bleed
-640×820 illustration with a painted scene behind the fighter — Gojo on a neon
-skyline, Panda outside a shrine at dusk, Nanami against tower blocks at golden
-hour. At hero size, on the right of the select screen, that is exactly right and
-it should stay.
-
-The same file is also the **roster tile**, and there it is doing a different
-job: the player is scanning two dozen thumbnails for the one they want, and the
-scene is noise. It is already costing something. `styles.css` carries a
-per-card brightness table — `--card-lift`, defaulting to 1.18, with a heavier
-tier for Nanami, Toji, Geto, Reggie, Mei Mei and Gakuganji and a saturation-only
-case for Panda — that exists solely because the art was not all painted at the
-same key and the tiles read murky next to each other. That table is a patch on
-using scene illustrations as icons.
-
-**And it gets worse with every fighter added.** `layoutCharacterGrid()` fits the
-roster by walking depths and then *cropping*: `ROSTER_ASPECTS` runs
-`3/4 → 1/1 → 5/4 → 3/2 → 2/1`, and the tile is `object-fit: cover` anchored to
-the **top**. A bigger roster reaches the wide end of that list sooner, so the
-tile becomes a **letterbox strip off the top of a portrait** — and `object-position: top`
-means it keeps the head and throws the body away. `MIN_CARD_WIDTH` is 96 px, so
-at the far end each fighter is a 96 px-wide band of a painting.
-
-Round 15 takes the roster from 23 to 27, which is the point of asking now rather
-than later. This request is the art that is drawn for that job from the start.
-
-### What this is not
-
-- **Not a replacement.** Every existing `assets/cards/<key>_card.jpg` stays
-  exactly where it is and keeps being the hero card. Nothing is flagged, nothing
-  is deleted, and `assets/reference/cards_previous/` is untouched.
-- **Not wired up.** The game does not read the new directory and this section
-  does not ask for the code that would. It is art banked ahead of a roster big
-  enough to need it — the switch is a one-line change in `buildCharacterCard()`
-  when that day comes, and it can be made per-surface (tiles simplified, hero
-  card and in-match portrait still the painting).
-- **Not a redesign.** Same character, same costume, same palette family as their
-  hero card, so the two read as the same fighter seen at two distances.
-
-### The brief
-
-**A portrait icon, not a scene.** One fighter, chest-up, filling the frame, on a
-plain background. Think a roster icon in a fighting game's character select, or
-an app icon of a person: legible at a glance, legible at a glance *small*, and
-distinguishable from twenty-six others at the same size.
-
-| | |
+| pose key | count |
 |---|---|
-| **Crop** | Head and shoulders to mid-chest. The head is large in the frame — roughly the top half of the image — and centred horizontally |
-| **Background** | Flat or a single soft vertical gradient in the fighter's theme colour (the `theme` field in `src/characters.js`). No scenery, no buildings, no sky, no props behind the figure, no logo, no text |
-| **Lighting** | Even and front-lit. Bright enough to need **no** `--card-lift` correction: the whole point is that all 27 come back at the same key and the brightness table can be deleted |
-| **Detail** | Fewer, larger shapes than the hero card. Simplify folds, hair strands and pattern; keep the two or three things that identify the fighter and drop the rest |
-| **Silhouette** | Readable as a shape. Squint at it: Gojo's blindfold, Nanami's glasses, Maki's ponytail and glasses, Todo's topknot, Momo's hat, Jogo's volcano head should still be the thing you see |
-| **Format** | JPEG, **640 × 820** (3:4), same as the hero cards, so the two are interchangeable in every slot |
+| `teeter` | 27 (one per fighter) |
 
-**Two crops must both work, because the fitter chooses between them at runtime.**
-Before delivering, check each image twice:
+**Not requested, deliberately: a ledge-climb pose.** Getting on and off a ledge
+is now an animated transition rather than a teleport (`beginLedgeMove` in
+`src/fighter.js`), and it is built from poses the roster already has — the fall
+carries onto the ledge, the climb rises on `jump_rise` and arrives on `land`,
+the roll uses `dodge_roll`. A bespoke `ledge_climb` would be an upgrade to
+that, not a dependency, and 27 more sprites is not worth spending before the
+reused ones have been seen in motion.
 
-1. **Full 3:4** — the shallow-roster case.
-2. **The top half only, at 2:1** — the crowded-roster case, which is what
-   `object-fit: cover` with `object-position: top` produces at the wide end of
-   `ROSTER_ASPECTS`. The fighter must still be recognisable, which in practice
-   means **the whole head sits inside the top 45% of the image** and nothing that
-   identifies them lives below the shoulders.
+# Round 20 — delivered
 
-**Keep the bottom sixth quiet.** The name plate is drawn over it — white caps on
-a dark gradient — so anything with detail down there is covered up.
+**All four requests are in.** The last of them was Yuji's own four poses, which
+landed as [20E](#20e-yujis-four-round-20-poses--4-sprites) and are in the game:
+his grab now reads as a grab and his dash attack as a lunge, like everybody
+else's. Nothing in round 20 is outstanding.
 
-### Prompt formula
+- **~~44 of the 114 summon plates hold six creatures instead of one~~** —
+  delivered. All forty-four came back as one figure each,
+  `tools/check_summon_plates.py` passes on the whole tree of 114, and the seven
+  authored hit boxes that were standing in for an unmeasurable plate came out
+  with them.
+- **~~Twenty backgrounds, re-extended from the paintings 18E replaced~~** —
+  delivered, all twenty at 3200×1800, and in the game. Each one carries its
+  source painting's composition rather than a fresh take on the brief, which is
+  the whole thing 18E got wrong and the only thing this round was asking for.
+  See [the history entry](asset-requests-history.md#20b-twenty-backgrounds-re-extended--delivered).
+- **~~The grab poses~~** and **~~the dash attack pose~~** — delivered, 26
+  fighters of 27 each, plus Mahoraga. Both are in the game: every one is a new
+  pose key, so nothing was replaced and nothing waited for an approval. A grab
+  now reads as a grab and a dash attack as a lunge, on everybody except Yuji.
+- **~~Yuji's four~~** — [20E](#20e-yujis-four-round-20-poses--4-sprites),
+  delivered. 20C and 20D each asked for 27, one per fighter, and each arrived
+  as 27 files with Mahoraga in Yuji's place; this was the correction, and it
+  came back as the four missing drawings. Imported, anchored, and seeded a
+  pose read each — the seeder had to learn that the REFERENCE character can
+  gain frames too, since it was skipping him wholesale and he was then the one
+  fighter with unread art.
 
-`[CHARACTER BLOCK]`, head-and-shoulders portrait icon facing the viewer, chest-up
-crop, head filling the upper half of the frame, flat `[THEME COLOUR]` background
-with no scenery or props, even front lighting, simplified shapes and reduced
-detail, `[STYLE SUFFIX]`.
+Round 18 is closed and everything in it landed.
 
-Character blocks are in [Character blocks](#character-blocks) above and are used
-verbatim, exactly as for sprites — **including Hanami's, which was rewritten for
-[17A](asset-requests-history.md#17a-a-full-hanami-set--36-sprites)**. His tile is the pale humanoid curse,
-not the tree.
+**Round 18 was delivered complete** — 28 sprites and 14 near-field cards, every
+section of it, plus the five render3d image inputs (DI1–DI4). Its record, and
+the reasoning behind each request in it, is now in
+[the history](asset-requests-history.md#round-18--delivered).
 
-`[THEME COLOUR]` is the fighter's `theme` in `src/characters.js` — the colour the
-game already uses for their HUD accent and hit flashes, so a tile painted on it
-matches what happens when they land a hit.
+**Round 20 is the open round.** (19 is skipped as a request number: it was used
+for the *intake* of round 18, so `assets/reference/round19/` holds the delivered
+plates and no request ever carried that number. Reusing it would make "round 19"
+mean two different things.) Anything found from here — a placement pass, an
+approval rejection, a manifest audit — lands in 20 beside 20B.
 
-| Group | Fighter | Key | Theme |
-|---|---|---|---|
-| Students | Yuji | `yuji` | `#ff8264` |
-| | Nobara | `nobara` | `#d86a4a` |
-| | Megumi | `megumi` | `#7c8cff` |
-| | Yuta | `yuta` | `#9fc7ff` |
-| | Maki | `maki` | `#69d0a8` |
-| | Inumaki | `inumaki` | `#d7d9e7` |
-| | Panda | `panda` | `#8ea0b8` |
-| | Todo | `todo` | `#b66cff` |
-| | Momo | `momo` | `#b7b8ff` |
-| Faculty | Gojo | `gojo` | `#62dcff` |
-| | Nanami | `nanami` | `#ffd35a` |
-| | Mei Mei | `meimei` | `#d8b95c` |
-| | Gakuganji | `gakuganji` | `#d89b3f` |
-| Other Sorcerers | Hakari | `hakari` | `#ff62cf` |
-| | Toji | `toji` | `#a8aeb8` |
-| | Uro | `uro` | `#8fd7e8` |
-| | Reggie Star | `reggie` | `#86d67c` |
-| Curses and Curse Users | Mahito | `mahito` | `#b56cff` |
-| | Jogo | `jogo` | `#ff7a2f` |
-| | Hanami ⚠ | `hanami` | `#9bb36b` |
-| | Geto | `geto` | `#7d58d8` |
-| | Choso | `choso` | `#c22e4a` |
-| | Sukuna | `sukuna` | `#ff4c55` |
-| **Staged (round 15)** | Mechamaru | `mechamaru` | `#63c7b0` |
-| | Yuki Tsukumo | `yuki` | `#ffb703` |
-| | Dagon | `dagon` | `#2f8fd8` |
-| | Kurourushi | `kurourushi` | `#8f3b4e` |
+## Also outstanding, but work here rather than art
 
-**The last four depend on round 15.** They have no delivered art at all, so
-their tile is drawn from the same wiki render as their hero card in
-[15D](asset-requests-history.md#15d-kurourushis-hero-card--1-image) — and it is worth drawing the two together,
-since the questions are the same and the answer to one settles the other. If
-15A's sprite sets have landed by then, prefer the delivered `idle_a` as every
-other fighter's tile does.
+Four things, and none of them is a drawing anybody owes us:
 
-Four themes are close enough to a neighbour's to be worth checking side by side
-before delivering — Todo `#b66cff` against Mahito `#b56cff` are all but
-identical, and Mei Mei `#d8b95c` against Gakuganji `#d89b3f` are near. The
-background is a supporting cue, not the identifier; if two tiles come back
-reading as the same card, it is the *figure* that has to carry the difference.
-
-**Mahoraga is deliberately not in it** — he is a `SPRITE_ACTOR`, nobody selects
-him, and he has no hero card either.
-
-### Where it goes
-
-Deliver to:
-
-```
-assets/intake/cards/simple/<key>_tile.jpg
-```
-
-and it lands at:
-
-```
-assets/cards/simple/<key>_tile.jpg
-```
-
-**`_tile`, not `_card`, and the reason is not cosmetic.** The per-card
-brightness rules in `styles.css` are written as filename suffix matches
-(`img[src$="nanami_card.jpg"]`), which would match `simple/nanami_card.jpg` just
-as happily as the hero card. A simplified card that silently inherited a 1.34×
-lift meant for a murky painting would arrive blown out, and it would take a
-while to work out why. A distinct suffix makes that impossible.
-
-Cards take the short path through the pipeline — no keying, no measuring, no
-manifest entry — so landing these is a move and nothing else.
+- **25 poses are waiting in the approval queue.** Round 18's sprites are in the
+  repo but not in the game: each is a decision in the sprite workbench, and
+  until it is made the pose keeps drawing what it drew before. This is the
+  [approval step](../assets/intake/README.md#the-confirm-step) working as
+  intended, not a backlog. `mechamaru/run_reach_a` is the one exception — it
+  filled an empty pose rather than replacing a drawn one, so it went straight
+  in and completed his run cycle.
+- **The two alpha fixes** above — `hakari/dodge_air` and `toji/dodge_air` — are
+  repo work on delivered files, not art anybody owes us.
+- **Six variant options point at art that was retired.** `hanami_alt/` was
+  folded away when the alternate-art-set machinery went ([8843a0f]) and its
+  drawings moved to `assets/reference/hanami_alt/`, but six options in
+  `manifest["variants"]["hanami"]` still name the old path — a chevron offering
+  a file that is not there. It is also what `tools/canonicalise_sprites.py`
+  refuses on, so the step that puts canonical names back on approved art cannot
+  run until those six entries are dropped or repointed. Round 20's own sprites
+  did not need it — a new pose key lands at its canonical name — but round 18's
+  approvals do.
+- **Rejections from the approval pass** will become round 20. A pose rejected
+  at approval is pointed at another frame so the game keeps drawing something,
+  which raises no flag; [18G](asset-requests-history.md#18g-seven-a-pose-is-drawing-somebody-elses-art--7-sprites)
+  is what that costs when nobody checks, and the manifest audit that found it is
+  how the count at the top of this file is now derived.
 
 ---
 
-# Round 18 — open
-
-**Round 18 is the round to add to.** 14, 15, 16 and 17 are all being drawn
-against, so anything caught from here lands here.
-
-- **18A** — thirteen caught while placing the round-15 sets (13 sprites)
-- **18B** — four caught while placing Kurourushi (4 sprites, 1 alpha fix)
-
-**17 sprites, none of it blocking** — every pose named here is in the game today
-and playable; each is a redraw of art that works but does not do its job.
-
-## 18A. Caught while placing the round-15 sets — 13 sprites
-
-The three new fighters arrived with complete 36-pose sets drawn against
-[pose-brief.md](pose-brief.md). These are what the placement passes found — a
-pose reads differently at real size against a real stage than it does on a
-review board — plus the brief's headline criterion, which all three missed.
-
-| Fighter | Key | Pose | Kind | What is wrong |
-|---|---|---|---|---|
-| Yuki Tsukumo | `yuki` | `attack_heavy_b` | Pose | The hook extends **9%** of standing height past her idle where the brief asks for a third — the shortest heavy on the roster. She is a boxer with no weapon, so the whole body has to be behind it: hips through, shoulder past the lead foot. **Her `ult_b` is standing in** meanwhile, so she has a heavy that reaches while this is redrawn. |
-| Dagon | `dagon` | `attack_heavy_b` | Pose | Extends **16%**. The claws should finish out past the wings. |
-| Mechamaru | `mechamaru` | `attack_heavy_b` | Pose | Extends **20%**. The forearm blade should be the furthest thing forward in the frame. |
-| Mechamaru | `mechamaru` | `run_reach_a` | Quality | **Delivered as a contact sheet** — four small figures of the run cycle on one canvas rather than one pose. Nothing in it is separable at full resolution and none of the four clears the 600 px body minimum alone, so it was never imported: he runs on the other three cycle frames until this lands. |
-| Dagon | `dagon` | `run_reach_a` | Pose | **Reaches with the arm instead of the leg.** The reach frame is the full stride — the leading heel is the thing out in front, arms only counterbalance it. |
-| Dagon | `dagon` | `run_reach_b` | Pose | The same, on the other lead. |
-| Yuki Tsukumo | `yuki` | `run_reach_a` | Pose | The same fault again — reaching with the arm. |
-| Yuki Tsukumo | `yuki` | `run_reach_b` | Pose | The same, on the other lead. |
-| Dagon | `dagon` | `crouch_b` | Pose | Drops **21%** of standing height where the brief asks for a quarter, and reads *taller* than `crouch_a` beside it. The pair is one held crouch a breath apart, not a descent. |
-| Dagon | `dagon` | `attack_light_a` | Pose | Not a wind-up. `_a` is the coil before the strike — weight on the back foot, striking hand drawn back — and this reads as a second strike. |
-| Mechamaru | `mechamaru` | `crouch_attack_b` | Pose | The forearm blade never reaches full extension. `_b` is the strike; the blade should be the furthest thing forward, out past the knee. |
-| Dagon | `dagon` | `crouch_attack_b` | Pose | Flagged during the placement pass. |
-| Yuki Tsukumo | `yuki` | `crouch_attack_b` | Pose | Flagged during the placement pass. |
-
-The reach numbers are measured the way the engine measures reach: the forward
-edge of the art past the centre of the body's core columns (`bodyRight` against
-`coreLeft`/`coreRight`), as a fraction of the idle's own height. They are
-comparable within a fighter regardless of placement, because every pose of a set
-is drawn at one zoom.
-
-**Three faults repeated across fighters, which is what a missing rule looks
-like** rather than three bad drawings: the heavy that does not extend (all
-three), the reach frame that reaches with the arm (two), and the `ledge_hang`
-with the ledge drawn into it (two). All three are now stated in the pose brief,
-so Kurourushi's set will not be asked for without them.
-
-### Fixed in the repo instead of requested
-
-Three of the faults found in this pass were **file** faults rather than drawing
-faults, and were fixed here rather than sent back:
-
-- **Dagon's `ult_a` had four arms.** The extra one lay over background for most
-  of its length and its own ink line gave the cut a natural boundary at the
-  shoulder, so it came out with nothing repainted.
-- **`dagon/ledge_hang` and `mechamaru/ledge_hang` had the ledge drawn in.** The
-  bar was a flat grey slab across the top of the plate with the hands gripping
-  over it, so removing it leaves the hands closed on nothing — which is the
-  pose as asked for. The stage supplies the edge.
-
-Each frame was re-measured afterwards (`bodyTop`, the body and core spans, the
-centre of mass) so reach and width read off the art that is actually there. The
-untouched originals are in `assets/reference/round15/`. That is the whole
-difference between an `improvement` flag and a `replacement` flag: these were
-recoverable in the file, and Yuta's cut-off sword in 17C was not.
-
-
 ---
 
-## 18B. Caught while placing Kurourushi — 4 sprites
+## 20E. Yuji's four Round 20 poses — 4 sprites
 
-Kurourushi's set was the last of the round-15 four to be placed, and it went
-through with all 36 poses approved. Four of the delivered drawings were flagged
-`quality` in the same pass, and this is the part that makes them non-blocking:
-**each of the four poses is drawn today by another frame of his own set**,
-chosen in the workbench rather than left broken. He plays complete. What is
-missing is that four poses share art with four others, so a fight shows the same
-silhouette in two places.
+**Delivered.** All four landed, keyed and measured through `tools/intake.py`,
+imported with `tools/intake_import.py`, anchored, and given a seeded pose read
+apiece — those four are marked `seed`, not `source`, so the joint-reads bench
+knows they are a starting point rather than a read of the art.
 
-| Key | Pose | Kind | What is wrong | Standing in |
-|---|---|---|---|---|
-| `attack_heavy_b` | `sideHeavy` | Quality | **The blade is drawn back over the shoulder** — this is the wind-up, not the strike. `_b` is the contact frame, and nothing in it extends forward past the robe. | `attack_light_b` — the only frame in the set with the blade fully out |
-| `attack_light_b` | `light` | Quality | Rejected in the same pass, and then promoted into the heavy slot above because it was the better of the two. The light now needs its own drawing. | the archived round-15 `attack_air_b` |
-| `crouch_attack_b` | `crouchAttack` | Quality | A low sprawl with the blade along the ground, which is very close to what `dash` shows. `_b` is the strike out of the crouch — the blade forward and clear of the body. | the archived round-15 `dash` |
-| `dash` | `dash` | Quality | Flagged during the placement pass. | the archived round-15 `dodge_roll` |
+**The remainder of 20C and 20D, and the whole of it is one fighter.** Both
+rounds asked for one file per fighter, both arrived as twenty-seven files, and
+both of those twenty-seven were Mahoraga rather than Yuji. Mahoraga is animated
+out of a character sprite set and has an intake directory like everyone else,
+but he is a summon and is not on `CHARACTER_KEYS`; his four are landed and
+welcome, and they are not a fighter's. So the count was right twice and the
+roster was wrong twice, which is now a row in
+[pose-brief.md § 5](../sprites/docs/pose-brief.md#5-the-faults-that-keep-coming-back)
+and a `ROSTER COVERAGE` line that `tools/intake.py` prints on every delivery.
 
-**The heavy fault is the fourth one this round.** Yuki, Dagon and Mechamaru all
-delivered an `attack_heavy_b` that does not extend (18A), and Kurourushi's does
-not extend either — his for a different reason, being a wind-up rather than a
-short strike, but the frame on screen is the same problem: the heavy does not
-read as the biggest thing the fighter does. The rule is in
-[pose-brief.md](pose-brief.md); this is the evidence it needs to stay there.
+**Nothing is blocked.** Yuji draws exactly what the whole roster drew before
+round 20: `grabReach` falls back to his first light-attack frame, `grabHold` to
+`charge`, `grabbed` to `hurt`, and both dash attacks to his standing strike
+(`src/characters.js`). He is the one fighter whose grab still reads as a frozen
+jab, which is precisely the thing 20C was written to end.
 
-### Repo work, not a request: `kurourushi/ledge_hang`
+| File | Pose line |
+|---|---|
+| `assets/intake/yuji/grab_reach.png` | "a committed forward lunge with one open, grasping hand leading — reaching to seize, not to strike — the other arm up as a guard" |
+| `assets/intake/yuji/grab_hold.png` | "gripping an unseen opponent at arm's length by the collar: front hand closed in a fist at chest height, weight planted, body coiled to heave" |
+| `assets/intake/yuji/grabbed.png` | "seized and struggling: body arched back from the collar, feet scrabbling, both hands prying at an unseen grip at their own chest" |
+| `assets/intake/yuji/attack_dash.png` | "sprinting forward and striking at the same moment, body low and driving, weight thrown ahead of the leading foot, back leg extended behind, striking arm fully extended forward along the direction of the run, trailing arm swept back, at the instant of impact" |
 
-The ledge is drawn into the plate — a slab under the hands, the same fault
-`dagon/ledge_hang` and `mechamaru/ledge_hang` had in round 15 and the reason the
-rule went into the brief. It is flagged `wantsImprovement: "alpha"` with the
-note "Remove the ledge", so the workbench shows it and
-`tools/list_replacements.py` tracks it. As with the other two, the hands are
-closed on the bar and cutting it leaves them closed on nothing, which is the
-pose as asked for — **the stage supplies the edge.** No redelivery needed.
+The two grab poses have to answer the same grip-point rule the other twenty-six
+already do — **fist and prying hands both at chest height on the leading edge of
+the body** — because the game draws Yuji's `grab_hold` against somebody else's
+`grabbed` at a fixed gap, so his is not judged on its own. Open any delivered
+pair (`sprites/assets/gojo/grab_hold.png` beside
+`sprites/assets/nobara/grabbed.png`) and match the height.
+
+Otherwise the standard spec: grey key screen (Yuji is on the warm-palette list),
+facing right, one zoom matched to his own `idle_a`, at least 600 px of body, one
+subject per file. His character block and canonical reference are above, and
+[pose-brief.md](../sprites/docs/pose-brief.md) has all four pose lines in the
+set they now belong to.
+
+---

@@ -1,16 +1,20 @@
 # Audio Requests — history
 
-Record of the sound-effect rounds that have been **delivered and integrated**.
-Nothing in this file is outstanding; open requests, if there ever are any
-again, live in [audio-requests.md](audio-requests.md).
+Record of the sound and voice rounds that have been **delivered and
+integrated**. Nothing in this file is outstanding; open requests, if there ever
+are any again, live in [audio-requests.md](audio-requests.md).
 
-**All 96 files delivered and wired in** — 81 in the round-8 pass below, then the
-15-file element and signature round after it. Filenames below say `.wav`; what
-ships is the same name as **`.mp3`** (128 kbps) — a browser has to download
-these, and MP3 is about a fifth the size. Generated with the ElevenLabs
-sound-generation API from the prompts below, then trimmed, length-capped and
-peak-normalised to -3 dBFS automatically. The registry, mix and categories live
-in `src/config_audio.js`.
+**All 115 files delivered and wired in** — 81 in the round-8 pass below, the
+15-file element and signature round after it, then the 15 of round 10 (the
+domain moment, including this project's first spoken lines) together with the
+four sounds the staged fighters were owed, and finally round 11's four:
+Inumaki's cursed speech. Filenames below say `.wav`; what ships is the same
+name as **`.mp3`** (128 kbps) — a browser has to download these, and MP3 is
+about a fifth the size. Generated with the ElevenLabs API from the entries
+below — the sound-generation endpoint for effects, text-to-speech for the
+spoken lines — then trimmed, peak-normalised to -3 dBFS and length-capped
+automatically, except for loops and spoken lines, which are never cut to
+length. The registry, mix and categories live in `src/config_audio.js`.
 
 ## This file is still live input, not just a record
 
@@ -689,6 +693,516 @@ un-faded tail.
 
 ---
 
+## Round 10 — the domain moment (12 files)
+
+Delivered and wired in. **The request below is kept as written**, in the present
+tense it was written in — it describes the game *before* the round landed, the
+way the round-8 audit above does, and it is the rationale for what was made
+rather than a description of anything still true. What actually arrived, and
+where it differed from the brief, is in the
+[delivery record](#round-10--delivery-record) below it. Every prompt and every
+spoken line here is still live input: `tools/generate_sfx.py` and
+`tools/generate_voice.py` both parse this file, and these entries are how any of
+these 15 files gets re-rolled.
+
+A Domain Expansion is the biggest thing in this game: it costs a full meter,
+it stops the world for half a second, it swaps the entire backdrop, and it is
+the move every one of these characters is known for. It currently sounds like
+**one sting, one signature layer, and then seven seconds of the ordinary fight
+mix** — no voice, no barrier, no room tone, and no sound at all when the
+barrier comes down.
+
+This round fixes that. It is deliberately two halves with different
+deliverers: **10A is voice** and cannot come from the sound-effects generator;
+**10B is sound effects** and can.
+
+Everything in both halves is **already wired**. Every key below is registered
+in `src/config_audio.js` and called from `src/domains.js`, and an undelivered
+sound is dropped silently by `playSfx` — so the game sounds exactly as it does
+today until the files land, and needs no code change on the day they do. Drop
+the mp3s in `assets/sfx/` and the moment assembles itself.
+
+### 10A — "Ryōiki Tenkai", per domain owner *(voice — 8 files)*
+
+Eight fighters have a Domain Expansion. Each says the same two-part line the
+show gives them: **領域展開** (*Ryōiki Tenkai*, "Domain Expansion") followed by
+the domain's name. In Japanese, in character, one file each.
+
+**One file per fighter, containing the whole line**, rather than a shared
+"Ryōiki Tenkai" plus a separate name. The pacing between the two halves — how
+long Gojo lets the pause sit, how fast Sukuna spits it — is a performance
+decision, and splitting it would hand that to engine timing, which fires both
+banners on the same frame and has no opinion worth having.
+
+| Key | File | Fighter | Domain | Japanese | Kana | The read |
+|---|---|---|---|---|---|---|
+| `domainCallGojo` | `domain_call_gojo.mp3` | Gojo | Unlimited Void | 無量空処 *Muryōkūsho* | むりょうくうしょ | Unhurried, almost bored. He is not straining; he is doing the easiest thing he knows |
+| `domainCallSukuna` | `domain_call_sukuna.mp3` | Sukuna | Malevolent Shrine | 伏魔御廚子 *Fukuma Mizushi* | ふくまみづし | Low, amused, contemptuous. A king naming a thing he has named a thousand times |
+| `domainCallMegumi` | `domain_call_megumi.mp3` | Megumi | Chimera Shadow Garden | 嵌合暗翳庭 *Kangō An'eitei* | かんごうあんえいてい | Young, strained, committing everything. This costs him and it should sound like it |
+| `domainCallMahito` | `domain_call_mahito.mp3` | Mahito | Self-Embodiment of Perfection | 自閉円頓裹 *Jihei Endonka* | じへいえんどんか | Delighted. A child showing you something he made |
+| `domainCallJogo` | `domain_call_jogo.mp3` | Jogo | Coffin of the Iron Mountain | 蓋棺鉄囲山 *Gaikan Tecchisen* | がいかんてっちせん | Guttural, volcanic, furious — a curse's throat, not a man's |
+| `domainCallDagon` | `domain_call_dagon.mp3` | Dagon | Horizon of the Captivating Skandha | 蕩蘊平線 *Tau'un Heisen* | たううんへいせん | Serene and wrong. Gentle, unbothered, like an announcement at a resort |
+| `domainCallHakari` | `domain_call_hakari.mp3` | Hakari | Idle Death Gamble | 坐殺博徒 *Zasatsu Bakuto* | ざさつばくと | Loud, gleeful, showman — pitched to a crowd that is not there |
+| `domainCallYuta` | `domain_call_yuta.mp3` | Yuta | Authentic Mutual Love | 真贋相愛 *Shingan Sōai* | しんがんそうあい | Quiet and certain. Grief that has stopped arguing with itself |
+
+**The Japanese has been checked** against each domain's page on
+[jujutsu-kaisen.fandom.com](https://jujutsu-kaisen.fandom.com), which is the
+repo's standing authority for this on the art side and now here. The kanji were
+all correct; **three romanizations were not**, and the row above is the fixed
+one in each case — Megumi's *Kanko Chōkatei* → **Kangō An'eitei**, Jogo's
+*Gaikan Tessaisen* → **Gaikan Tecchisen**, Dagon's *Tōun Heisen* →
+**Tau'un Heisen**. The doc predicted two of the three.
+
+**The kana column is what actually gets spoken**, and it is not decoration.
+Every one of these names is an irregular reading — 蕩蘊平線 is *tau'un heisen*,
+not *tōun*; 鉄囲 is *tecchi*, not *tessai* — so a synthesiser handed the kanji
+guesses, and guesses wrong. The generation entries below are written in kana
+for that reason, with 領域展開 spelled out as りょういきてんかい alongside them.
+The kana is the fandom furigana, transcribed from the same page as the kanji.
+
+**Delivery:** mono, dry, no music bed, no reverb — the sting and the barrier
+underneath already supply the space, and a pre-reverbed line cannot be placed
+in that mix. 1.5–3.0 s each; peak-normalised like every other file. Voice
+category, trimmed at 1.1 gain so the line sits *above* its own sting rather
+than inside it (`src/config_audio.js`).
+
+**These cannot come from `tools/generate_sfx.py`.** That tool drives a
+sound-*effects* endpoint; it does not speak. They come from
+**`tools/generate_sfx.py`'s sibling, [`tools/generate_voice.py`](../tools/generate_voice.py)**,
+which drives the text-to-speech endpoint instead and reads the entries below
+the same way — same post-processing, same mono MP3 out, same idempotence:
+
+```sh
+ELEVENLABS_API_KEY=... python3 tools/generate_voice.py
+```
+
+Each entry names a **cast voice** as well as a line. Eight fighters sharing one
+synthetic voice would be worse than the grunt groups they replace, so each is
+cast separately from the Japanese side of the voice library, against the read
+in the table above. The bracketed cues are performance direction for the `v3`
+model — it takes them as direction and does not speak them.
+
+**A voice entry is skipped by `generate_sfx.py` on purpose.** Both tools parse
+the same `**`file.wav`** · … · N s` + fenced-block shape out of these docs, so
+the ``· voice `id` ·`` field is what tells the sound-effects tool that an entry
+is somebody else's: without it a domain call-out would be generated as a sound
+effect, which is exactly the mistake this round is written to avoid.
+
+**`domain_call_gojo.wav`** · Gojo — Unlimited Void · voice `ZcX76PwFSkrkyI78RBTK` *(Nayuta — dark anime hero, cool and edgy)* · 3.0 s
+```
+[casually] りょういきてんかい……むりょうくうしょ。
+```
+
+**`domain_call_sukuna.wav`** · Sukuna — Malevolent Shrine · voice `2UGDsJpBJAiAlF0jQQ7x` *(Henry — deep anime villain, mid-40s)* · 3.0 s
+```
+[low and amused] りょういきてんかい。ふくまみづし。
+```
+
+**`domain_call_megumi.wav`** · Megumi — Chimera Shadow Garden · voice `l3wUf9BndyIs5OPGxQB4` *(Subaru — young, deep, calm)* · 2.5 s
+```
+[strained] りょういきてんかい！ かんごうあんえいてい！
+```
+
+**`domain_call_mahito.wav`** · Mahito — Self-Embodiment of Perfection · voice `AAxVQbetQhXWMEZC9p8S` *(Kmy — energetic character voice)* · 2.5 s
+```
+[delighted] りょういきてんかい！ じへいえんどんか！
+```
+
+**`domain_call_jogo.wav`** · Jogo — Coffin of the Iron Mountain · voice `3U6tYxUqUpcplL5Qep78` *(Shimura — husky, hoarse)* · 2.5 s
+```
+[furious] [shouting] りょういきてんかい！ がいかんてっちせん！
+```
+
+**`domain_call_dagon.wav`** · Dagon — Horizon of the Captivating Skandha · voice `j9F4CefodWocCwFuvTC2` *(Shimo — gentle)* · 3.0 s
+```
+[serenely] りょういきてんかい。たううんへいせん。
+```
+
+**`domain_call_hakari.wav`** · Hakari — Idle Death Gamble · voice `BYXdCmviVEBLTqNmX1Mv` *(Yosh — upbeat, energetic)* · 2.5 s
+```
+[excited] [shouting] りょういきてんかい！ ざさつばくと！
+```
+
+**`domain_call_yuta.wav`** · Yuta — Authentic Mutual Love · voice `E6Kc2m06tkvciUiqnUhB` *(Hiro — calm, restrained, young)* · 3.0 s
+```
+[quietly] [determined] りょういきてんかい。しんがんそうあい。
+```
+
+### 10B — the barrier and the room *(sound effects — 4 files)*
+
+These four go through the normal flow: they are written in the format
+`tools/generate_sfx.py` parses, so
+`ELEVENLABS_API_KEY=... python3 tools/generate_sfx.py` will make them. (That
+tool now reads this file as well as the history file, precisely so an open
+round can be generated before it lands.)
+
+**`domain_captivating_skandha.wav`** · Dagon — Horizon of the Captivating Skandha · 2.0 s
+```
+A calm tropical shoreline opening into something enormous moving beneath the water, gentle surf and distant gulls with a vast low whale-like groan swelling underneath and pressure building, serene on the surface and deeply wrong below, about 2 seconds long with a long tail, stereo supernatural atmosphere layer, no music, no voice
+```
+
+**`domain_barrier.wav`** · the barrier closing over the stage · 1.2 s
+```
+An enormous curved barrier sealing shut around an arena, a deep dome-shaped whoomp with a glassy shimmering closure and a final locking thud, vast and enclosing, about 1.2 seconds long, stereo anime supernatural barrier, no music, no voice
+```
+
+**`domain_interior.wav`** · the room tone inside an open domain · 2.0 s, **seamless loop**
+```
+The inside of a vast supernatural enclosed space, a low airy pressurised drone with faint shifting harmonic overtones and a sense of enormous empty volume, oppressive and otherworldly but quiet enough to sit under combat, designed as a seamless loop with matching start and end so it can repeat without a click, exactly 2 seconds long, stereo ambient bed, no music, no voice
+```
+
+**`domain_rejected.wav`** · a second domain refused while one is open · 0.5 s
+```
+A cursed technique failing to take hold, a short choked energy swell that collapses inward with a dull dissonant clank, denied and final, about 0.5 seconds long, mono anime fighting game negative cue, no music, no voice
+```
+
+### What already changed in code
+
+Three wiring gaps were closed while this round was written, all of them
+audible today with the files that already exist:
+
+- **`domainCollapse` has never been played.** `domain_collapse.mp3` has sat in
+  `assets/sfx/` and in the registry since the round-8 pass; the barrier came
+  down on a popup and silence. Now played from the domain entity's close path,
+  which every exit runs through — expiry, the owner dying, the owner knocked
+  off the stage.
+- **`domainRejected`** is now called on the "A DOMAIN IS ALREADY OPEN" branch,
+  which was silent.
+- **`domainInterior`** starts with the barrier and stops on close *and* on
+  match reset — a domain open when the match ends never runs its own close
+  path, so without that a rematch would start inside the last match's room
+  tone and never leave it.
+
+The call-out **replaces the generic effort grunt** for these eight fighters
+(`playGrunt` still runs for anyone else who ever gains a domain), so a
+delivered line does not double up with a wordless shout.
+
+---
+
+## Round 15 leftovers — the sounds the staged fighters brought with them (4 files)
+
+Round 15 of [asset-requests.md](asset-requests.md) added four fighters —
+Mechamaru, Yuki Tsukumo, Dagon and Kurourushi — whose kits were built before
+their art. Their audio was wired as far as it could go without new files: all
+four are in `GRUNT_GROUPS` (`src/audio.js`) and so have a grunt trio and a KO
+cry from the existing six voice groups.
+
+> **All four are delivered.** The wording below was written while these four
+> fighters were staged and unplayable, and was still open when they reached the
+> select screen — at which point each one stopped being a sound owed against
+> future art and became a **silent gap in play**, invisible because `playSfx`
+> drops an unregistered or undelivered key without complaint. Dagon's domain
+> sting was the most audible of the four and was delivered as part of
+> [Round 10B](#10b--the-barrier-and-the-room-sound-effects--4-files) above; the
+> three element layers were given the prompts they had always been missing and
+> generated alongside it.
+
+| Key | Where it belongs | What it is |
+|---|---|---|
+| `hitWater` | `ELEMENT_HIT_SFX.water` | The eighth element hit layer, for Dagon. A heavy wet slap and displacement — a body hit by a mass of water, not a splash in a puddle |
+| `hitMachine` | `ELEMENT_HIT_SFX.machine` | The ninth, for Mechamaru. Steel on steel with a servo whine under it and a short vent of pressure after |
+| `hitSwarm` | `ELEMENT_HIT_SFX.swarm` | The tenth, for Kurourushi. A dry chitinous crunch and a scatter of skittering — insects, close and many |
+| `domainCaptivatingSkandha` | `DOMAIN_STING` (`src/domains.js`) | The eighth domain sting, for Horizon of the Captivating Skandha. Surf and gulls opening into something enormous moving underwater — the domain's whole trick is that it sounds like a holiday |
+
+The three element layers are the same brief as Round 9's seven (above, with
+their prompts and mix levels): **seasoning under the impact, not the impact** —
+short, dry, and gain-trimmed to about 0.5. Their prompts, written in Round 9's
+shape so `tools/generate_sfx.py` made them alongside 10B:
+
+**`hit_water.wav`** · `hitWater` — a mass of water hitting a body · 0.4 s
+```
+a heavy wet slap of water displaced by a body, thick and dense with a short spatter tail, not a splash in a puddle, tight and dry
+```
+
+**`hit_machine.wav`** · `hitMachine` — steel with a motor behind it · 0.4 s
+```
+a hard steel-on-steel strike with a servo whine winding under it and a short vent of pressure after, mechanical, tight and dry
+```
+
+**`hit_swarm.wav`** · `hitSwarm` — insects, close and many · 0.4 s
+```
+a dry chitinous crunch of insect shells breaking, followed by a brief scatter of skittering legs, close and many, tight and dry
+```
+
+`DOMAIN_STING` had always named the Skandha key, so that file switched on where
+it stood. `ELEMENT_HIT_SFX` deliberately did **not** name the three hit layers
+while they were outstanding — an entry pointing at a file that is not there logs
+a failed fetch on every hit, which reads as an error and trips the smoke tests —
+so adding those three rows was part of landing the files, and is done.
+`ELEMENT_HIT_SFX` now has ten rows.
+
+---
+
+## Round 11 — Inumaki's cursed speech *(open)*
+
+**Inumaki is the one fighter whose entire kit is his voice**, and he is
+currently the loudest argument for this round: every one of his four commands
+fires a wordless young-male grunt shared with four other students. A character
+whose technique *is* speech should not be the one who never speaks.
+
+Four lines. Each is the command itself, in Japanese, spoken by him — the same
+shape as the domain call-outs, one file per move.
+
+**The on-screen text stays English.** The banner still reads `BLAST AWAY`, the
+move list still reads "Blast Away". This round changes what he *sounds* like,
+not what the game says — the same split the show uses, where the subtitle is
+English and the command is not.
+
+| Key | File | Move | Command | Kana | The read |
+|---|---|---|---|---|---|
+| `callInumakiBlastAway` | `call_inumaki_blast_away.mp3` | neutral special | ぶっとべ *Buttobe* | ぶっとべ | Hard and percussive, all in one push. The concussive one |
+| `callInumakiDontMove` | `call_inumaki_dont_move.mp3` | side special | 動くな *Ugokuna* | うごくな | Flat, clipped, absolutely certain. Not shouted — a command does not need volume to be obeyed |
+| `callInumakiGetCrushed` | `call_inumaki_get_crushed.mp3` | down special | 潰れろ *Tsuburero* | つぶれろ | Low and forced out, heavier than the other two. This one costs him two strain |
+| `callInumakiUltimate` | `call_inumaki_ultimate.mp3` | ultimate | 捻れろ、ぶっとべ *Nejirero, Buttobe* | ねじれろ、ぶっとべ | Torn out of a throat that is about to give. The ult is a stage-buckling scream and this is the last thing that throat does |
+
+**The Japanese is the canon command list**, checked against
+[Cursed Speech on the fandom wiki](https://jujutsu-kaisen.fandom.com/wiki/Cursed_Speech)
+the same way round 10's domain names were. All four map to attested commands
+rather than translated English:
+
+- 爆ぜろ *Hazero* (Explode), 捻れろ *Nejirero* (Get Twisted), 潰れろ *Tsuburero*
+  (Get Crushed), 堕ちろ *Ochiro* (Crumble Away), 動くな *Ugokuna* (Don't Move),
+  眠れ *Nemure* (Sleep), 戻れ *Modore* (Return), 逃げろ *Nigero* (Run Away),
+  止まれ *Tomare* (Stop), ぶっとべ *Buttobe* (Blast Away), 死ね *Shine* (Die).
+- **The ultimate is the only constructed line**, and it is constructed out of
+  two attested commands rather than invented grammar: the move is called "GET
+  TWISTED AND BLAST AWAY", so it is 捻れろ then ぶっとべ, spoken as two
+  commands in sequence.
+- **One deliberate departure from the wiki.** Its kana field for Blast Away
+  reads ぶ**つ**とべ, which a synthesiser pronounces *butsutobe*. Its own romaji
+  on the same row says *Buttobe*, and the small tsu is what makes that sound,
+  so these entries use ぶ**っ**とべ. The wiki is the authority on *which* command
+  it is; it is not the authority on a typo in its own furigana.
+
+**Cast to a voice nobody else uses.** Eight voices are already spoken for by
+the domain owners; reusing one would put Inumaki's mouth on Yuta's or Megumi's
+line the first time both appear in a match.
+
+**`call_inumaki_blast_away.wav`** · Inumaki — "Blast Away" · voice `EbuvaInXUGWtpYRUnKLQ` *(Sawaro — young Japanese voice actor)* · 1.2 s
+```
+[shouting] ぶっとべ！
+```
+
+**`call_inumaki_dont_move.wav`** · Inumaki — "Don't Move" · voice `EbuvaInXUGWtpYRUnKLQ` *(Sawaro)* · 1.2 s
+```
+[firmly] うごくな。
+```
+
+**`call_inumaki_get_crushed.wav`** · Inumaki — "Get Crushed" · voice `EbuvaInXUGWtpYRUnKLQ` *(Sawaro)* · 1.5 s
+```
+[low and forceful] つぶれろ！
+```
+
+**`call_inumaki_ultimate.wav`** · Inumaki — "Get Twisted and Blast Away" · voice `EbuvaInXUGWtpYRUnKLQ` *(Sawaro)* · 2.0 s
+```
+[screaming] ねじれろ！ ぶっとべ！！
+```
+
+### What this needs in code
+
+Unlike round 10, **this round is not already wired** — there is no per-move
+call-out mechanism yet, only the per-character domain one. What it needs is
+small and is the general form of the thing `DOMAIN_CALL` does for domains:
+
+- A `MOVE_CALL` map in `src/config_audio.js`, keyed by character and then by
+  the move's own `name`, so it reads like the character sheet and survives a
+  slot being reshuffled.
+- `playGrunt(charKey, callKey)` takes an optional call, and plays it *instead*
+  of the grunt when one is registered — the same "a line replaces the wordless
+  shout" rule the domain call-outs established, so a delivered line never
+  doubles up with a grunt.
+- The 22 `playGrunt` sites in `src/specials.js` pass the move's call, and
+  `cinematic()` in `src/ultimates.js` does the same for the ultimate. The
+  grunt stays exactly where it is in each handler rather than being hoisted:
+  four of those handlers only reach it after an early return, so a move that
+  bails still makes no sound.
+
+Any fighter who ever gets a line uses the same map; nothing here is
+Inumaki-shaped except the rows in it.
+
+---
+
+### Delivery record
+
+Delivered and wired in. All four peak-normalised to about -3 dBFS and encoded
+to mono MP3, like every file before them.
+
+| File | Brief | Delivered |
+|---|---|---|
+| `call_inumaki_blast_away.mp3` | 1.2 s | 1.14 s |
+| `call_inumaki_dont_move.mp3` | 1.2 s | 0.73 s |
+| `call_inumaki_get_crushed.mp3` | 1.5 s | 0.97 s |
+| `call_inumaki_ultimate.mp3` | 2.0 s | 2.10 s |
+
+**Two of his four moves turned out never to have made a sound at all.** The
+request assumed all four fired the shared grunt; in fact only "Don't Move"
+(a `projectile`) and the ultimate (via `cinematic()`) reached `playGrunt`.
+`shout` and `crush` — his neutral and down specials, and the two loudest things
+he does — were the only handlers in `specials.js` that never called it. Both
+types are his alone, so adding the call there changed nothing for anyone else.
+
+### Follow-up: the line became the wind-up
+
+Round 11 shipped with the line and the move on the same frame — the command was
+said *over* the attack rather than before it. That was corrected afterwards for
+all twelve spoken moves, Inumaki's four and the eight domain call-outs alike:
+the fighter now holds the pose, says the line, and the move lands 80% of the way
+through it (`SPOKEN_TIMING`, `src/config_audio.js`). A Domain Expansion is
+announced and then arrives, rather than arriving and being described.
+
+Two things about that are audio decisions with gameplay consequences, and are
+written up properly in [game-mechanics.md](game-mechanics.md#spoken-moves-wind-up-while-they-are-spoken):
+
+- **The delay is read from written line lengths, never measured from the
+  audio.** A move whose frame data depends on whether an mp3 finished
+  downloading is a move nobody can learn, so `SPOKEN_LINES` carries the
+  delivered length of each line and `tools/check_voice.mjs` fails when one has
+  drifted from its file. **Re-rolling a line changes the frame data** — update
+  its row, or the checker will say so.
+- **The clamp matters more than the fraction.** Gojo's call-out is 3.28 s and
+  80% of it would hold the match for 2.6 s; `SPOKEN_TIMING.max` caps every
+  wind-up at 2.2 s, which is why his line, Jogo's and Mahito's all land at the
+  ceiling rather than at their own 80%.
+- **The first half of the line is interruptible, and free.** A spoken move can
+  be hit out of its own sentence for the first 50% of it (`SPOKEN_TIMING.commit`)
+  — domains included — and nothing is charged until the move actually goes off:
+  no meter, no cooldown, no throat strain. A fighter shouted down keeps
+  everything and can try again; what they lose is the opening they gave away.
+  That is what makes a two-second telegraph a decision rather than a tax, and it
+  is why the delay could be this long at all. Past the halfway point the move is
+  committed, because by then it is visibly already happening.
+- **An interrupted line stops mid-word**, faded over 60 ms rather than paused
+  dead — a voice cut off on a vowel clicks, and the point is that the sentence
+  was interrupted, not that the game stopped playing a file. `playSfx` returns
+  its element so a caster can keep the handle and `cutSfx` it; a short winded
+  grunt goes in its place.
+
+**`MOVE_CALL` is the reusable half of this round.** It keys a spoken line by
+character and then by the move's own `name`, and `playGrunt(charKey, moveName)`
+plays it *instead* of the grunt. The 20 `playGrunt` sites in `specials.js` pass
+the move they already have; the grunt stayed where it was in each handler
+rather than being hoisted into `performSpecial`, because four of them only
+reach it after an early return and a move that bails should still be silent.
+A row naming a move that does not exist is checked at load and warned about
+(`validateMoveCalls` in `audio.js`), because the symptom otherwise is a line
+that was recorded, registered and silent.
+
+---
+
+## Round 12 — alternate takes (15 files)
+
+> **Five of these were promoted into the game and round 13 answers the rest.**
+> Gojo's relaxed take and Dagon's deep one replaced their originals (with
+> `SPOKEN_LINES` moved to match), the female trio went in whole, two of the
+> young-male trio and one of the big trio went in. Everything else was judged
+> unusable — see the round-13 verdicts below.
+
+Delivered as alternates rather than as replacements. The request is above in
+[audio-requests.md](audio-requests.md) — it stays there rather than moving here
+while the alternates are still alternates, because the round is not finished
+until somebody has listened and chosen. Delivered lengths: the two domain calls
+at 2.83 s (Gojo, after the direction was re-written) and 2.59 s (Dagon, after the
+0.86 resample), and the twelve grunts between 0.54 s and 0.86 s.
+
+**Gojo has two alternates, and they ask different questions** — whether he
+should sound like he means it (*Commanding*) or like it costs him nothing
+(*Flat*). The first was judged too expressive, which turned out to be a note
+about the model's freedom rather than about the words.
+
+**Three levers were added to `tools/generate_voice.py` for it**, and all three
+are worth knowing about before the next voice round:
+
+- **`· pitch 0.86 ·`** resamples a take downward — lower and slower together.
+  Deliberately not formant-preserving: dragging the formants down with the
+  pitch is what makes a voice read as coming from a bigger throat rather than
+  as a person played back slowly. It is the only thing that got Dagon away from
+  sounding like a polite man, because no amount of direction stops a
+  text-to-speech model sounding human — it is a model of humans.
+- **`· capped ·`** opts an entry back into the length cap that spoken lines are
+  exempt from. The exemption exists because a cap lands mid-word in a sentence;
+  a one-syllable effort grunt has no mid-word to land in, and an effort grunt
+  fired on every special that runs 2.7 s long is unusable however good the take
+  is. Three of the twelve came back over two seconds before this existed.
+
+- **`· stability 1.0 ·`** overrides how far v3 may wander from a flat reading
+  (0.0 creative, 0.5 natural, 1.0 robust). The default is right for a
+  performance and wrong for a line that is meant to sound UNPERFORMED: somebody
+  talking to themselves puts the emphasis nowhere, and while the model is free
+  to act, no wording of the direction stops it acting.
+
+**The grunts moved endpoint, which was the actual fix.** The originals came
+from `generate_sfx.py` in round 8 — the sound-generation endpoint being asked
+for a human noise and producing its impression of one, which is exactly why
+they read as odd and animal-like. The alternates are a voice model making a
+short vocal effort, which is a person making a short vocal effort.
+`gruntMonster` and `gruntAnimal` are left alone on purpose: they are supposed
+to sound like something that is not a person.
+
+---
+
+## Round 10 — delivery record
+
+Delivered and wired in, in one pass with the four sounds the staged fighters
+were owed. Everything below was **already called from `src/domains.js` before
+the files existed** — `playSfx` drops an undelivered key silently — so nothing
+in the sequence needed a code change on the day they landed. The two additions
+to `src/config_audio.js` were the three element rows, which are the one case
+where a missing file is *not* free: a row pointing at nothing logs a failed
+fetch on every hit.
+
+| File | Brief | Delivered | Voice |
+|---|---|---|---|
+| `domain_call_gojo.mp3` | 3.0 s | 3.28 s | Nayuta |
+| `domain_call_sukuna.mp3` | 3.0 s | 2.52 s | Henry |
+| `domain_call_megumi.mp3` | 2.5 s | 2.48 s | Subaru |
+| `domain_call_mahito.mp3` | 2.5 s | 3.03 s | Kmy |
+| `domain_call_jogo.mp3` | 2.5 s | 2.80 s | Shimura |
+| `domain_call_dagon.mp3` | 3.0 s | 2.25 s | Shimo |
+| `domain_call_hakari.mp3` | 2.5 s | 2.03 s | Yosh |
+| `domain_call_yuta.mp3` | 3.0 s | 2.42 s | Hiro |
+| `domain_captivating_skandha.mp3` | 2.0 s | 2.70 s | — |
+| `domain_barrier.mp3` | 1.2 s | 1.62 s | — |
+| `domain_interior.mp3` | 2.0 s | 6.40 s | — |
+| `domain_rejected.mp3` | 0.5 s | 0.67 s | — |
+| `hit_water.mp3` | 0.4 s | 0.54 s | — |
+| `hit_machine.mp3` | 0.4 s | 0.54 s | — |
+| `hit_swarm.mp3` | 0.4 s | 0.54 s | — |
+
+All 15 peak-normalised to about -3 dBFS and encoded to mono MP3, like every
+file before them.
+
+**Three things worth knowing about the delivery:**
+
+- **`domain_interior.mp3` is 6.4 s, not the 2.0 s asked for.** It is in
+  `LOOPING`, and a looping file is deliberately never cut to length — a loop
+  trimmed to a target loses its period and clicks. A longer bed was kept rather
+  than re-rolled for length: it is a quiet drone under combat at 0.45 gain, and
+  three times the period means three times as long before a listener can hear
+  it repeat.
+- **The three element layers are all exactly 0.54 s** because that is the cap
+  (0.4 s × 1.35), not because they are the same sound. Short impact layers hit
+  it routinely.
+- **The romanizations in the request were wrong in three places** and were
+  corrected against the fandom wiki before recording, as the request itself
+  asked. The kanji were all correct. See the note under the 10A table.
+
+**`tools/generate_voice.py` was written for 10A** and is the reason the voice
+half did not need a human supplier. It is `generate_sfx.py`'s sibling: same
+docs, same entry format, same post-processing, same idempotence, a different
+endpoint. The routing rule between them is the ``· voice `id` ·`` field — an
+entry that has one is speech and belongs to the voice tool, an entry that does
+not is a sound effect and belongs to the other. Neither tool will touch the
+other's entries.
+
+One difference in the post-processing is worth knowing before re-rolling a
+line: **a spoken entry is never length-capped.** The cap that keeps an impact
+from turning a combo to mush lands mid-word in a sentence, so the voice tool
+passes `cap=False` and reports a line that overruns its brief instead of
+truncating it. If a re-roll comes back long, that is a take to re-roll, not a
+file to trim.
+
+---
+
 ## Suggested delivery order (as written at the time)
 
 Kept for the record. It was followed, and everything below shipped.
@@ -721,6 +1235,9 @@ Totals: **68 files** for tiers 1–6, plus 13 optional. Tiers 1–3 alone
 | 5 — energy / summons / domains | 11 (+7 stings) | ☑ | ☑ |
 | 6 — stage hazards | 10 | ☑ | ☑ |
 | 9 — element layers + signatures | 15 | ☑ | ☑ |
+| 10 — the domain moment (8 voice + 4 sfx) | 12 | ☑ | ☑ |
+| 15 leftovers — owed element layers + Dagon's sting | 3 (+1 in round 10) | ☑ | ☑ |
+| 11 — Inumaki's cursed speech | 4 | ☑ | ☑ |
 
 All 26 sound calls in `src/stage_fx.js` now name a specific sound; no generic
 key is left in that file. Two hazards that were audible only when they

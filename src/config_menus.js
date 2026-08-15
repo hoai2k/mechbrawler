@@ -11,6 +11,15 @@
 // physics and match rules.
 // ---------------------------------------------------------------------------
 
+import { CONTROL_ROWS, padTips } from "./config_controls.js";
+import { THROW_ENABLED } from "./flags.js";
+
+/** The pad button bound to an action, by name — "RT", "LB". Read from the
+ *  control map so a string can never name a button the game does not use. */
+function padName(id) {
+  return CONTROL_ROWS.find((row) => row.id === id)?.pad || "?";
+}
+
 /** Which art the character-select GRID uses.
  *
  *  Two different jobs were being done by one file. A hero card is a full-bleed
@@ -85,9 +94,55 @@ export const RANDOM_GROUP = {
   show: true,
 };
 
+// One line per fighter, in their own voice: spoken on the VS splash as the
+// panels slam in, and again under their name when they take the results
+// screen. Keyed by character key; a fighter without a line falls back to
+// their epithet, so adding a new fighter never breaks either screen.
+export const CHARACTER_QUOTES = {
+  yuji: "I'll take it from here.",
+  nobara: "I'm Nobara Kugisaki — like it or not.",
+  megumi: "I'll save people unfairly.",
+  yuta: "Let me borrow a little courage.",
+  maki: "I don't need cursed energy to beat you.",
+  inumaki: "Don't. Move.",
+  panda: "Panda isn't a panda.",
+  mechamaru: "This body feels no pain.",
+  todo: "My friend — let's make this a festival.",
+  momo: "The wind is on my side.",
+  gojo: "Throughout Heaven and Earth, I alone am the honored one.",
+  nanami: "It's overtime.",
+  meimei: "Nothing is free. Not even mercy.",
+  gakuganji: "Respect your elders, child.",
+  toji: "Bring your best jujutsu. I brought none.",
+  yuki: "So — what kind of curse ends you?",
+  hakari: "The reels are already spinning my way.",
+  uro: "The sky belongs to me.",
+  reggie: "Everything's a trump card if you play it right.",
+  mahito: "Your soul is mine to reshape.",
+  jogo: "Learn the fear of curses. Burn.",
+  hanami: "The earth cries out — I answer.",
+  dagon: "The tide swallows all.",
+  kurourushi: "Even curses fear me.",
+  geto: "Shall we usher in a new world?",
+  choso: "I fight for my brothers.",
+  sukuna: "Know your place, fool.",
+};
+
 // Every player-facing string in the game. Values that take an argument are
 // written as functions so word order stays translatable.
 export const TEXT = {
+  // The title splash — the first screen of the game.
+  title: {
+    logoAlt: "JJK Brawler II",
+    // Deliberately the arcade formula, not a sentence: this line is furniture
+    // every player already knows how to read.
+    pressStart: "Press Start",
+    credit: "A cursed brawler by Hoai and Francis Nguyen",
+    // Says what each input actually does, because they differ: a pad press
+    // takes the game fullscreen, a mouse click deliberately does not.
+    hint: "Start on a controller · Enter · or click to begin",
+  },
+
   // Fighter select
   menu: {
     eyebrow: "Cursed energy platform fighter",
@@ -96,6 +151,9 @@ export const TEXT = {
     startWaiting: "Waiting for fighters…",
     hintPicking: "Pick a fighter to lock in. B / Backspace un-readies · LB/RB cycles the corner menus.",
     hintReady: "All fighters locked — confirm again (A / Enter) to choose the stage. B / Backspace un-readies.",
+    // One-player only, once you have locked yourself in: the selector is still
+    // live, and what it is choosing now is who you are about to fight.
+    hintOpponent: "Locked in — now pick your opponent. A / Enter chooses the stage · B / Backspace re-picks your fighter.",
     // Shown while the roster streams in behind the select screen. Any fighter
     // is playable before this finishes; picking one just pulls their art to the
     // front of the queue. Hidden once every fighter is in memory.
@@ -127,7 +185,10 @@ export const TEXT = {
   stages: {
     eyebrow: "Choose arena",
     title: "Stages",
-    random: "Random Stage",
+    // The die is part of the pitch: this button is a DRAW (it runs the roulette
+    // in ui.js), and it should read like a gamble worth taking, not a fallback
+    // for players who could not decide.
+    random: "🎲 Random Stage",
     back: "Back",
   },
 
@@ -138,22 +199,26 @@ export const TEXT = {
     next: "Next ▶",
     back: "Back",
     sectionTitle: "Signature techniques",
-    specialNeutral: "RT · Special",
-    specialSide: "Side + RT",
-    specialDown: "Down + RT",
-    ultimate: "LB / RB",
+    // Button names come from the control map (config_controls.js), so a
+    // rebinding rewrites the move list rather than leaving it lying.
+    specialNeutral: `${padName("special")} · Special`,
+    specialSide: `Side + ${padName("special")}`,
+    specialDown: `Down + ${padName("special")}`,
+    ultimate: padName("ult"),
     ultimateNote: "Costs a FULL Cursed Energy bar.",
     domainSectionTitle: "Domain Expansion",
-    domainInput: "D-pad",
-    // The d-pad arrows that open one of a fighter's domains. Handed the
-    // directions rather than working them out, because which arrow opens what
-    // depends on how many domains the fighter has — domains.js owns that rule
-    // and ui.js asks it (domainDirsFor).
-    domainArrows: { up: "▲", left: "◀", right: "▶", down: "▼" },
-    domainInputAlt: (dirs) => `D-pad ${dirs.join(" / ")}`,
+    domainInput: padName("domain"),
+    // Only ever used by a fighter with more than one domain, who picks between
+    // them with the left stick. Nobody has two — domains.js owns that rule and
+    // ui.js asks it (domainStickFor).
+    domainSticks: { up: "▲", neutral: "no direction", down: "▼" },
+    domainInputAlt: (button, dirs) => `${button} + ${dirs.join(" / ")}`,
     domainNote: "Costs a FULL Cursed Energy bar.",
+    // A Simple Domain is a special that the domain button ALSO casts. It costs
+    // no bar, so the note has to say what it does cost instead.
+    simpleDomainNote: (alsoAs) => `Also ${alsoAs}. A Simple Domain, not an Expansion: no Cursed Energy — just its own cooldown.`,
     domainHowTo: "How it plays:",
-    domainNone: "This fighter has no Domain Expansion. Only sorcerers who have mastered one can open a domain — for everyone else a full bar means one thing: the ultimate.",
+    domainNone: "This fighter has no domain of any kind. Only sorcerers who have mastered one can open a domain — for everyone else a full bar means one thing: the ultimate.",
     // Multi-player split view: every human player reads their own fighter at
     // the same time instead of taking turns paging through one shared list.
     splitKicker: "Move lists",
@@ -161,26 +226,49 @@ export const TEXT = {
     playerBadge: (id) => `P${id}`,
     browseAll: "Browse all fighters",
     backToPlayers: "Your fighters",
-    yourKeys: (id) => `Keyboard P${id}:`,
-    keyLines: {
-      1: "WASD move · J light · K heavy · L special · I ultimate · Q dash · U domain · Left Shift shield · TFGH steer summons",
-      2: "Arrows move · , light · . heavy · / special · ' ultimate · \\ dash · ; domain · Right Shift shield · 8456 steer summons",
-      3: "Gamepad only",
-      4: "Gamepad only",
-    },
     tips: [
-      ["Left stick twice", "Dash"],
+      // Dash is not listed here: it has no button, so padTips() carries it as
+      // its own double-tap row rather than it being said twice.
       ["Down in air", "Fast-fall"],
       ["Shield + direction", "Dodge"],
       ["Tap shield on impact", "Parry"],
-      ["D-pad (any)", "Domain Expansion"],
-      ["B", "Dash"],
-      ["Right stick", "Steer your summons"],
-      ["Right stick ▲", "Summon jumps (flyers climb)"],
-      ["Right stick + RT", "Aim and fly Nue / cursed spirits"],
+      ...padTips(),
+      // Grab detail rows only exist while the mechanic does — on by default,
+      // gone in a `?throw=false` session. The grab row itself arrives via
+      // padTips() from the control map.
+      ...(THROW_ENABLED ? [
+        ["While holding a grab", "Direction throws · Light pummels"],
+        ["When grabbed", "Mash buttons to break free"],
+      ] : []),
+      ["Right stick, while a smash charges", "Angle the swing high or low"],
+      [`D-pad + ${padName("special")}`, "Aim and fly Nue / cursed spirits"],
     ],
-    keyboardHint:
-      "Keyboard: P1 uses WASD + J/K/L/I + Left Shift, Q to dash, U for Domain, TFGH to steer summons. P2 uses arrows + ,/./&#47;/&#39; + Right Shift, \\ to dash, ; for Domain, 8/4/5/6 to steer summons. On a controller special is the RIGHT TRIGGER and B dashes; the whole D-pad is the domain pad, so move with the left stick, and the right stick takes over any summon you have on the stage.",
+    // The game is played on controllers: one pad per player, up to four.
+    stickHint:
+      `The left stick moves, ${padName("jump")} jumps and ${padName("special")} is special; `
+      + "SHOVE the stick from centre to dash — roll it out gently and you walk — or double-tap a "
+      + `direction. Attacking out of a run throws that fighter's dash attack: ${padName("light")} `
+      + `for the lunge, ${padName("heavy")} for the charge, both of them committal. `
+      + `${padName("domain")} opens a Domain Expansion and ${padName("ult")} fires the ultimate. `
+      + "The RIGHT STICK throws tilt attacks — flick it for the tilt or aerial in that direction, or hold it "
+      + "while a smash charges to angle the swing. The D-pad steers any summon you have on the stage."
+      + (THROW_ENABLED
+        ? ` ${padName("grab")} GRABS: it beats shields, a direction throws them, Light pummels,`
+          + " and a grabbed fighter mashes buttons to break free."
+        : ""),
+  },
+
+  // The battle-intro VS splash: full-bleed hero art panels slamming in before
+  // the READY…GO! countdown. Seat chips say who is driving each fighter.
+  intro: {
+    vs: "VS",
+    seatPlayer: (n) => `P${n}`,
+    seatCpu: "CPU",
+    stageLabel: (name) => name,
+    // Only ever seen when a fighter's art is still streaming as the match
+    // starts; the splash carries the bar so the screen is the VS screen either
+    // way, rather than a loading screen standing in front of it.
+    loading: "Summoning fighters",
   },
 
   pause: {
@@ -189,6 +277,12 @@ export const TEXT = {
     resume: "Resume",
     reset: "Reset",
     quit: "Main Menu",
+    // A seated controller stopped answering, so the match stopped too. Says
+    // what will happen on resume, because resuming without the pad hands that
+    // fighter to the CPU rather than leaving it standing still.
+    disconnected: (players) =>
+      `${players} controller disconnected. Reconnect it to carry on — resuming without it hands that fighter to the CPU.`,
+    playerList: (ids) => ids.map((id) => `Player ${id}'s`).join(" and "),
   },
 
   // Match modes, chosen from the VS badge in the middle of the select screen.
@@ -222,13 +316,42 @@ export const TEXT = {
 
   roundOver: {
     kicker: "Match complete",
+    // How the match ended, over the winner's name. A KO needs no explanation;
+    // the other two do, because the player did not necessarily see the moment
+    // it was decided.
+    kickerFor: {
+      ko: "Match complete",
+      time: "Time up — decided on stocks",
+      suddenDeath: "Sudden death",
+    },
     winner: (name) => `${name} wins!`,
     teamWinner: (side) => `${side} win!`,
+    // The podium: the ribbon over the winner's card, and the placement over
+    // everyone else's ("2nd", "3rd", …).
+    winnerBadge: "WINNER",
+    place: (n) => {
+      const teens = n % 100 >= 11 && n % 100 <= 13;
+      const suffix = teens ? "th" : { 1: "st", 2: "nd", 3: "rd" }[n % 10] || "th";
+      return `${n}${suffix}`;
+    },
     players: "Players",
     cpus: "CPUs",
     draw: "Draw",
     rematch: "Rematch",
+    stageSelect: "Change Stage",
     fighterSelect: "Fighter Select",
+    // The scoreboard. Column order here is the order it renders in.
+    stats: {
+      place: "#",
+      fighter: "Fighter",
+      dealt: "Dealt",
+      taken: "Taken",
+      kos: "KOs",
+      falls: "Falls",
+      combo: "Best combo",
+      duration: (clock) => `Match length ${clock}`,
+      comboValue: (n) => (n > 1 ? `${n} hits` : "—"),
+    },
   },
 
   settings: {
@@ -239,9 +362,8 @@ export const TEXT = {
     sfxVolume: (pct) => `Sound FX Volume: ${pct}%`,
     cpu: (level) => `CPU Difficulty: ${level}`,
     stocks: (n) => `Lives per fighter: ${n}`,
-    sprites: (set) => `Sprites: ${set}`,
-    spriteDefault: "Default",
-    spriteAlternate: "Alternate",
+    timeLimit: (label) => `Time limit: ${label}`,
+    timeOff: "None",
     activeBoards: (on) => `Active Boards: ${on ? "On" : "Off"}`,
     sfxEnabled: (on) => `Sound Effects: ${on ? "On" : "Off"}`,
     back: "Back",
@@ -257,6 +379,9 @@ export const TEXT = {
   },
 
   hud: {
+    // The live combo readout on a fighter's panel. Only ever shown from two
+    // hits up: "1 hit" is just a hit.
+    combo: (n) => `${n} HITS`,
     ultimateReady: "ULTIMATE READY",
     domainReady: "DOMAIN READY",
     // A full bar buys either one, so a fighter with a domain is being offered a
@@ -270,7 +395,6 @@ export const TEXT = {
   controllers: {
     vsCpu: "VS CPU",
     joined: (n) => `${n} players joined`,
-    waiting: (who) => `${who} — move a stick or press a button on another controller to join`,
     allJoined: (who) => `${who} — A locks your fighter, A again starts · B backs out · LB/RB corner menus`,
   },
 };

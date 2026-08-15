@@ -4,16 +4,33 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>JJK Brawler II</title>
+    <meta name="description" content="A cursed-energy platform fighter for one to four players. Two dozen sorcerers and curses, ultimates, Domain Expansions, and twenty arenas — in your browser, no install.">
+    <meta name="theme-color" content="#05070f">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="JJK Brawler II">
+    <meta property="og:description" content="A cursed-energy platform fighter for one to four players. Ultimates, Domain Expansions, and twenty arenas — in your browser, no install.">
+    <meta property="og:image" content="assets/ui/logo.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="JJK Brawler II">
+    <meta name="twitter:description" content="A cursed-energy platform fighter for one to four players — in your browser, no install.">
+    <meta name="twitter:image" content="assets/ui/logo.png">
     <link rel="icon" href="favicon.ico" sizes="any">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="manifest" href="site.webmanifest">
+    <link rel="preload" href="assets/fonts/barlow-condensed-italic-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/barlow-condensed-800.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="assets/fonts/press-start-2p.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="game-shell">
       <section class="arena-wrap" aria-label="JJK Brawler game">
+        <!-- The 3D scene, under the game canvas. Only drawn to in `?camera=3d`
+             mode (src/render3d/); in flat mode it stays a blank layer the
+             opaque backdrop above completely covers. -->
+        <canvas id="glCanvas" width="1280" height="720"></canvas>
         <canvas id="gameCanvas" width="1280" height="720"></canvas>
 
         <nav id="utilityActions" class="utility-actions hidden" aria-label="Game options">
@@ -35,11 +52,18 @@
              the roster rather than hand-written per slot. -->
         <div class="hud hidden" id="hud" aria-live="polite">
           <div class="round-actions">
+            <div id="matchClock" class="match-clock hidden" aria-label="Time remaining">0:00</div>
             <div id="arenaSign" class="arena-sign"><span id="arenaSignName">Training Bridge</span></div>
           </div>
         </div>
 
         <div id="menuOverlay" class="overlay">
+          <!-- The spotlight: whichever fighter the active picker is browsing,
+               huge and dim behind the whole select screen. Two stacked images
+               so a change can crossfade instead of popping (ui.js). -->
+          <div id="selectSpotlight" class="select-spotlight" aria-hidden="true">
+            <img alt=""><img alt="">
+          </div>
           <div class="title-lockup">
             <span class="eyebrow">Cursed energy platform fighter</span>
             <img class="game-logo" src="assets/ui/logo.png" alt="JJK Brawler II">
@@ -101,11 +125,14 @@
             <span class="eyebrow">Choose arena</span>
             <h2>Stages</h2>
           </div>
-          <div id="stageGrid" class="stage-grid" aria-label="Stage select"></div>
-          <div class="menu-actions">
-            <button id="randomStageButton" class="primary-action" type="button">Random Stage</button>
+          <!-- Actions ABOVE the grid: twenty arenas push anything below them
+               toward the fold, and Random is the choice the screen most wants
+               to offer — so it sits first, styled as a draw, not a fallback. -->
+          <div class="menu-actions menu-actions--stage">
+            <button id="randomStageButton" class="random-stage" type="button">Random Stage</button>
             <button id="stageBackButton" type="button">Back</button>
           </div>
+          <div id="stageGrid" class="stage-grid" aria-label="Stage select"></div>
         </div>
 
         <div id="movesOverlay" class="overlay hidden">
@@ -123,12 +150,20 @@
         </div>
 
         <div id="roundOverlay" class="overlay overlay--compact hidden">
-          <div class="title-lockup">
+          <div class="title-lockup title-lockup--victory">
             <span class="eyebrow" id="roundKicker">Match complete</span>
             <h2 id="winnerText">Gojo wins</h2>
           </div>
+          <!-- Built in ui.js (showRoundOver): the winner's card big and lit,
+               everyone else small and grey below their placement — the Smash
+               results podium. Empty on a draw. -->
+          <div id="victoryPodium" class="victory-podium"></div>
+          <!-- Built in ui.js (renderMatchStats): one row per fighter, in
+               finishing order. -->
+          <div id="matchStats" class="match-stats"></div>
           <div class="menu-actions">
             <button id="rematchButton" class="primary-action" type="button">Rematch</button>
+            <button id="stageAgainButton" type="button">Change Stage</button>
             <button id="menuButton" type="button">Fighter Select</button>
           </div>
         </div>
@@ -138,6 +173,11 @@
             <span class="eyebrow">Match paused</span>
             <h2>Paused</h2>
           </div>
+          <p id="pauseNotice" class="pause-notice hidden"></p>
+          <!-- The match so far: one plate per fighter — portrait, damage,
+               stocks — rebuilt by ui.js each time the game pauses, so the
+               pause screen answers "how is this going?" at a glance. -->
+          <div id="pauseStandings" class="pause-standings"></div>
           <div class="menu-actions">
             <button id="resumeButton" class="primary-action" type="button">Resume</button>
             <button id="pauseResetButton" type="button">Reset</button>
@@ -163,13 +203,30 @@
             <button id="settingsMusicButton" type="button">Music: Mix</button>
             <button id="settingsCpuButton" type="button">CPU Difficulty: Normal</button>
             <button id="settingsStocksButton" type="button">Lives per fighter: 3</button>
-            <button id="settingsSpritesButton" type="button">Sprites: Default</button>
+            <button id="settingsTimeButton" type="button">Time limit: 5:00</button>
             <button id="settingsBoardsButton" type="button">Active Boards: On</button>
           </div>
           <div class="menu-actions">
             <button id="settingsBackButton" type="button">Back</button>
           </div>
         </div>
+
+        <!-- The battle-intro VS splash. Built by ui.js (showBattleIntro) from
+             the match roster when a fight launches; a timed cut-scene beat, not
+             a menu — no input, self-dismissing. -->
+        <div id="introOverlay" class="intro-overlay hidden" aria-hidden="true"></div>
+
+        <!-- The title splash: the first screen the game shows, once the core
+             assets are in. A button rather than a div, so a click, Enter and a
+             pad's A all reach it through the paths that already exist — the
+             Start button is handled separately in main.js because only that
+             one takes the game fullscreen. -->
+        <button id="titleOverlay" class="overlay title-screen hidden" type="button">
+          <img class="title-logo" src="assets/ui/logo.png" alt="JJK Brawler II">
+          <span id="titlePressStart" class="press-start">Press Start</span>
+          <span id="titleCredit" class="title-credit">A cursed brawler by Hoai and Francis Nguyen</span>
+          <span id="titleHint" class="title-hint">Start on a controller · Enter · or click to begin</span>
+        </button>
 
         <div id="loadOverlay" class="overlay">
           <div class="title-lockup">
@@ -182,6 +239,10 @@
         </div>
       </section>
     </main>
+
+    <!-- Failure the player can actually see. Written by reportError (ui.js);
+         empty and hidden until something throws. -->
+    <div id="errorToast" class="error-toast hidden" role="alert"></div>
 
     <audio id="musicTrack" preload="auto"></audio>
     <script type="module" src="src/main.js"></script>

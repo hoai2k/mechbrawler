@@ -28,9 +28,9 @@ src/specials.js     special-move handlers (type -> behavior) + shared primitives
 src/ultimates.js    the 17 cinematic ultimates (type -> director)
 src/ai.js           CPU opponent, 3 difficulty levels
 src/render.js       all drawing; sprites.js, camera.js, particles.js support it
-src/motion.js       procedural sprite motion (tumble, lean, swing) — docs/sprite-motion.md
+src/motion.js       procedural sprite motion (tumble, lean, swing) — sprites/docs/sprite-motion.md
 src/ui.js           menus, HUD, move list, gamepad/keyboard menu navigation
-tools/              offline asset pipeline (see docs/asset-pipeline.md)
+tools/              offline asset pipeline (see sprites/docs/asset-pipeline.md)
                     plus check_imports.mjs — run it after moving any export
 docs/               mechanics, character research, asset pipeline, asset requests
 ```
@@ -45,10 +45,10 @@ docs/               mechanics, character research, asset pipeline, asset request
 - Anything spawned into `state.entities` **must carry `owner`**, or it will
   outlive its owner's death and keep dealing damage (this was a real bug).
 - Sprite frames are pre-processed offline. The renderer does no per-frame pixel
-  work. Frame placement comes from `assets/sprites/manifest.json`.
+  work. Frame placement comes from `sprites/assets/manifest.json`.
 - Most animation states are ONE still frame. The life in them is procedural,
   from `motion.js`, and it is draw-time only — it can never change what a hit
-  connects with. See `docs/sprite-motion.md`.
+  connects with. See `sprites/docs/sprite-motion.md`.
 - The main loop has a `setInterval` watchdog because `requestAnimationFrame` is
   throttled in some embedded browsers. A thrown exception therefore does *not*
   permanently kill the game — it retries every frame and spams the console.
@@ -61,6 +61,10 @@ docs/               mechanics, character research, asset pipeline, asset request
 
       node tools/check_imports.mjs      # module graph, no browser needed
       node tools/check_music.mjs        # stage/track wiring, no browser needed
+      node tools/smoke_controllers.mjs  # two pads: seats, join, split cursors
+      python3 tools/check_doc_links.py  # every relative doc link and anchor
+      node tools/build_image_requests.mjs --check   # docs/image-requests.md is current
+      python3 tools/import_render3d_images.py       # dry-run the DI intake
       node tools/audit_stage_reach.mjs  # platform layouts, no browser needed
       node tools/audit_hitboxes.mjs     # reach/hurtbox/angle numbers, no browser
       node tools/smoke_stages.mjs       # every stage's Active Boards gimmick
@@ -367,7 +371,7 @@ must point the same way the fighter faces.
 `python3 tools/size_review.py` draws every pose at true in-game scale on a
 shared ground line. **Do not try to normalise size automatically** — bbox
 height is not pose-invariant, and head-size detection fails on this art (see
-`docs/asset-pipeline.md`). Two attempts at algorithmic normalisation both made
+`sprites/docs/asset-pipeline.md`). Two attempts at algorithmic normalisation both made
 things worse; the working method is the review sheet plus `workbench/`.
 
 ### The sprite workbench
@@ -446,6 +450,15 @@ game. Don't change it back to document-relative paths.
   have keyboard maps, slots 3–4 are human only when a gamepad is connected for
   them, and every other entrant gets `aiState`. This is what makes 3/4-player
   modes testable without controllers.
+- **A pad's seat is its own, and is taken on sight.** `input.js` keys seats on
+  `pad.index` the first time each pad is seen, so a second controller becomes
+  player 2 — and the second slot stops being a CPU — the moment the browser
+  reveals it, with no button press needed and nothing required of player 1.
+  Seats never move afterwards, which is the part that matters: the browser's
+  gamepad list is SPARSE (a pad is invisible until its owner touches it), so
+  reading a seat off a position in that list handed player 2's pad to player 1
+  whenever player 1 had not touched theirs yet. `tools/smoke_controllers.mjs`
+  drives fake pads through both orderings.
 - Several crouch rows show the wrong outfit for their character (Toji, Todo,
   Inumaki, Sukuna are the clear ones) — see `docs/asset-requests.md` round 4.
 - Row-3 technique art still bleeds *sideways* in a few frames; only the

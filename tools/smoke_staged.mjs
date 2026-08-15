@@ -20,6 +20,7 @@
 // is elsewhere. Start the game first (node server.mjs), then:
 //   node tools/smoke_staged.mjs [baseUrl]
 import { chromium } from "playwright";
+import { pressStart } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
@@ -43,6 +44,11 @@ const OPTIONAL_ART = [
   "/assets/sprites/summons/",
   "/assets/sprites/effects/",
   "/assets/backgrounds/domains/",
+  // Sound behaves the same way: a cue with no file plays nothing, and the
+  // moment still works. Audio round 10 (the domain cues) is open, so opening a
+  // domain currently asks for four .mp3s nobody has recorded — undelivered
+  // audio, reported like undelivered art rather than failed like a broken game.
+  "/assets/sfx/",
 ];
 const undelivered = new Set();
 const isResource404 = (t) => /Failed to load resource/.test(t);
@@ -53,7 +59,8 @@ page.on("response", (r) => {
 });
 
 // Through the menus the way a player would, exactly as smoke_combat.mjs does.
-await page.goto(BASE, { waitUntil: "load" });
+await page.goto(`${BASE}/index.html?camera=flat`, { waitUntil: "load" });
+await pressStart(page);
 await page.waitForSelector('[data-character="gojo"]', { timeout: 60000 });
 await page.click('[data-character="gojo"]');
 await page.waitForTimeout(400);

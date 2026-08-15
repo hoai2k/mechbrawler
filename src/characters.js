@@ -22,7 +22,7 @@
 // and redrawing a pose retunes the move. The forgiveness margins are in
 // MELEE_GRACE (src/config_tuning.js). See docs/hitbox-audit.md.
 //
-// Frame keys are sheet cells "r{row}c{col}" resolved via assets/sprites/manifest.json.
+// Frame keys are sheet cells "r{row}c{col}" resolved via sprites/assets/manifest.json.
 // Sheet rows: 0 idle/poses, 1 run, 2 air, 3 technique effects, 4 crouch.
 // The 17 launch fighters come from those sheets. The six round-7 fighters
 // (Choso, Mei Mei, Uro, Yuji, Reggie, Gakuganji) have no sheet at all — their
@@ -77,9 +77,45 @@ export function randomCharacterKey(avoid = []) {
 export const RUN_CYCLE_FRAMES = ["run_reach_a", "run_pass_a", "run_reach_b", "run_pass_b"];
 const RUN_ANIM = { frames: RUN_CYCLE_FRAMES, fallback: ["run_a", "run_b"], fps: 13, fallbackFps: 10, loop: true };
 
+// A WALK, added with the analog walk itself (constants.js RUN_TILT). Two
+// contacts rather than the run's four: a walk reads at half the cadence and
+// half the extension, and the roster's other held cycles — idle, crouch — are
+// pairs for the same reason.
+//
+// It ships FALLING BACK ON THE RUN, the way the grab set shipped falling back
+// on the nearest strike: the mechanic animates on all twenty-seven today and
+// upgrades fighter by fighter as round 21 lands, with no code change when it
+// does. The fallback is the run cycle, replayed at a walking cadence — which is
+// exactly what the game drew before the walk existed, so nothing regresses
+// while the art is outstanding.
+const WALK_ANIM = {
+  frames: ["walk_a", "walk_b"],
+  // The run CYCLE, and only it. The first version appended the legacy
+  // `run_a`/`run_b` pair as a second fallback, which is not how the mechanism
+  // works: `fallback` is one list played whole, so the twenty-four fighters
+  // who still carry the old pair walked in a six-frame mixture of two
+  // different drawings of running. Every fighter has the four-frame cycle
+  // (round 11 finished that conversion), so it always resolves.
+  fallback: RUN_CYCLE_FRAMES,
+  fps: 5, fallbackFps: 7, loop: true,
+};
+
+// Balanced on the very lip of a platform — the pose the ledge brake leaves a
+// fighter in constantly and nothing drew (fighter.js updateTeeter). Round 22
+// art; until it lands the state falls back to the IDLE frames and motion.js
+// supplies the read procedurally — a lean out over the drop and a slow
+// counter-sway, which is what a teeter is. So this line is the whole
+// integration and nothing waits on the drawing.
+const TEETER_ANIM = {
+  frames: ["teeter"], fallback: ["idle_a", "idle_b"],
+  fps: 1, fallbackFps: 2.2, loop: true,
+};
+
 // Anim defaults; characters override entries whose sheet cells differ.
 export const DEFAULT_ANIMS = {
   idle: { frames: ["idle_a", "idle_b"], fps: 2.2, loop: true },
+  teeter: TEETER_ANIM,
+  walk: WALK_ANIM,
   run: RUN_ANIM,
   dash: { frames: ["r1c2"], fps: 1, loop: true },
   jump: { frames: ["jump_rise"], fps: 1, loop: true },
@@ -97,6 +133,11 @@ export const DEFAULT_ANIMS = {
   dodge_roll: { frames: ["dodge_roll"], fps: 1, loop: true },
   dodge_air: { frames: ["dodge_air"], fps: 1, loop: true },
   light: { frames: ["r3c0", "r3c1"], fps: 12, loop: false },
+  // The dash attack (moves.js, variant "dash"). Round 20D art; until it lands
+  // the state falls back to the light strike, which is what the move drew when
+  // it shipped — so this line is the whole integration and nothing waits on it.
+  dashAttack: { frames: ["attack_dash"], fallback: ["r3c0"], fps: 8, loop: false },
+  dashAttackHeavy: { frames: ["attack_dash"], fallback: ["r3c0"], fps: 8, loop: false },
   // Wind-up then strike (see SEMANTIC_ANIMS below for the timing note). The
   // `fallback` is what a fighter without the round-9 pair keeps drawing.
   airLight: { frames: ["attack_air_a", "attack_air_b"], fallback: ["attack_air"], fps: 8, loop: false },
@@ -113,15 +154,27 @@ export const DEFAULT_ANIMS = {
   // renderer simulates it: `hurt` swept 90 degrees onto the back (fighter.js).
   prone: { frames: ["prone"], fallback: ["hurt"], fps: 1, loop: true },
   win: { frames: ["victory"], fps: 1, loop: true },
+  // Grabs and throws (?throw=true — src/grab.js). Sheet-era fallbacks; the
+  // semantic table below carries the full reasoning and the 20C request that
+  // replaces these stand-ins.
+  grabReach: { frames: ["grab_reach"], fallback: ["attack_light_a", "r3c0"], fps: 10, loop: false },
+  grabHold: { frames: ["grab_hold"], fallback: ["charge"], fps: 2, loop: true },
+  grabbed: { frames: ["grabbed"], fallback: ["hurt"], fps: 1, loop: true },
+  throwFwd: { frames: ["throw_fwd"], fallback: ["attack_heavy_a", "r3c0"], fps: 8, loop: false },
+  throwBack: { frames: ["throw_back"], fallback: ["attack_heavy_b", "attack_heavy_a", "r3c0"], fps: 8, loop: false },
+  throwUp: { frames: ["throw_up"], fallback: ["attack_up"], fps: 8, loop: false },
+  throwDown: { frames: ["throw_down"], fallback: ["attack_down", "r2c2"], fps: 8, loop: false },
 };
 
 // Staged characters have no legacy sheet, so every animation state maps to a
 // semantic pose key (round-5 naming) rather than an r{row}c{col} cell. This is
 // the complete pose list the round-7 asset request asks for — when the art
-// lands at assets/sprites/<char>/<pose_key>.png and is registered in the
+// lands at sprites/assets/<char>/<pose_key>.png and is registered in the
 // manifest, these animations resolve with no further code changes.
 export const SEMANTIC_ANIMS = {
   idle: { frames: ["idle_a", "idle_b"], fps: 2.2, loop: true },
+  teeter: TEETER_ANIM,
+  walk: WALK_ANIM,
   run: RUN_ANIM,
   dash: { frames: ["dash"], fps: 1, loop: true },
   jump: { frames: ["jump_rise"], fps: 1, loop: true },
@@ -136,6 +189,15 @@ export const SEMANTIC_ANIMS = {
   dodge_roll: { frames: ["dodge_roll"], fps: 1, loop: true },
   dodge_air: { frames: ["dodge_air"], fps: 1, loop: true },
   light: { frames: ["attack_light_a", "attack_light_b"], fps: 12, loop: false },
+  // The dash attack — round 20D. One pose rather than a wind-up pair: a dash
+  // attack has no wind-up to draw, the run already was it. The fallback is the
+  // light strike frame it draws today, so the pose can land one fighter at a
+  // time and everybody else keeps the drawing they have.
+  dashAttack: { frames: ["attack_dash"], fallback: ["attack_light_a", "attack_light_b"], fps: 8, loop: false },
+  // Same delivered pose, different fallback: one drawing covers both dash
+  // attacks, but while it is undrawn the heavy one keeps standing in with the
+  // heavy strike it plays today rather than switching to a light punch.
+  dashAttackHeavy: { frames: ["attack_dash"], fallback: ["attack_heavy_a", "attack_heavy_b", "attack_heavy"], fps: 6, loop: false },
   // Wind-up then strike, the same shape the light attack has always had. The
   // `_a`/`_b` art is a round-9 delivery; until it lands for a character, the
   // single delivered frame is all that survives the missing-frame filter in
@@ -162,6 +224,21 @@ export const SEMANTIC_ANIMS = {
   // renderer simulates it: `hurt` swept 90 degrees onto the back (fighter.js).
   prone: { frames: ["prone"], fallback: ["hurt"], fps: 1, loop: true },
   win: { frames: ["victory"], fps: 1, loop: true },
+  // Grabs and throws (?throw=true — src/grab.js; round-20C art request in
+  // docs/asset-requests.md). Every state names its own pose and falls back to
+  // the nearest delivered art, so the mechanic animates on the whole roster
+  // today and upgrades pose by pose as 20C lands:
+  //   grabReach  the lunge with an open hand — a light strike reads closest
+  //   grabHold   gripping a body at arm's length — the charge stance holds
+  //   grabbed    seized and struggling — the hurt pose is the honest stand-in
+  //   throw*     the four heaves — each borrows the attack thrown that way
+  grabReach: { frames: ["grab_reach"], fallback: ["attack_light_a", "attack_light"], fps: 10, loop: false },
+  grabHold: { frames: ["grab_hold"], fallback: ["charge"], fps: 2, loop: true },
+  grabbed: { frames: ["grabbed"], fallback: ["hurt"], fps: 1, loop: true },
+  throwFwd: { frames: ["throw_fwd"], fallback: ["attack_heavy_a", "attack_heavy"], fps: 8, loop: false },
+  throwBack: { frames: ["throw_back"], fallback: ["attack_heavy_b", "attack_heavy_a", "attack_heavy"], fps: 8, loop: false },
+  throwUp: { frames: ["throw_up"], fallback: ["attack_up"], fps: 8, loop: false },
+  throwDown: { frames: ["throw_down"], fallback: ["attack_down"], fps: 8, loop: false },
 };
 
 export const CHARACTERS = {
@@ -174,7 +251,7 @@ export const CHARACTERS = {
     theme: "#62dcff",
     shadow: "rgba(88, 220, 255, 0.36)",
     scale: 0.60,
-    stats: { speed: 468, airSpeed: 380, accel: 3000, jump: 800, airJumps: 1, weight: 0.92, friction: 0.86 },
+    stats: { speed: 468, airSpeed: 380, accel: 3000, jump: 880, airJumps: 1, weight: 0.92, friction: 0.86 },
     // Inherits the semantic table; these keep this fighter's own timing.
     anims: { ...SEMANTIC_ANIMS,
       specialDown: { frames: ["special_down"], fps: 4, loop: true },
@@ -224,7 +301,7 @@ export const CHARACTERS = {
     theme: "#9fc7ff",
     shadow: "rgba(159, 199, 255, 0.36)",
     scale: 0.60,
-    stats: { speed: 402, airSpeed: 318, accel: 2540, jump: 760, airJumps: 1, weight: 1.02, friction: 0.83 },
+    stats: { speed: 402, airSpeed: 318, accel: 2540, jump: 835, airJumps: 1, weight: 1.02, friction: 0.83 },
     // Inherits the semantic table; these keep this fighter's own timing.
     anims: { ...SEMANTIC_ANIMS,
       specialDown: { frames: ["special_down"], fps: 4, loop: true },
@@ -274,7 +351,7 @@ export const CHARACTERS = {
     theme: "#ff62cf",
     shadow: "rgba(255, 98, 207, 0.38)",
     scale: 0.60,
-    stats: { speed: 415, airSpeed: 305, accel: 2560, jump: 745, airJumps: 1, weight: 1.08, friction: 0.82 },
+    stats: { speed: 415, airSpeed: 305, accel: 2560, jump: 820, airJumps: 1, weight: 1.08, friction: 0.82 },
     // Round 11B delivered his last seventeen poses. Inherits the semantic
     // table; the slower down-special is his own timing, kept.
     anims: { ...SEMANTIC_ANIMS,
@@ -326,7 +403,7 @@ export const CHARACTERS = {
     fxElement: "steel",  // Heavenly Restriction: no cursed energy — steel glints, never a glow
     shadow: "rgba(105, 208, 168, 0.34)",
     scale: 0.60,
-    stats: { speed: 452, airSpeed: 340, accel: 2860, jump: 775, airJumps: 1, weight: 1.0, friction: 0.86 },
+    stats: { speed: 452, airSpeed: 340, accel: 2860, jump: 855, airJumps: 1, weight: 1.0, friction: 0.86 },
     // Round 11B delivered her last seventeen poses. Inherits the semantic
     // table; the slow looping down-special is her own, kept.
     anims: { ...SEMANTIC_ANIMS,
@@ -370,7 +447,7 @@ export const CHARACTERS = {
     fxElement: "shadow",  // hits land in shadow-stuff
     shadow: "rgba(124, 140, 255, 0.36)",
     scale: 0.60,
-    stats: { speed: 418, airSpeed: 330, accel: 2620, jump: 765, airJumps: 1, weight: 0.96, friction: 0.84 },
+    stats: { speed: 418, airSpeed: 330, accel: 2620, jump: 840, airJumps: 1, weight: 0.96, friction: 0.84 },
     // Round 11B delivered his last seventeen poses, so every action has its own
     // drawing and every override here was saying what the shared table says.
     anims: SEMANTIC_ANIMS,
@@ -380,7 +457,7 @@ export const CHARACTERS = {
       neutral: {
         name: "Great Serpent... no — Nue!", type: "projectile", cooldown: 1.15,
         desc: "The shadow bird dives across the arena, crackling with paralytic charge.",
-        // Nue is a creature, not a bullet: the right stick aims the launch and
+        // Nue is a creature, not a bullet: the d-pad aims the launch and
         // flies it. Steering suspends the arc, so a hand-flown Nue holds its
         // line instead of dropping.
         p: { speed: 520, vy: -120, gravity: 260, r: 38, dur: 1.0, dmg: 11, base: 360, growth: 7.0, angle: 0.5, color: "#7c8cff", effect: "snare", label: "Nue", sprite: "summon:nue", spriteH: 132, steerable: true, steerRate: 6.0 },
@@ -409,7 +486,7 @@ export const CHARACTERS = {
       // A summon with the `brawler` behavior (summons.js): Mahoraga arrives as
       // his own actor and fights like a character — walking, jumping, choosing
       // between a poke, a committed smash and an anti-air — rather than being a
-      // body Megumi wears. Push the right stick and Megumi drives him instead.
+      // body Megumi wears. Push the d-pad and Megumi drives him instead.
       //
       // `actor` names the sprite set he animates through; `sprites` is the
       // still-image fallback for a set that has not been fully delivered.
@@ -453,7 +530,7 @@ export const CHARACTERS = {
     theme: "#d86a4a",
     shadow: "rgba(216, 106, 74, 0.36)",
     scale: 0.60,
-    stats: { speed: 400, airSpeed: 308, accel: 2480, jump: 750, airJumps: 1, weight: 0.98, friction: 0.83 },
+    stats: { speed: 400, airSpeed: 308, accel: 2480, jump: 825, airJumps: 1, weight: 0.98, friction: 0.83 },
     // Inherits the semantic table; these keep this fighter's own timing.
     anims: { ...SEMANTIC_ANIMS,
       specialDown: { frames: ["special_down"], fps: 6, loop: false },
@@ -495,7 +572,7 @@ export const CHARACTERS = {
     theme: "#d7d9e7",
     shadow: "rgba(215, 217, 231, 0.32)",
     scale: 0.60,
-    stats: { speed: 408, airSpeed: 312, accel: 2500, jump: 755, airJumps: 1, weight: 0.98, friction: 0.83 },
+    stats: { speed: 408, airSpeed: 312, accel: 2500, jump: 830, airJumps: 1, weight: 0.98, friction: 0.83 },
     // Round 11B delivered his last eighteen poses, so every action has its own
     // drawing and every override here was saying what the shared table says.
     anims: SEMANTIC_ANIMS,
@@ -537,7 +614,7 @@ export const CHARACTERS = {
     fxElement: "steel",  // a cursed corpse hits with mass, not energy — impact FX, no glow
     shadow: "rgba(142, 160, 184, 0.36)",
     scale: 0.57,
-    stats: { speed: 356, airSpeed: 275, accel: 2220, jump: 730, airJumps: 1, weight: 1.28, friction: 0.78 },
+    stats: { speed: 356, airSpeed: 275, accel: 2220, jump: 805, airJumps: 1, weight: 1.28, friction: 0.78 },
     // Round 11B delivered his last eighteen poses. Inherits the semantic table;
     // the slower jab and down-special are his own timing, kept.
     anims: { ...SEMANTIC_ANIMS,
@@ -550,7 +627,7 @@ export const CHARACTERS = {
       neutral: {
         name: "Unblockable Drumming Beat", type: "burst", cooldown: 1.5,
         desc: "A resonant palm that drums straight through any guard.",
-        p: { delay: 0.18, dur: 0.16, ox: 56, oy: -100, w: 180, h: 120, dmg: 13, base: 430, growth: 7.0, angle: 0.4, unblockable: true, label: "Drumming Beat", color: "#c9b6ff", sfx: "punch", sprite: "effect:drum_burst", spriteH: 170 },
+        p: { delay: 0.18, dur: 0.16, ox: 56, oy: -100, w: 180, h: 120, dmg: 13, base: 430, growth: 7.0, angle: 0.4, unblockable: true, label: "Drumming Beat", color: "#c9b6ff", sfx: "drumPhrase", sprite: "effect:drum_burst", spriteH: 170 },
       },
       side: {
         name: "Cursed Corpse Charge", type: "dashStrike", cooldown: 1.45,
@@ -581,7 +658,7 @@ export const CHARACTERS = {
     theme: "#b66cff",
     shadow: "rgba(182, 108, 255, 0.38)",
     scale: 0.59,
-    stats: { speed: 392, airSpeed: 295, accel: 2400, jump: 750, airJumps: 1, weight: 1.18, friction: 0.8 },
+    stats: { speed: 392, airSpeed: 295, accel: 2400, jump: 825, airJumps: 1, weight: 1.18, friction: 0.8 },
     // Round 11B delivered his last eighteen poses. Inherits the semantic table;
     // the slow down-special is his own timing, kept.
     anims: { ...SEMANTIC_ANIMS,
@@ -626,7 +703,7 @@ export const CHARACTERS = {
     theme: "#b7b8ff",
     shadow: "rgba(183, 184, 255, 0.36)",
     scale: 0.59,
-    stats: { speed: 428, airSpeed: 372, accel: 2760, jump: 770, airJumps: 2, weight: 0.88, friction: 0.84 },
+    stats: { speed: 428, airSpeed: 372, accel: 2760, jump: 845, airJumps: 2, weight: 0.88, friction: 0.84 },
     // Round 11B delivered her last eighteen poses. Inherits the semantic table;
     // her slower run cadence and down-special timing are her own, kept.
     anims: { ...SEMANTIC_ANIMS,
@@ -670,7 +747,7 @@ export const CHARACTERS = {
     theme: "#ffd35a",
     shadow: "rgba(255, 205, 82, 0.32)",
     scale: 0.60,
-    stats: { speed: 388, airSpeed: 285, accel: 2380, jump: 715, airJumps: 1, weight: 1.14, friction: 0.8 },
+    stats: { speed: 388, airSpeed: 285, accel: 2380, jump: 785, airJumps: 1, weight: 1.14, friction: 0.8 },
     // Round 11B delivered his last eighteen poses. Inherits the semantic table;
     // the faster heavy and the very slow looping down-special are his own.
     anims: { ...SEMANTIC_ANIMS,
@@ -715,7 +792,7 @@ export const CHARACTERS = {
     fxElement: "steel",  // Heavenly Restriction: no cursed energy — steel glints, never a glow
     shadow: "rgba(168, 174, 184, 0.34)",
     scale: 0.60,
-    stats: { speed: 465, airSpeed: 350, accel: 2980, jump: 780, airJumps: 1, weight: 1.04, friction: 0.87 },
+    stats: { speed: 465, airSpeed: 350, accel: 2980, jump: 860, airJumps: 1, weight: 1.04, friction: 0.87 },
     // Round 11B delivered his last eighteen poses — the last fighter on the
     // sprite sheets. Inherits the semantic table; the fast jab and quicker
     // ultimate are his own timing, kept.
@@ -765,7 +842,7 @@ export const CHARACTERS = {
     theme: "#ff4c55",
     shadow: "rgba(255, 67, 75, 0.4)",
     scale: 0.60,
-    stats: { speed: 435, airSpeed: 322, accel: 2700, jump: 755, airJumps: 1, weight: 1.06, friction: 0.83 },
+    stats: { speed: 435, airSpeed: 322, accel: 2700, jump: 830, airJumps: 1, weight: 1.06, friction: 0.83 },
     // Round 11B delivered his last eighteen poses, so every action has its own
     // drawing and every override here was saying what the shared table says.
     // His crouch attack loses its third frame with them: the sheet happened to
@@ -817,7 +894,7 @@ export const CHARACTERS = {
     fxElement: "soul",  // hits touch the soul
     shadow: "rgba(177, 92, 255, 0.4)",
     scale: 0.60,
-    stats: { speed: 422, airSpeed: 328, accel: 2600, jump: 760, airJumps: 1, weight: 0.98, friction: 0.82 },
+    stats: { speed: 422, airSpeed: 328, accel: 2600, jump: 835, airJumps: 1, weight: 0.98, friction: 0.82 },
     // Inherits the semantic table; these keep this fighter's own timing.
     anims: { ...SEMANTIC_ANIMS,
       ult: { frames: ["ult_a", "ult_b"], fps: 8, loop: true },
@@ -876,7 +953,7 @@ export const CHARACTERS = {
     theme: "#7d58d8",
     shadow: "rgba(125, 88, 216, 0.38)",
     scale: 0.60,
-    stats: { speed: 398, airSpeed: 305, accel: 2440, jump: 745, airJumps: 1, weight: 1.04, friction: 0.82 },
+    stats: { speed: 398, airSpeed: 305, accel: 2440, jump: 820, airJumps: 1, weight: 1.04, friction: 0.82 },
     // Round 11B delivered his last fifteen poses, so every action has its own
     // drawing and every override here was saying the same thing the shared
     // table already says.
@@ -930,7 +1007,7 @@ export const CHARACTERS = {
     fxElement: "fire",  // every hit burns
     shadow: "rgba(255, 122, 47, 0.42)",
     scale: 0.60,
-    stats: { speed: 368, airSpeed: 288, accel: 2280, jump: 720, airJumps: 1, weight: 1.16, friction: 0.79 },
+    stats: { speed: 368, airSpeed: 288, accel: 2280, jump: 790, airJumps: 1, weight: 1.16, friction: 0.79 },
     // Round 11B delivered his last seventeen poses. Inherits the semantic
     // table; the slower jab and down-special are his own timing, kept.
     anims: { ...SEMANTIC_ANIMS,
@@ -982,7 +1059,7 @@ export const CHARACTERS = {
     theme: "#9bb36b",
     shadow: "rgba(155, 179, 107, 0.4)",
     scale: 0.58,
-    stats: { speed: 358, airSpeed: 278, accel: 2220, jump: 730, airJumps: 1, weight: 1.24, friction: 0.78 },
+    stats: { speed: 358, airSpeed: 278, accel: 2220, jump: 805, airJumps: 1, weight: 1.24, friction: 0.78 },
     // Round 11B delivered his last sixteen poses. Inherits the semantic table;
     // the slower jab and down-special are his own timing, kept.
     anims: { ...SEMANTIC_ANIMS,
@@ -1027,7 +1104,7 @@ export const CHARACTERS = {
     fxElement: "blood",  // every hit is blood
     shadow: "rgba(194, 46, 74, 0.4)",
     scale: 0.60,
-    stats: { speed: 405, airSpeed: 315, accel: 2500, jump: 750, airJumps: 1, weight: 1.06, friction: 0.82 },
+    stats: { speed: 405, airSpeed: 315, accel: 2500, jump: 825, airJumps: 1, weight: 1.06, friction: 0.82 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 8, speed: 1.05, angle: 0.31, effect: null, label: "Blood Edge", sfx: "slash" },
     heavy: { dmg: 15.5, speed: 0.98, angle: 0.44, effect: null, label: "Crimson Arc", sfx: "slashHeavy", shieldMul: 1.6 },
@@ -1066,7 +1143,7 @@ export const CHARACTERS = {
     theme: "#d8b95c",
     shadow: "rgba(216, 185, 92, 0.36)",
     scale: 0.60,
-    stats: { speed: 425, airSpeed: 330, accel: 2650, jump: 765, airJumps: 1, weight: 1.0, friction: 0.84 },
+    stats: { speed: 425, airSpeed: 330, accel: 2650, jump: 840, airJumps: 1, weight: 1.0, friction: 0.84 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 8.5, speed: 1.0, angle: 0.3, effect: null, label: "Axe Combo", sfx: "slash" },
     heavy: { dmg: 16.5, speed: 0.95, angle: 0.44, effect: null, label: "Executioner's Cleave", sfx: "slashHeavy", shieldMul: 2.0 },
@@ -1105,7 +1182,7 @@ export const CHARACTERS = {
     theme: "#8fd7e8",
     shadow: "rgba(143, 215, 232, 0.36)",
     scale: 0.60,
-    stats: { speed: 432, airSpeed: 385, accel: 2750, jump: 790, airJumps: 2, weight: 0.9, friction: 0.84 },
+    stats: { speed: 432, airSpeed: 385, accel: 2750, jump: 870, airJumps: 2, weight: 0.9, friction: 0.84 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 8, speed: 1.1, angle: 0.3, effect: null, label: "Palm Arts", sfx: "punch" },
     heavy: { dmg: 15, speed: 1.05, angle: 0.46, effect: null, label: "Sky-Splitting Palm", sfx: "punch", shieldMul: 1.5 },
@@ -1144,7 +1221,7 @@ export const CHARACTERS = {
     theme: "#ff8264",
     shadow: "rgba(255, 130, 100, 0.38)",
     scale: 0.60,
-    stats: { speed: 448, airSpeed: 345, accel: 2900, jump: 780, airJumps: 1, weight: 1.02, friction: 0.86 },
+    stats: { speed: 448, airSpeed: 345, accel: 2900, jump: 860, airJumps: 1, weight: 1.02, friction: 0.86 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 8.5, speed: 1.1, angle: 0.3, effect: null, label: "Straight Right", sfx: "punch" },
     heavy: { dmg: 16, speed: 1.0, angle: 0.44, effect: null, label: "Crushing Blow", sfx: "punch", shieldMul: 1.7 },
@@ -1183,7 +1260,7 @@ export const CHARACTERS = {
     theme: "#86d67c",
     shadow: "rgba(134, 214, 124, 0.36)",
     scale: 0.60,
-    stats: { speed: 402, airSpeed: 310, accel: 2480, jump: 745, airJumps: 1, weight: 1.05, friction: 0.82 },
+    stats: { speed: 402, airSpeed: 310, accel: 2480, jump: 820, airJumps: 1, weight: 1.05, friction: 0.82 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 8, speed: 1.0, angle: 0.3, effect: null, label: "Umbrella Blade", sfx: "slash" },
     heavy: { dmg: 15.5, speed: 0.98, angle: 0.44, effect: null, label: "Contract Cleave", sfx: "slashHeavy", shieldMul: 1.6 },
@@ -1229,7 +1306,7 @@ export const CHARACTERS = {
     theme: "#d89b3f",
     shadow: "rgba(216, 155, 63, 0.36)",
     scale: 0.60,
-    stats: { speed: 356, airSpeed: 272, accel: 2200, jump: 710, airJumps: 1, weight: 1.18, friction: 0.79 },
+    stats: { speed: 356, airSpeed: 272, accel: 2200, jump: 780, airJumps: 1, weight: 1.18, friction: 0.79 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 9, speed: 0.92, angle: 0.32, effect: null, label: "Guitar Swing", sfx: "punch" },
     heavy: { dmg: 17, speed: 0.88, angle: 0.44, effect: null, label: "Amp Smash", sfx: "slashHeavy", shieldMul: 1.7 },
@@ -1283,7 +1360,7 @@ export const CHARACTERS = {
     fxElement: "machine",  // a cursed corpse full of cannons: glints, sparks, steam
     shadow: "rgba(99, 199, 176, 0.36)",
     scale: 0.60,
-    stats: { speed: 372, airSpeed: 286, accel: 2280, jump: 720, airJumps: 1, weight: 1.22, friction: 0.79 },
+    stats: { speed: 372, airSpeed: 286, accel: 2280, jump: 790, airJumps: 1, weight: 1.22, friction: 0.79 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 8.5, speed: 1.0, angle: 0.3, effect: null, label: "Sword Option", sfx: "slash" },
     heavy: { dmg: 17, speed: 0.9, angle: 0.42, effect: null, label: "Ultra Spin", sfx: "slashHeavy", shieldMul: 2.1 },
@@ -1300,6 +1377,10 @@ export const CHARACTERS = {
       },
       down: {
         name: "New Shadow Style: Simple Domain", type: "simpleDomain", cooldown: 4.5,
+        // A domain, so the DOMAIN button casts it as well as Down+Special.
+        // Costs nothing but its own cooldown — see domainSpecialSlot in
+        // domains.js. Only meaningful on a fighter with no Expansion.
+        domainButton: true,
         desc: "The technique he built into cartridges because he could not cast it himself. Inside the circle nothing arrives unopposed — and no domain is sure of its hit.",
         p: { duration: 1.6, dmg: 11, base: 400, growth: 6.8, angle: 0.45, radius: 138, color: "#b8f0e4" },
       },
@@ -1307,7 +1388,7 @@ export const CHARACTERS = {
     ultimate: {
       name: "Ultimate Mechamaru — Mode: Absolute", type: "cannonade",
       desc: "Seventeen years, five months and six days of banked cursed energy, spent at once: a tracking volley to take the ground away, then the three-barrel cannon.",
-      p: { charge: 0.7, orbs: 5, orbDmg: 6, orbBase: 260, orbGrowth: 5.4, orbSprite: "effect:pigeon_orb", orbSpriteH: 64, dmg: 30, base: 880, growth: 10.5, width: 170, duration: 1.2, color: "#63c7b0", label: "MODE: ABSOLUTE", sprite: "effect:ultimate_cannon", spriteH: 220 },
+      p: { charge: 0.7, orbs: 5, orbDmg: 6, orbBase: 260, orbGrowth: 5.4, orbSprite: "effect:pigeon_orb", orbSpriteH: 64, orbR: 22, dmg: 30, base: 880, growth: 10.5, width: 170, duration: 1.2, color: "#63c7b0", label: "MODE: ABSOLUTE", sprite: "effect:ultimate_cannon", spriteH: 220 },
     },
     passive: { id: "heavenlyOutput", name: "Heavenly Restriction (Output)", desc: "A body traded for range and output: his cannons and techniques hit 15% harder — but the frame is a puppet, and it takes 8% more." },
     ai: { style: "zoner", range: 400 },
@@ -1322,7 +1403,7 @@ export const CHARACTERS = {
     theme: "#ffb703",
     shadow: "rgba(255, 183, 3, 0.36)",
     scale: 0.60,
-    stats: { speed: 430, airSpeed: 330, accel: 2700, jump: 770, airJumps: 1, weight: 1.04, friction: 0.85 },
+    stats: { speed: 430, airSpeed: 330, accel: 2700, jump: 845, airJumps: 1, weight: 1.04, friction: 0.85 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 8.5, speed: 1.08, angle: 0.28, effect: null, label: "Bombaye Jab", sfx: "punch" },
     heavy: { dmg: 17.5, speed: 0.95, angle: 0.46, effect: null, label: "Star Rage Hook", sfx: "punch", shieldMul: 1.8 },
@@ -1344,6 +1425,10 @@ export const CHARACTERS = {
       },
       down: {
         name: "New Shadow Style: Simple Domain", type: "simpleDomain", cooldown: 4.5,
+        // A domain, so the DOMAIN button casts it as well as Down+Special.
+        // Costs nothing but its own cooldown — see domainSpecialSlot in
+        // domains.js. Only meaningful on a fighter with no Expansion.
+        domainButton: true,
         desc: "The circle she taught Todo. It turns what reaches it, and a domain's guaranteed hit stops being guaranteed.",
         p: { duration: 1.6, dmg: 12, base: 420, growth: 7.0, angle: 0.45, radius: 138, color: "#ffe1a0" },
       },
@@ -1370,7 +1455,7 @@ export const CHARACTERS = {
     fxElement: "water",  // he generates the sea out of cursed energy
     shadow: "rgba(47, 143, 216, 0.4)",
     scale: 0.58,
-    stats: { speed: 350, airSpeed: 300, accel: 2200, jump: 740, airJumps: 1, weight: 1.26, friction: 0.78 },
+    stats: { speed: 350, airSpeed: 300, accel: 2200, jump: 815, airJumps: 1, weight: 1.26, friction: 0.78 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 9.5, speed: 0.92, angle: 0.32, effect: "drench", label: "Tide Lash", sfx: "punch" },
     heavy: { dmg: 17.5, speed: 0.88, angle: 0.44, effect: "drench", label: "Deluge Sweep", sfx: "slashHeavy", shieldMul: 1.7 },
@@ -1378,7 +1463,7 @@ export const CHARACTERS = {
       neutral: {
         name: "Disaster Tides", type: "wave", cooldown: 1.3,
         desc: "Water from nothing: a wall of it rolls out along the floor and takes everything with it.",
-        p: { speed: 420, r: 46, dur: 1.1, dmg: 12, base: 400, growth: 6.8, angle: 0.36, color: "#2f8fd8", pierce: true, effect: "drench", count: 2, fxElement: "water", label: "Tides", sprite: "effect:tide_wave", spriteH: 130 },
+        p: { speed: 420, r: 46, dur: 1.1, dmg: 12, base: 400, growth: 6.8, angle: 0.36, color: "#2f8fd8", pierce: true, effect: "drench", count: 2, fxElement: "water", fireSfx: "tideCrash", label: "Tides", sprite: "effect:tide_wave", spriteH: 130 },
       },
       side: {
         name: "Man-Eating Shikigami", type: "summon", cooldown: 4.0,
@@ -1423,7 +1508,7 @@ export const CHARACTERS = {
     fxElement: "swarm",  // every hit is partly the roaches
     shadow: "rgba(143, 59, 78, 0.4)",
     scale: 0.60,
-    stats: { speed: 412, airSpeed: 340, accel: 2520, jump: 760, airJumps: 2, weight: 1.08, friction: 0.82 },
+    stats: { speed: 412, airSpeed: 340, accel: 2520, jump: 835, airJumps: 2, weight: 1.08, friction: 0.82 },
     anims: SEMANTIC_ANIMS,
     light: { dmg: 8.5, speed: 1.05, angle: 0.3, effect: "infest", label: "Festering Slash", sfx: "slash" },
     heavy: { dmg: 16, speed: 0.98, angle: 0.44, effect: "infest", label: "Ranshoto Cleave", sfx: "slashHeavy", shieldMul: 1.7 },

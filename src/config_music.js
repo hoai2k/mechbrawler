@@ -27,6 +27,15 @@ export const MENU_TRACK = {
   volumeScale: 0.55,
 };
 
+// The title screen. Not the menu track and not scaled down like one: the splash
+// is the game's opening statement, so it plays a BATTLE track at battle volume
+// (only the master slider applies) and hands over to the quieter menu track the
+// moment the player presses start.
+export const TITLE_TRACK = {
+  label: "Iron vs Bone",
+  file: "Iron_Versus_Bone",
+};
+
 // The Music setting, in the order it cycles. `default` plays each stage's own
 // track, `random` draws from every board track and original alike, `off` mutes
 // menus and matches both.

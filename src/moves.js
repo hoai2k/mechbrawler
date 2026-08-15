@@ -178,6 +178,28 @@ export function lightMove(char, variant, jabStep = 0) {
         label: p.label, lungeVx: 90,
       };
     }
+    // The DASH ATTACK — a run's own attack, thrown out of a dash or a sprint.
+    //
+    // It is the side tilt's opposite trade. A tilt is what you throw because it
+    // is safe: short startup, short recovery, back to neutral. This one travels
+    // with the run behind it (`keepMomentum`, so the slide carries through the
+    // swing instead of decaying the moment the action locks), hits harder than
+    // anything else off a light press, and then leaves you standing in it —
+    // recovery is nearly twice a tilt's, which is what makes running in a
+    // decision rather than the default approach.
+    case "dash": {
+      const tip = tipOf(g, "side");
+      return {
+        ...base,
+        anim: "dashAttack",
+        delay: 0.08 / s, dur: 0.13, recover: 0.34 * priceOf(g),
+        ...forward(g, tip, -94, 104),
+        dmg: round1(p.dmg * 1.1), baseKb: 330, growth: 6.2, angle: p.angle,
+        critBand: p.critBand || tipBand(g, tip),
+        label: "Dash " + p.label,
+        lungeVx: 150, keepMomentum: true,
+      };
+    }
     case "up":
       return {
         ...base,
@@ -259,6 +281,24 @@ export function heavyMove(char, variant, charge = 0) {
         // wins; otherwise a long enough swing earns a tipper from its reach.
         critBand: p.critBand || tipBand(g, tip),
         label: p.label, lungeVx: 130,
+      };
+    }
+    // The heavy DASH ATTACK: the running shoulder-charge. A smash cannot be
+    // charged at a run — a charge is a fighter standing still deciding to — so
+    // the heavy button out of a dash commits to one uncharged swing instead of
+    // stopping the run dead. It is the hardest hit available without a charge,
+    // and it is paid for in the longest recovery on the ground.
+    case "dash": {
+      const tip = tipOf(g, "sideHeavy");
+      return {
+        ...base,
+        anim: "dashAttackHeavy",
+        delay: 0.13 / s, dur: 0.15, recover: 0.42 * price,
+        ...forward(g, tip, -96, 112),
+        dmg: round1(p.dmg * 0.95), baseKb: 420, growth: 8.0, angle: p.angle,
+        critBand: p.critBand || tipBand(g, tip),
+        label: "Charging " + p.label,
+        lungeVx: 210, keepMomentum: true,
       };
     }
     case "up":
