@@ -182,11 +182,22 @@ export function lightMove(char, variant, jabStep = 0) {
     //
     // It is the side tilt's opposite trade. A tilt is what you throw because it
     // is safe: short startup, short recovery, back to neutral. This one travels
-    // with the run behind it (`keepMomentum`, so the slide carries through the
-    // swing instead of decaying the moment the action locks), hits harder than
-    // anything else off a light press, and then leaves you standing in it —
-    // recovery is nearly twice a tilt's, which is what makes running in a
-    // decision rather than the default approach.
+    // with the run behind it (`lunge`, so the slide carries through the swing
+    // instead of dying the moment the action locks), hits harder than anything
+    // else off a light press, and then leaves you standing in it — recovery is
+    // nearly twice a tilt's, which is what makes running in a decision rather
+    // than the default approach.
+    //
+    // `lunge` and not `keepMomentum`, which is what this used to be and which
+    // means no friction AT ALL. The lunge kick is added on top of the run, so
+    // the move opened at 902 px/s against a 452 px/s run, held that for the
+    // whole 0.6 s and ended still doing 902 — 556 px of swing and 481 px of
+    // free coast after it, 1037 px in total across a 784 px platform. One light
+    // press crossed the stage. It was also backwards: HOLDING the direction
+    // travelled less (670 px), because only the held branch clamps to the run
+    // speed. A lunge decays as it goes and plants when the action ends unless
+    // the direction is still held (fighter.js), so the numbers now run the way
+    // round a player would guess.
     case "dash": {
       const tip = tipOf(g, "side");
       return {
@@ -197,7 +208,7 @@ export function lightMove(char, variant, jabStep = 0) {
         dmg: round1(p.dmg * 1.1), baseKb: 330, growth: 6.2, angle: p.angle,
         critBand: p.critBand || tipBand(g, tip),
         label: "Dash " + p.label,
-        lungeVx: 150, keepMomentum: true,
+        lungeVx: 88, lunge: true,
       };
     }
     case "up":
@@ -298,7 +309,7 @@ export function heavyMove(char, variant, charge = 0) {
         dmg: round1(p.dmg * 0.95), baseKb: 420, growth: 8.0, angle: p.angle,
         critBand: p.critBand || tipBand(g, tip),
         label: "Charging " + p.label,
-        lungeVx: 210, keepMomentum: true,
+        lungeVx: 124, lunge: true,
       };
     }
     case "up":

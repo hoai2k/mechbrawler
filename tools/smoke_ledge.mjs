@@ -161,6 +161,47 @@ try {
       }
     }
 
+    // 0b. A DASH ATTACK IS A LUNGE TOO, and the same two things are true of it:
+    //     it runs out, and it plants when it ends unless you are still asking
+    //     to go that way. It used to be `keepMomentum` — no friction at all —
+    //     so a light press at a run opened at 902 px/s against a 452 px/s run,
+    //     held it for the whole action, and ended still doing 902: 556 px of
+    //     swing and 481 px of free coast, 1037 px across a 784 px platform.
+    //     Measured well away from any edge, so this is about the move's own
+    //     distance and not about the brake.
+    {
+      const dashAttack = (button, after) => {
+        // Mid-platform and pointed at the far side, with room to run out.
+        Object.assign(a, { x: main.x + 40, y: main.y, vx: 0, vy: 0, grounded: true,
+          dashT: 0, hitstun: 0, action: null, facing: 1, invuln: 0,
+          respawnTimer: 0, dead: false, ledge: null, ledgeMove: null,
+          charging: null, shielding: false, landLag: 0, stocks: 99 });
+        a.lastTap = { dir: 0, t: -10 };
+        const go = IN({ right: true, dirX: 1, moveX: 1 });
+        settle(40, go);                       // up to a real run first
+        const from = a.x;
+        const runSpeed = Math.abs(a.vx);
+        updateFighter(a, dt, { ...go, [`${button}P`]: true });
+        const fired = !!a.action;
+        let frames = 0;
+        while (a.action && frames < 200) { updateFighter(a, dt, after); frames++; }
+        const atEnd = Math.abs(a.vx);
+        for (let i = 0; i < 200 && Math.abs(a.vx) > 2; i++) updateFighter(a, dt, after);
+        return {
+          fired, runSpeed: Math.round(runSpeed), atEnd: Math.round(atEnd),
+          total: Math.round(a.x - from),
+        };
+      };
+      const loose = dashAttack("light", blankInput());
+      const held = dashAttack("light", IN({ right: true, dirX: 1, moveX: 1 }));
+      const heavy = dashAttack("heavy", blankInput());
+      out.daFired = loose.fired && held.fired && heavy.fired;
+      out.daLoose = loose;
+      out.daHeld = held;
+      out.daHeavy = heavy;
+      out.daPlatformW = Math.round(main.w);
+    }
+
 
     // 1. Dash at the edge, then LET GO. The slide must stop on the platform.
     //    Started INSIDE the un-braked stopping distance on purpose: a single
@@ -413,6 +454,23 @@ try {
   check(r.lungeChar && r.lungeStopped,
     "a special's lunge stops at the lip instead of carrying you off",
     `${r.lungeChar} stopped ${r.lungePast}px past the lip, ${r.lungeLost} stock(s) lost`);
+  // A dash attack must not be a stage crossing. 70% of the main platform is
+  // generous — the move is meant to travel — and the old `keepMomentum` version
+  // cleared the whole platform, light and heavy alike.
+  const daBar = Math.round(r.daPlatformW * 0.7);
+  check(r.daFired, "the dash attack fixture actually throws all three attacks",
+    `light=${r.daLoose?.fired} held=${r.daHeld?.fired} heavy=${r.daHeavy?.fired}`);
+  check(r.daFired && r.daLoose.total <= daBar && r.daHeavy.total <= daBar,
+    "a dash attack travels a move's distance, not a platform's",
+    `light ${r.daLoose?.total}px, heavy ${r.daHeavy?.total}px, bar ${daBar}px `
+    + `of a ${r.daPlatformW}px platform`);
+  check(r.daFired && r.daLoose.atEnd === 0 && r.daHeavy.atEnd === 0,
+    "...and plants when it ends rather than running on",
+    `light ended at ${r.daLoose?.atEnd} px/s, heavy at ${r.daHeavy?.atEnd} px/s`);
+  check(r.daFired && r.daHeld.atEnd > 0 && r.daHeld.total > r.daLoose.total,
+    "...unless the direction is still held, which runs out of it",
+    `held ended at ${r.daHeld?.atEnd} px/s and went ${r.daHeld?.total}px `
+    + `against ${r.daLoose?.total}px`);
   check(r.lungeHeldLeft,
     "...but lunging with the direction held still goes over",
     `grounded=${!r.lungeHeldLeft}`);

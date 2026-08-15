@@ -36,7 +36,7 @@ import { CAMERA as C } from "../config_camera.js";
 import { sceneAdapter } from "../render_backend.js";
 import { headHeightTarget } from "../heights.js";
 import { fighterTransform } from "../motion.js";
-import { COM_BODY_FRAC as COM_FRAC } from "../config_tuning.js";
+import { comFrac } from "../body_points.js";
 import { LIGHT_RIG } from "../../render3d/src/light_rig.js";
 
 const S = C.simScale;
@@ -89,7 +89,7 @@ export function makeModels() {
     const delay = f.action?.move?.delay;
     const beat = typeof delay === "number" && f.action.anim === f.animKey ? delay : undefined;
     const posed = adapter.poseInstance(inst, charKey, f.animKey, f.animTime, {
-      facing: f.facingVis, aim, x: f.x, chestY: f.y - onScreenPx * COM_FRAC, beat,
+      facing: f.facingVis, aim, x: f.x, chestY: f.y - onScreenPx * comFrac(charKey), beat,
       prevAnim: f.prevAnim,
     });
     if (!posed) return false;
@@ -111,7 +111,7 @@ export function makeModels() {
     // (Scale stays foot-anchored on purpose: squash keeps the feet planted.)
     const rot = -(m.rotation || 0);
     root.rotation.z = rot;
-    const com = onScreenPx * COM_FRAC * S * (m.scaleY ?? 1);
+    const com = onScreenPx * comFrac(charKey) * S * (m.scaleY ?? 1);
     root.position.set(
       worldX(f.x + (m.offsetX || 0)) + Math.sin(rot) * com,
       worldY(f.y + (m.offsetY || 0)) + (1 - Math.cos(rot)) * com,

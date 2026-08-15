@@ -374,6 +374,54 @@ height is not pose-invariant, and head-size detection fails on this art (see
 `sprites/docs/asset-pipeline.md`). Two attempts at algorithmic normalisation both made
 things worse; the working method is the review sheet plus `workbench/`.
 
+### The verification bench — work that is a LIST
+
+`workbench/?edit=verification` is the odd one out among the benches, and the
+one to reach for when the job is *check these two hundred things* rather than
+*edit this one thing*. It presents one item at a time with the art it is a
+claim about, takes approve / edit / flag / skip, keeps your place, and exports
+every decision as JSON — including, where the task set knows the shape of the
+file its answers belong in, a paste-ready block.
+
+Seven task sets ship, picked from the dropdown in the header:
+
+| set | asks | answers land in |
+|---|---|---|
+| **Strike points** | where each attack lands — fist, foot or blade | `src/config_strike_points.js` |
+| **Centre of mass** | where this body balances (0.55 is assumed for everyone) | `src/config_body_points.js` |
+| **Muzzle points** | where a shot leaves the caster | `src/config_body_points.js` |
+| **Ledge grip** | where the hand meets the lip | `src/config_body_points.js` |
+| **Hurtbox fit** | does the box cover the body, in each state | `src/config_body_points.js` |
+| **Model facing** | is the 3D model facing the way its drawing is | `render3d/assets/manifest.json` |
+| **Pose reads** | does the model's pose read as the drawing | a work list |
+
+**One download carries every set.** Decisions are kept per set and exported
+together as a single `verification-decisions.json`, so a sitting that touched
+three kinds of check produces one artifact with a paste-ready block per file.
+The set picker shows how much work each is holding.
+
+Adding a set is a provider module — see `workbench/verify_strike_points.js`,
+written as the reference implementation of the contract, and
+`workbench/verify_common.js` for the stage, the guides, the frame stepper and
+the sliders. Register it in `SETS` and navigation, progress, decisions,
+keyboard handling and export already work.
+
+Good candidates are anywhere the codebase *measures* something a person could
+settle better, or where automation is known to fail —
+`tools/check_model_facing.mjs` explains at length that an outline cannot tell
+front from back, and the automated version of that check turned five fighters
+around backwards before anybody noticed.
+
+Nothing the bench records reaches the game: an export has to be applied to a
+config file and committed. That is what makes resuming from browser storage
+safe here, where the pose bench had to stop doing it — and each set's stored
+work is keyed by a fingerprint of the measurements it was reviewing, so a
+re-bake drops that set's stale decisions and leaves the others alone.
+
+The consumption side is already wired and inert: `src/body_points.js` reads
+the config and falls back to exactly today's assumptions, so an empty config
+is today's game and filling one in is the only thing that changes anything.
+
 ### The sprite workbench
 
 `workbench/?edit=sprites` is a live editor for per-frame **size**

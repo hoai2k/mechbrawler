@@ -17,6 +17,7 @@ import {
   COMBO_GRACE,
 } from "./constants.js";
 import { bodyMetrics } from "./silhouette.js";
+import { comFrac, muzzlePoint, hurtboxFit } from "./body_points.js";
 import { swingExtent } from "./moves.js";
 import { breakGrabsOn } from "./grab.js";
 import {
@@ -53,11 +54,21 @@ export function ownerStick(f) {
  * silhouette is hair, and hair is not a target.
  */
 export function hurtbox(f) {
-  const b = bodyMetrics(f.spriteChar || f.charKey);
+  const key = f.spriteChar || f.charKey;
+  const b = bodyMetrics(key);
   const H = b.height, W = b.width;
+  // A box grown or shrunk about its own bottom edge by a human-verified fit
+  // (body_points.js, the "hurtbox-fit" review). 1x1 for anyone nobody has
+  // checked, so this is a no-op until a decision lands.
+  const fit = (box, caseKey) => {
+    const m = hurtboxFit(key, caseKey);
+    if (m.w === 1 && m.h === 1) return box;
+    const w = box.w * m.w, h = box.h * m.h;
+    return { x: box.x + (box.w - w) / 2, y: box.y + box.h - h, w, h };
+  };
   if (f.ledge) {
-    return { x: f.x - W * HURTBOX.ledgeW / 2, y: f.y - H * HURTBOX.ledgeTop,
-             w: W * HURTBOX.ledgeW, h: H * HURTBOX.ledgeH };
+    return fit({ x: f.x - W * HURTBOX.ledgeW / 2, y: f.y - H * HURTBOX.ledgeTop,
+                 w: W * HURTBOX.ledgeW, h: H * HURTBOX.ledgeH }, "ledge");
   }
   // Tumbling near horizontal (motion.js draws the body spun by spinAngle): an
   // upright standing box on a body drawn sideways was the biggest remaining
@@ -65,37 +76,38 @@ export function hurtbox(f) {
   // about the centre of mass — the point the spin pivots on.
   if (!f.grounded && Math.abs(Math.sin(f.spinAngle || 0)) > 0.7) {
     const bh = H * HURTBOX.proneH;
-    const cy = f.y - H * 0.55;
-    return { x: f.x - H * HURTBOX.proneW / 2, y: cy - bh / 2,
-             w: H * HURTBOX.proneW, h: bh };
+    const cy = f.y - H * comFrac(key);
+    return fit({ x: f.x - H * HURTBOX.proneW / 2, y: cy - bh / 2,
+                 w: H * HURTBOX.proneW, h: bh }, "prone");
   }
   // Lying flat: long and low, matching what is drawn. High pokes whiff over a
   // downed fighter, which is most of what makes a knockdown mean anything.
   if (f.prone > 0 && f.hitstun <= 0 && f.grounded) {
-    return { x: f.x - H * HURTBOX.proneW / 2, y: f.y - H * HURTBOX.proneH,
-             w: H * HURTBOX.proneW, h: H * HURTBOX.proneH };
+    return fit({ x: f.x - H * HURTBOX.proneW / 2, y: f.y - H * HURTBOX.proneH,
+                 w: H * HURTBOX.proneW, h: H * HURTBOX.proneH }, "prone");
   }
   if (f.crouching) {
     // `b.crouch` is measured from this fighter's own crouch pose, not assumed:
     // most of the roster's crouch art does not actually duck yet, and a box
     // that ducked anyway would have them dodging attacks while standing up.
     const ch = H * b.crouch;
-    return { x: f.x - W * HURTBOX.crouchW / 2, y: f.y - ch,
-             w: W * HURTBOX.crouchW, h: ch };
+    return fit({ x: f.x - W * HURTBOX.crouchW / 2, y: f.y - ch,
+                 w: W * HURTBOX.crouchW, h: ch }, "crouch");
   }
   // Doubled over by a hit: lower and wider than standing, which is what the
   // hurt pose is actually drawn as.
   if (f.hitstun > 0) {
-    return { x: f.x - W * HURTBOX.hurtW / 2, y: f.y - H * HURTBOX.hurtH,
-             w: W * HURTBOX.hurtW, h: H * HURTBOX.hurtH };
+    return fit({ x: f.x - W * HURTBOX.hurtW / 2, y: f.y - H * HURTBOX.hurtH,
+                 w: W * HURTBOX.hurtW, h: H * HURTBOX.hurtH }, "hurt");
   }
   // Airborne: jump and fall poses tuck, so the box is the measured air height
   // (`b.air`, from this fighter's own jump/fall art) rather than full standing.
   if (!f.grounded) {
     const ah = H * b.air;
-    return { x: f.x - W / 2, y: f.y - ah, w: W, h: ah };
+    return fit({ x: f.x - W / 2, y: f.y - ah, w: W, h: ah }, "air");
   }
-  return { x: f.x - W / 2, y: f.y - H * HURTBOX.standH, w: W, h: H * HURTBOX.standH };
+  return fit({ x: f.x - W / 2, y: f.y - H * HURTBOX.standH,
+               w: W, h: H * HURTBOX.standH }, "stand");
 }
 
 export function opponentOf(f) {
@@ -168,10 +180,13 @@ export function spawnMeleeScaled(owner, cfg) {
 }
 
 export function spawnProjectileScaled(owner, cfg) {
-  const k = heightScaleOf(owner);
   // Spawn offsets only: the shot leaves the caster's hand, wherever that is on
   // this body — the shot's own size and flight are the move's, not the body's.
-  return spawnProjectile(owner, { ...cfg, ox: (cfg.ox ?? 70) * k, oy: (cfg.oy ?? -86) * k });
+  // A verified muzzle (body_points.js, the "muzzle-points" review) wins; with
+  // none, this is the reference offsets scaled by height, exactly as before.
+  const key = owner.spriteChar || owner.charKey;
+  const m = muzzlePoint(key, bodyMetrics(key).height, cfg.ox ?? 70, cfg.oy ?? -86);
+  return spawnProjectile(owner, { ...cfg, ox: m.x, oy: m.y });
 }
 
 // ------------------------------------------------------------ hitting summons

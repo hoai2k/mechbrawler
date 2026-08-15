@@ -108,10 +108,12 @@ see the ledge section below.
 
 Everything deliberate is untouched, because everything deliberate is a held
 input: running off to chase, dropping to the ledge, edge-cancelling an aerial.
-**Knockback is never braked** — being hit off the stage is the game working, and
-so is a dash attack whose slide carries its owner over the end.
+**Knockback is never braked** — being hit off the stage is the game working. So
+is a roll or a dash grab that carries its owner over the end: both spend
+momentum the player built themselves, over a distance the player can see coming.
 
-**A special's lunge is braked, though.** The `dashStrike` specials — Hakari's
+**A lunge is braked, though** — dash attacks (see Offense) and the `dashStrike`
+specials both. The `dashStrike` specials — Hakari's
 Restless Rush and the rest — set their own travel speed and used to carry
 `keepMomentum`, which means *no friction at all*: the fighter crossed 302 px at
 a flat 520 px/s with movement locked out, was still doing 426 px/s when the
@@ -245,16 +247,46 @@ per-character (from their `light`/`heavy` profiles in `src/characters.js`).
 
 Attacking out of a dash or a sprint — either attack button — throws a **dash
 attack** rather than the standing move. Both carry the run through the swing
-(`keepMomentum`, so the slide does not decay the moment the action locks) and
-both are deliberately committal: the trade for reaching with your momentum
-behind you is that you are standing in the recovery afterwards.
+(`lunge`, so the slide does not die the moment the action locks) and both are
+deliberately committal: the trade for reaching with your momentum behind you is
+that you are standing in the recovery afterwards.
 
 | | Light, running | Heavy, running |
 |---|---|---|
 | Damage | 1.1× the side tilt | 0.95× a smash, uncharged |
 | Launch | 330 base / 6.2 growth | 420 base / 8.0 growth |
 | Recovery | ~1.7× the side tilt's | ~1.4× the side smash's |
-| Lunge | 150 | 210 — the running shoulder-charge |
+| Lunge | 88 | 124 — the running shoulder-charge |
+
+**The travel is the move's, and it ends when the move does.** These were
+`keepMomentum` — no friction at all — with a lunge kick added *on top of* the
+run: a light press at a run opened at 902 px/s against Maki's 452 px/s run, held
+that flat for the whole 0.6 s, and ended still doing 902. That is 556 px of
+swing and 481 px of free coast after it, 1037 px in total across a 784 px
+platform, so one light press crossed the stage. It was also backwards — *holding*
+the direction travelled less (670 px), because only the held branch clamps to
+the run speed. Three changes, and the numbers now run the way round a player
+would guess:
+
+- The kick is smaller (150 → 88, 210 → 124), so the move opens at ~1.6× the run
+  rather than ~2×, and the swing covers ~60% of what it did.
+- It is a **lunge**, so it decays as it goes and the ledge brake stops it at the
+  lip like any other unheld movement.
+- It **plants** when the action ends, unless the stick is still asking to go
+  that way — the travel belongs to the move, the run after it is a decision, and
+  taking one used to imply the other.
+
+Maki's light dash attack goes 1037 px → 332; the heavy 1028 → 468. Holding
+forward still runs out of it (708 px). This follows Smash, which cut most of
+this carryover in *Ultimate*: dash attacks there inherited "a large amount of
+momentum from the prior dash" in earlier games, and only a few still do
+([SmashWiki](https://www.ssbwiki.com/Dash_attack)). Measured with
+`tools/debug/measure_dashattack.mjs`; guarded in `tools/smoke_ledge.mjs`.
+
+`keepMomentum` survives on the two actions it was really for — the **roll**,
+which sets a constant velocity to cover exactly `ROLL_DIST` (216 px, stopping
+43 px later), and the **dash grab**, which spends the run the player built
+themselves. Neither picks a speed the player did not.
 
 Both draw `attack_dash`, a pose round 20D added to the semantic set: one
 committed lunge per fighter, weapon leading, serving the light and the heavy

@@ -106,8 +106,10 @@ await page.waitForFunction(() => window.__render3d?.ready === true, { timeout: 9
 
 const measured = await page.evaluate(async () => {
   const loader = await import("/render3d/src/loader.js");
-  const { STATES, clipNameFor } = await import("/render3d/src/states.js");
+  const { STATES, clipNameFor, aimSolve, aimable } = await import("/render3d/src/states.js");
   const { headHeightTarget } = await import("/src/heights.js");
+  const { artReach } = await import("/src/silhouette.js");
+  const { COM_BODY_FRAC } = await import("/src/config_tuning.js");
   const { CHARACTER_KEYS } = await import("/src/characters.js");
   const ATTACKS = ["light", "sideHeavy", "upHeavy", "downHeavy", "crouchAttack", "airLight"];
   const beats = {};
@@ -117,7 +119,21 @@ const measured = await page.evaluate(async () => {
     if (!loader.hasRig(charKey)) continue;
     const rig = loader.getRig(charKey);
     if (!rig || rig.isMannequin) continue;
-    const m = loader.measureAttackReach(charKey, ATTACKS, beats);
+    // The layers an UNAIMED strike carries in game (backend.js liveLayers with
+    // no aim point): the state's own allowed elevation, solved onto this
+    // fighter's own reach. Measuring without them reads the library pose's
+    // hand rather than the limb a player sees.
+    const targetPx = headHeightTarget(charKey);
+    const layersFor = {};
+    for (const s of ATTACKS) {
+      const solved = aimSolve(0, 0, -targetPx * COM_BODY_FRAC, null, 1, s, artReach(charKey));
+      if (!solved) continue;
+      layersFor[s] = {
+        aimRad: aimable(s) ? solved.pitch : 0,
+        reach: { dx: solved.dx, dy: solved.dy, targetPx },
+      };
+    }
+    const m = loader.measureAttackReach(charKey, ATTACKS, beats, layersFor);
     if (!m) continue;
     const pxPerM = (headHeightTarget(charKey) * (rig.renderScale ?? 1)) / rig.height;
     const states = {};
@@ -125,6 +141,14 @@ const measured = await page.evaluate(async () => {
     for (const [state, v] of Object.entries(m)) {
       const fwd = Math.round(v.fwd * pxPerM);
       states[state] = { fwd, top: Math.round(v.top * pxPerM) };
+      // The strike point, in the game's own convention: x forward along the
+      // facing from the centre line, y UP from the foot line (canvas y grows
+      // downward, so consumers negate — see src/strike_points.js).
+      if (v.strike) {
+        states[state].sx = Math.round(v.strike.f * pxPerM);
+        states[state].sy = Math.round(v.strike.u * pxPerM);
+        states[state].via = v.via;
+      }
       reach = Math.max(reach, fwd);
     }
     out[charKey] = { reach, states };
@@ -165,4 +189,9 @@ export const ENVELOPE_INPUTS = ${JSON.stringify(inputs, null, 2)};
 `);
 
 console.log(`measured ${chars.length} rig(s) -> src/config_model_reach.js`);
-for (const k of chars) console.log(`  ${k.padEnd(12)} reach ${String(measured[k].reach).padStart(4)} px`);
+for (const k of chars) {
+  const s = measured[k].states.light || {};
+  const via = s.via === "prop" ? " (weapon)" : "";
+  console.log(`  ${k.padEnd(12)} reach ${String(measured[k].reach).padStart(4)} px`
+    + `   jab strike ${String(s.sx ?? "-").padStart(4)},${String(s.sy ?? "-").padStart(4)}${via}`);
+}

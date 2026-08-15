@@ -168,7 +168,7 @@ function executeMove(f, move, opts = {}) {
   // speed off the moment it locks movement, which is right for a tilt thrown on
   // the spot and wrong for a dash attack, whose whole idea is the run carrying
   // through the swing.
-  beginAction(f, "attack", total, move.anim, { move, keepMomentum: move.keepMomentum });
+  beginAction(f, "attack", total, move.anim, { move, keepMomentum: move.keepMomentum, lunge: move.lunge });
   if (move.lungeVx && f.grounded) f.vx += f.facing * move.lungeVx * 3;
   spawnMelee(f, {
     ...move,
@@ -607,12 +607,12 @@ function standMargin(plat) {
  */
 function brakeAtLedge(f, input) {
   if (!f.wasGrounded || f.hitstun > 0 || f.ledge || f.dead) return;
-  // Committed actions are exempt — a dash attack whose slide carries its owner
-  // off the end is a move with a cost, and the roll and the dash grab both
-  // spend momentum the player built themselves. A LUNGE is not that: the move
-  // chooses the speed and the direction, holds the player still for it, and was
-  // by far the commonest way anyone left a platform without deciding to. It
-  // brakes like anything else, and holding the direction still takes it over.
+  // Committed actions are exempt — the roll and the dash grab both spend
+  // momentum the player built themselves, at a distance the player can see
+  // coming. A LUNGE is not that: the move chooses the speed and the direction,
+  // holds the player still for it, and was by far the commonest way anyone left
+  // a platform without deciding to. It brakes like anything else, and holding
+  // the direction still takes it over.
   if (f.action && !f.action.lunge) return;
   const plat = f.currentPlatform;
   if (!plat || plat.ghost) return;
@@ -1119,6 +1119,14 @@ export function updateFighter(f, dt, input) {
     // window; connecting consumes the action (grab.js).
     if (f.action.kind === "grabReach") updateGrabReach(f);
     if (f.action && f.action.t >= f.action.dur) {
+      // A LUNGE ends by PLANTING, unless you are still asking to go that way.
+      // The travel belongs to the move; the run that comes after it is a
+      // decision, and taking one used to imply the other — a dash attack ended
+      // at speed and simply carried on, which is how a single swing crossed a
+      // platform the fighter only meant to cross half of. Holding the stick
+      // still runs out of it, so nothing deliberate is taken away, and the
+      // lunge has decayed on its way here so this is a stop rather than a wall.
+      if (f.action.lunge && f.grounded && !inHitstun && input.dirX !== Math.sign(f.vx)) f.vx = 0;
       f.action = null;
     }
   }

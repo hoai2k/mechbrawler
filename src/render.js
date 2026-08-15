@@ -1,6 +1,6 @@
 import { state } from "./state.js";
 import { getImage } from "./assets.js";
-import { sharedAdjust, AURA_H } from "./shared_sprites.js";
+import { sharedAdjust, AURA_H, AURA_PULSE, AURA_FOOT_DY } from "./shared_sprites.js";
 import { getStage } from "./stages.js";
 import { drawCharFrame, currentFrame } from "./render_backend.js";
 import { getActor } from "./characters.js";
@@ -19,6 +19,7 @@ import { PROJ_TRAIL } from "./config_fx.js";
 import { headHeightTarget } from "./heights.js";
 import { strikeArcs, visibleArtReach, swingExtent } from "./moves.js";
 import { bodyWidth } from "./silhouette.js";
+import { strikePoint, STRIKE_STATES } from "./strike_points.js";
 import { respawnX } from "./fighter.js";
 import { isFoe } from "./teams.js";
 
@@ -666,7 +667,7 @@ function drawInstallAura(ctx, f) {
   const art = f.installs.aura ? getImage(f.installs.aura) : null;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  const pulse = 0.88 + 0.06 * Math.sin(state.matchTime * 8);
+  const pulse = AURA_PULSE.base + AURA_PULSE.amp * Math.sin(state.matchTime * AURA_PULSE.rate);
   if (art) {
     // An aura's height is a constant here rather than a kit number, so the
     // drawing's own scale has to be read at the draw — the kit-side folding in
@@ -680,11 +681,11 @@ function drawInstallAura(ctx, f) {
     if (adj.rot) {
       // About the point it is painted on — the fighter's feet — so a tilt
       // leans the aura rather than sliding it.
-      ctx.translate(f.x, f.y + 10);
+      ctx.translate(f.x, f.y + AURA_FOOT_DY);
       ctx.rotate(adj.rot);
-      ctx.translate(-f.x, -(f.y + 10));
+      ctx.translate(-f.x, -(f.y + AURA_FOOT_DY));
     }
-    ctx.drawImage(art, f.x - w / 2 + adj.dx, f.y + 10 - h + adj.dy, w, h);
+    ctx.drawImage(art, f.x - w / 2 + adj.dx, f.y + AURA_FOOT_DY - h + adj.dy, w, h);
     ctx.restore();
     return;
   }
@@ -1043,6 +1044,26 @@ function drawDebug(ctx) {
     // Where this character's artwork actually reaches, measured from their own
     // frames (silhouette.js). A hitbox extending far past this is a hit that
     // will land out of thin air.
+    // Where the blow itself is (strike_points.js): the fist, foot or blade,
+    // as opposed to the box it threatens with. Ringed rather than filled, and
+    // colour-coded by how well it is known — cyan where a person checked it,
+    // amber where it is the model's measurement, faint where it is derived
+    // from the body. Only while this fighter is actually swinging.
+    if (STRIKE_STATES.has(f.animKey)) {
+      const sp = strikePoint(f.spriteChar || f.charKey, f.animKey);
+      const px = f.x + f.facing * sp.x;
+      const py = f.y + sp.y;
+      ctx.strokeStyle = sp.source === "human" ? "rgba(120, 240, 255, 0.95)"
+        : sp.source === "model" ? "rgba(255, 190, 90, 0.9)" : "rgba(160,170,190,0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px - 10, py); ctx.lineTo(px + 10, py);
+      ctx.moveTo(px, py - 10); ctx.lineTo(px, py + 10);
+      ctx.stroke();
+    }
     const reach = visibleArtReach(f.char);
     if (reach) {
       const x = f.x + f.facing * reach;

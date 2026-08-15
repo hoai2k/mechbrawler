@@ -249,8 +249,25 @@ import {
   SHIKIGAMI_POOL, TRANSFIGURED_POOL, CURSE_POOL, INVENTORY_POOL,
 } from "./config_summons.js";
 
-/** The install aura's painted height (src/render.js, drawInstallAura). */
+/** The install aura's nominal painted height (src/render.js, drawInstallAura). */
 export const AURA_H = 220;
+
+/** The aura breathes rather than sitting still, so `AURA_H` is never the height
+ *  it is actually painted at: the drawing is `AURA_H * pulse`, and the pulse
+ *  swings between 0.82 and 0.94. Lives here with the height because three files
+ *  paint this one drawing — the flat renderer, the 2.5D scene, and the
+ *  workbench's preview of it — and a breath that differs between them is a
+ *  preview that lies about the size by a tenth. */
+export const AURA_PULSE = { base: 0.88, amp: 0.06, rate: 8 };
+
+/** The aura stands this many pixels BELOW the fighter's feet, so the glow skirts
+ *  the floor they are standing on rather than being cut off by it. */
+export const AURA_FOOT_DY = 10;
+
+/** The height a STILL picture of an aura should use — the middle of the breath.
+ *  The workbench renders on demand rather than every frame, so it has to pick a
+ *  moment, and the mid-point is the only defensible one. */
+export const AURA_PREVIEW_H = Math.round(AURA_H * AURA_PULSE.base);
 
 /** Hazard art, with the height and anchor each draw site uses (stage_fx.js). */
 const STAGE_FX = {
@@ -531,7 +548,12 @@ function buildRegistry() {
       site = null;
     }
     if (isSharedKey(node.aura)) {
-      put(node.aura, { h: AURA_H, anchor: "feet", owner: who, ...NUDGED, kind: "aura",
+      // The mid-breath height, not `AURA_H`: this number is what a viewer draws
+      // the picture at, and the game never draws it at the nominal one.
+      // `footDy` travels with it because the aura's feet are not the fighter's
+      // — anything previewing this has to stand it on the same line.
+      put(node.aura, { h: AURA_PREVIEW_H, footDy: AURA_FOOT_DY, anchor: "feet",
+                       owner: who, ...NUDGED, kind: "aura", installColor: node.color || null,
                        what: "the install aura's height around the fighter (render.js)" });
     }
     // A melee move's box belongs to the fighter, so it is described that way

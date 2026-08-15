@@ -31,6 +31,7 @@ import { clone as cloneSkinned } from "../../vendor/three/utils/SkeletonUtils.js
 import { applyToonMaterials, characterToon } from "./toon.js";
 import { addOutlines, setOutlineFor } from "./outline.js";
 import { captureCleanPose, poseRig } from "./pose.js";
+import { reachChain } from "./ik.js";
 import { buildCharacterClips } from "./pose_clips.js";
 import { CLIP_STATES } from "./states.js";
 
@@ -406,22 +407,38 @@ export function measureIdleHeight(charKey, rigEntry = null, clip = null) {
  * helper geometry. Forward is +Z (the frame the reach solver builds in;
  * facingYaw's base correction is applied by poseRig).
  *
- * Returns { state: { fwd, top } } in metres, or null for a character without
- * a real rig. Callers convert to game px with targetPx * renderScale /
- * heightM — the same ratio the blit draws with.
+ * Also reports the STRIKE POINT: where the blow actually is at the beat —
+ * the business end of the striking limb (ik.js REACH names it per state, and
+ * it is a FOOT for the aerial), or the weapon's far end when the fighter
+ * swings one, since a naginata connects at the blade and not at the hands.
+ * That is the point the impact FX want and the point a radial tipper would
+ * measure from, and it is the estimate a human then checks against the
+ * sprite in the verification bench.
+ *
+ * Returns { state: { fwd, top, strike: {f, u}, via } } in metres, or null for
+ * a character without a real rig. Callers convert to game px with
+ * targetPx * renderScale / heightM — the same ratio the blit draws with.
  */
-export function measureAttackReach(charKey, states, beats = {}) {
+export function measureAttackReach(charKey, states, beats = {}, layersFor = {}) {
   const rig = RIGS.get(charKey);
   if (!rig || rig.isMannequin) return null;
   const box = new THREE.Box3();
+  const propBox = new THREE.Box3();
   const out = {};
   for (const state of states) {
     const resolved = resolveClip(charKey, state);
     if (!resolved) continue;
     const beat = beats[state] ?? 0.1;
     let fwd = -Infinity, top = -Infinity;
+    let strike = null, via = null;
     for (const t of [beat, beat * 0.6]) {
-      poseRig(rig, state, t, resolved.clip, { charKey, stanceDeg: rig.stanceDeg || 0 });
+      // WITH the aim and reach layers the game applies to an unaimed strike
+      // (the caller solves them — see derive_attack_envelopes.mjs). Measuring
+      // the bare clip instead reads where the library pose left the hand,
+      // which for several fighters is still behind them at the contact beat;
+      // what a player sees is the solved limb, so that is what is measured.
+      poseRig(rig, state, t, resolved.clip,
+        { charKey, stanceDeg: rig.stanceDeg || 0, ...(layersFor[state] || {}) });
       rig.root.updateMatrixWorld(true);
       box.makeEmpty();
       let any = false;
@@ -433,10 +450,64 @@ export function measureAttackReach(charKey, states, beats = {}) {
       if (!any || !Number.isFinite(box.max.z)) continue;
       fwd = Math.max(fwd, box.max.z);
       top = Math.max(top, box.max.y);
+      // The strike point is read at the BEAT itself (the first pass), which is
+      // the frame the hitbox goes live; the earlier sample only widens the
+      // envelope above.
+      if (t === beat) {
+        const point = strikePointOf(rig, state, box, propBox);
+        if (point) { strike = point.local; via = point.via; }
+      }
     }
-    if (fwd > -Infinity) out[state] = { fwd, top };
+    if (fwd > -Infinity) {
+      out[state] = { fwd, top };
+      if (strike) { out[state].strike = strike; out[state].via = via; }
+    }
   }
   return Object.keys(out).length ? out : null;
+}
+
+/** Where the blow is, in the rig's own frame ({f} forward, {u} up, metres).
+ *  The weapon's far end when one is held and it leads the hand, otherwise the
+ *  striking limb's own end bone. Null when the rig names neither. */
+function strikePointOf(rig, state, bodyBox, propBox) {
+  const chain = reachChain(state);
+  const endName = chain?.[chain.length - 1];
+  const hand = endName ? rig.root.getObjectByName(endName) : null;
+  if (!hand) return null;
+  const handWorld = new THREE.Vector3().setFromMatrixPosition(hand.matrixWorld);
+  let best = handWorld;
+  let via = endName;
+
+  // A prop's far end: the corner of its posed bounds furthest from the grip.
+  // Measured off the geometry rather than off `lengthM`, so a weapon that was
+  // re-gripped or rescued at conform reports where it actually is.
+  propBox.makeEmpty();
+  let hasProp = false;
+  rig.root.traverse((o) => {
+    if (!o.isMesh || o.userData.isOutline || !o.visible) return;
+    for (let p = o; p; p = p.parent) {
+      if (/^Prop_/.test(p.name || "")) { propBox.expandByObject(o, true); hasProp = true; return; }
+    }
+  });
+  if (hasProp && !propBox.isEmpty()) {
+    const corner = new THREE.Vector3();
+    let far = null, farD = -1;
+    for (const x of [propBox.min.x, propBox.max.x]) {
+      for (const y of [propBox.min.y, propBox.max.y]) {
+        for (const z of [propBox.min.z, propBox.max.z]) {
+          corner.set(x, y, z);
+          const d = corner.distanceTo(handWorld);
+          if (d > farD) { farD = d; far = corner.clone(); }
+        }
+      }
+    }
+    // Only when the weapon actually LEADS: a sword held back in a wind-up, or
+    // a broom trailing behind a kick, is not where that blow lands.
+    if (far && far.z > handWorld.z) { best = far; via = "prop"; }
+  }
+
+  const local = rig.root.worldToLocal(best.clone());
+  return { local: { f: local.z, u: local.y }, via };
 }
 
 /** What the scale dial would have to be for the model to stand exactly its

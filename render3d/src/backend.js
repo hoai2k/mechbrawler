@@ -30,7 +30,7 @@
 
 import { STATES, cycleInfo, aimPitch, aimSolve, aimable, clipNameFor } from "./states.js";
 import { headHeightTarget } from "../../src/heights.js";
-import { COM_BODY_FRAC } from "../../src/config_tuning.js";
+import { comFrac } from "../../src/body_points.js";
 import { artReach } from "../../src/silhouette.js";
 import { state } from "../../src/state.js";
 import { WORLD } from "../../src/constants.js";
@@ -219,7 +219,7 @@ function liveLayers(charKey, animKey, x, y, opts) {
   const facing = opts.facing ?? 1;
   const aim = opts.aim || null;
   const targetPx = headHeightTarget(charKey);
-  const chestY = y - targetPx * COM_BODY_FRAC;
+  const chestY = y - targetPx * comFrac(charKey);
   const pitch = aim ? aimPitch(x, chestY, aim, facing) : 0;
   // The reach half of the aim solution: where the strike has to land, in game
   // pixels from the fighter's own origin. Quantised by aimSolve so it can join
@@ -293,7 +293,7 @@ export const scene3d = {
     const targetPx = headHeightTarget(charKey);
     // The camera hands over the chest line; the reach offsets are measured
     // from the FOOT line, so derive it when it is not passed.
-    const footY = opts.y ?? chestY + targetPx * COM_BODY_FRAC;
+    const footY = opts.y ?? chestY + targetPx * comFrac(charKey);
     const x = opts.x ?? 0;
     const pitch = aim ? aimPitch(x, chestY, aim, facing) : 0;
     const solved = aimSolve(x, footY, chestY, aim, facing, animKey, artReach(charKey));
