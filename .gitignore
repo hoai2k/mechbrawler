@@ -9,6 +9,14 @@ assets/intake/_processed/
 tools/debug/
 tools/__pycache__/
 
+# The untouched plates tools/effects_intake.py moves out of assets/intake/ once
+# it has landed them. Kept on disk so a trim can be redone at a different
+# threshold without regenerating the art, and NOT kept in git: the trim discards
+# only fully-transparent margin, so the archive is a byte-for-byte-equivalent
+# picture at roughly twice the size, and the delivered plates are already in
+# history under assets/intake/ where they were uploaded.
+assets/reference/
+
 # Local dev
 node_modules/
 package-lock.json

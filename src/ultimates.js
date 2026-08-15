@@ -545,14 +545,15 @@ const DIRECTORS = {
               dir: 1, speed: 0, vy: fromAbove ? 980 : 0,
               r: 16, dur: 1.1, dmg: p.dmg, base: p.base, growth: p.growth,
               angle: fromAbove ? 1.2 : 0.4, color: p.color, effect: "nailMark",
-              label: "Nail Storm", sprite: "effect:nail", spriteH: 58,
+              label: "Nail Storm", sprite: p.volleySprite || "effect:siege_shell",
+              spriteH: p.volleySpriteH || 58,
             });
             if (!fromAbove) {
               spawnProjectile(f, {
                 dir: sign(opp.x - f.x) || f.facing, speed: 900, ox: 60, oy: -96,
                 r: 16, dur: 0.8, dmg: p.dmg, base: p.base, growth: p.growth,
                 angle: 0.4, color: p.color, effect: "nailMark", label: "Nail Storm",
-                sprite: "effect:nail", spriteH: 58,
+                sprite: p.volleySprite || "effect:siege_shell", spriteH: p.volleySpriteH || 58,
               });
             }
             playSfx("slash", 0.6, 1.3);

@@ -4,6 +4,7 @@ import { STAGES, backgroundFile } from "./stages.js";
 import { cameraMode } from "./camera_mode.js";
 import { transformActorsFor } from "./config_transform.js";
 import { SUMMON_ART, SUMMON_POSES } from "./config_summons.js";
+import { EFFECT_PLACEMENT } from "./config_effects.js";
 
 export const images = new Map();
 export let spriteManifest = null;
@@ -60,11 +61,52 @@ const spriteUrl = (file) =>
     ? `${SHARED_SPRITE_DIR}${file}`
     : `${CHAR_SPRITE_DIR}${file}`);
 
-// Effect art the ult directors draw by key. Just the flechette today: the
-// JJK effect bank went out with the conversion (plan task K4), and new mech
-// power-effect art (docs/image-requests.md) registers here as it lands.
+// The shared effect art, all of it delivered against docs/image-requests.md and
+// landed by tools/effects_intake.py. Required loads: every one of these is
+// named by a kit, a status or a piece of shared feedback that runs in any
+// match, and a mech whose gun draws nothing is a bug rather than a fallback.
+//
+// The JJK effect bank that used to be listed here went out with the K4 purge,
+// and this delivery is what replaces it — the list went from seventy-odd JJK
+// names, to `nail` alone holding the nailstorm director up, to this.
 const EFFECT_KEYS = [
-  "nail", // Titanus SIEGE PROTOCOL flechettes (nailstorm director, ultimates.js)
+  // Per-mech power art — the drawing each gun, special and ultimate throws.
+  // Every one of these is named by src/characters.js.
+  "rocket_fist", "meteor_rock", "gatling_tracer", "micro_missile",
+  "fang_dagger", "energy_serpent", "cannon_shell", "arc_bolt", "storm_cell",
+  "rend_wave", "mortar_shell", "sniper_beam", "bat_wisp", "flame_jet",
+  "napalm_patch", "icicle_shard", "ice_wall", "water_jet", "geyser_column",
+  "tsunami_wall", "quill_feather", "raptor_egg", "slime_glob", "gunk_splat",
+  "croak_ring", "goo_wad", "shrimp_mine", "null_bolt", "glitch_shard",
+  "salvo_rocket", "shockwave_arc", "siege_shell", "frill_flare", "frost_rime",
+  // Status and shared feedback — drawn for anyone, by src/fx.js, src/render.js
+  // and the HUD, so they belong to no fighter and load in every match.
+  "burn_flame", "shock_arc", "venom_drip",
+  "shield_dome", "shield_burst", "jet_flame", "ko_burst",
+  // `energy_flare` is NOT here: the HUD is HTML, so the full-pool flare is a
+  // background-image in styles.css and the browser fetches it. Loading it here
+  // as well would fetch the same picture twice under two URLs, the loader's
+  // carrying a `?v=` stamp the stylesheet's does not.
+];
+
+// Arena hazard art (src/stage_fx.js, "Active Boards"), one or two plates per
+// board. Optional in the strongest sense: every hazard already draws itself out
+// of gradients and rectangles, so a plate that has not landed — or a hazard
+// whose draw code has not been given its plate yet — costs nothing but the
+// procedural look it has always had.
+const STAGE_FX_SPRITES = [
+  "monorail_train",                        // neon — the maglev
+  "ladle_pour",                            // foundry — the crucible
+  "magma_gout",                            // volcano — the lava burst
+  "ice_floe",                              // frozen — the drifting slab
+  "crane_hook", "cargo_container",         // harbor
+  "debris_sat",                            // orbital — the tumbling wreck
+  "blast_charge",                          // quarry — the mining charge
+  "vine_whip", "spore_cloud",              // jungle
+  "magnet_crane", "car_husk",              // scrapyard
+  "wind_streak",                           // skyterrace — the gust
+  "billboard_ad", "drone_taxi",            // uptown
+  "collapse_dust",                         // ruins — the column bloom
 ];
 
 // Near-field cards for the 3D camera's garnish layer (round 18F). Optional in
@@ -119,7 +161,14 @@ export function getImage(key) {
  *  other way needs flipping once, at the source, or every spawn site would
  *  have to know about that one file. */
 function sharedMirror(key) {
-  return !!spriteManifest?.otherSprites?.[key]?.faceLeft;
+  // `otherSprites` in the character manifest was where this lived while there
+  // WAS a character manifest. There is not one any more (loadCoreAssets says
+  // so at length), so the placement of shared art is configuration now —
+  // src/config_effects.js, written by the effect workbench. The manifest is
+  // still consulted first so a workbench holding an unsaved edit in memory
+  // wins over the file it has not written yet.
+  return !!(spriteManifest?.otherSprites?.[key]?.faceLeft
+    ?? EFFECT_PLACEMENT[key]?.faceLeft);
 }
 
 const mirrored = new Map();
@@ -143,6 +192,23 @@ function mirroredShared(key, img) {
  *  the flag live and has to see the change on the very next frame. */
 export function forgetSharedMirror(key) {
   mirrored.delete(key);
+}
+
+/** Point the shared-art accessors at a manifest the caller owns.
+ *
+ *  THE EFFECT WORKBENCH IS THE ONLY CALLER, and it needs this because an edit
+ *  it is holding has to beat the config file it has not been written to yet.
+ *  `sharedAdjust`, `sharedHit` and `sharedMirror` all consult
+ *  `spriteManifest.otherSprites` before falling through to EFFECT_PLACEMENT
+ *  (see `entryOf` in shared_sprites.js), so handing them an object whose
+ *  `otherSprites` IS the workbench's store makes every read in the game's own
+ *  code path see the unsaved value — rather than the workbench maintaining a
+ *  parallel resolution that could drift from the one that ships.
+ *
+ *  The game never calls it. `spriteManifest` stays null in a match, which is
+ *  the state the fall-through is written for. */
+export function __setSpriteManifest(manifest) {
+  spriteManifest = manifest;
 }
 
 // Sprite art is ~450 MB across 23 fighters, and a match uses at most four of
@@ -411,6 +477,13 @@ function groupJobs(id) {
   }
 
   for (const key of EFFECT_KEYS) add(`effect:${key}`, `assets/sprites/effects/${key}.png`);
+  // Hazard art lives in the same directory and loads under its own prefix, so
+  // stage_fx.js asks for `stagefx:<name>` and cannot collide with a kit's
+  // `effect:<name>`. Optional: a board whose draw code has not been given its
+  // plate yet keeps the procedural drawing it has always had.
+  for (const key of STAGE_FX_SPRITES) {
+    optional(`stagefx:${key}`, `assets/sprites/effects/${key}.png`);
+  }
   for (const key of GARNISH_SPRITES) {
     optional(`garnish:${key}`, `assets/sprites/garnish/${key}.png`);
   }

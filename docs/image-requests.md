@@ -1,6 +1,22 @@
 # Image requests — MECH BRAWLER
 
-The open list of images to GENERATE for the mech conversion. Everything the
+**STATUS: EVERYTHING BELOW HAS BEEN DELIVERED. Nothing on this page is
+outstanding.** All 61 plates — 33 power effects, 9 status/shared, 16 arena
+hazards, 3 UI — arrived in `assets/intake/`, were landed by
+`tools/effects_intake.py`, and are in `assets/sprites/effects/` and
+`assets/ui/`. The sections are kept verbatim rather than deleted, because a
+later redraw of one plate has to agree with the brief the others were drawn to;
+what changed is this header.
+
+**Where each one ended up**, and what is still owed on the code side, is
+[the delivery record](#the-delivery--what-landed-and-what-is-still-owed) at the
+foot of this file. The tool for placing any of it is the **effect workbench**
+(`workbench/`, `node server.mjs` then `/workbench/`): every drawing in the game
+beside the mech that throws it, at the size the game paints it.
+
+---
+
+The list of images to GENERATE for the mech conversion. Everything the
 game needs that cannot be sourced from robotworld's assets or drawn
 procedurally. Delivered files land in `intake/` (arena backgrounds and mech
 cards already arrived — thank you); effect sprites go to
@@ -114,3 +130,59 @@ generate now, they will be used somewhere even if the mechanic moves.
   and render3d's D-round docs) described a different game and are deleted;
   this file plus docs/music (robotworld's soundtrack, already sourced) is the
   complete outstanding-art surface.
+
+---
+
+## The delivery — what landed, and what is still owed
+
+All 61 plates arrived keyed (RGBA, transparent field) and near-trimmed, which
+is why landing them was one pass rather than the JJK base's nine-step sprite
+intake. `python3 tools/effects_intake.py --apply` trimmed each plate to its own
+alpha, capped the long edge at 1024, and copied it to
+`assets/sprites/effects/` (or `assets/ui/` for the three UI plates).
+
+Trimming is the load-bearing step: every drawing gets a hand-tuned `dx`/`dy`
+nudge in `src/config_effects.js`, and that nudge should be correcting where the
+ART sits, not paying off a hundred pixels of empty plate. A trimmed plate starts
+near zero, which is why that file is nearly empty.
+
+### Wired into the game
+
+| what | how |
+|---|---|
+| **the power effects** | 32 distinct drawings, named by the move that throws them in `src/characters.js` (`sprite` / `sprites` + `spriteH`) across 42 kit slots. Every mech's gun, and most specials and ultimates, now draw their own art instead of a theme-coloured circle. `frost_rime` went to Glacier's Cold Snap rather than to a status, and `shockwave_arc` and `frill_flare` are landed but unassigned — Konga's rampage ultimate and Tritone's counter both paint themselves and read no `p.sprite` |
+| **statuses** | `burn_flame` clings to a burning mech and `venom_drip` to a poisoned one (`drawStatusArt`, `src/render.js`) |
+| **guard** | `shield_dome` replaces the smooth guard bubble, sized off the shield meter; `shield_burst` plays on a shield break |
+| **movement** | `jet_flame` burns under the mech on the air jump — these are jets, not flight |
+| **KO** | `ko_burst` on a blast-zone knockout, clamped to the same point as the particles |
+| **energy** | `energy_flare` lights behind the inherent-energy bar while the pool is full (CSS, `styles.css`) |
+| **3 arena hazards** | `monorail_train` (neon), `ladle_pour` (foundry), `magma_gout` (volcano), drawn OVER the procedural hazard rather than instead of it — the plate gives the hazard a face and the tuned timing survives |
+| **3 UI plates** | `wordmark_mech_brawler` replaces the JJK logo on the select screen, `vs_flash` the JJK versus badge, `stock_chip` the stock dots (as a CSS mask, so it still takes each fighter's colour) |
+
+### Delivered, loaded, not yet hung
+
+Thirteen hazard plates are landed, registered and placeable in the workbench,
+and their boards still paint themselves. Each is one edit to that hazard's
+`draw` in `src/stage_fx.js`, using the `hazardArt` helper the three above use;
+the workbench is where the number that edit needs gets decided.
+
+`ice_floe`, `crane_hook`, `cargo_container`, `debris_sat`, `blast_charge`,
+`vine_whip`, `spore_cloud`, `magnet_crane`, `car_husk`, `wind_streak`,
+`billboard_ad`, `drone_taxi`, `collapse_dust`.
+
+`shock_arc` is the one plate with no home at all: it was requested against an
+electric status, and no move in the mech roster applies one. Wiring it would
+mean inventing the status rather than drawing it, so it waits for a kit that
+wants it.
+
+### What this delivery turned up
+
+- **The `ranged` slot was outside the shared-sprite walk.** K1 moved every
+  mech's gun out of `specials.neutral` into its own top-level field, and
+  `applySharedSpriteScales` and the workbench registry both still walked only
+  `specials` and `ultimate`. Every gun in the game was therefore unsizable and
+  reported as unused. Fixed in `src/shared_sprites.js`.
+- **`nailstorm` hard-coded `effect:nail`**, a JJK drawing, in the volley it
+  spawns — so Tritone's SIEGE PROTOCOL fired cursed-energy nails. It now takes
+  `p.volleySprite`, defaulting to `effect:siege_shell`.
+- **The select screen was still showing the JJK logo**, alt text and all.

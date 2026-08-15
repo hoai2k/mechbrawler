@@ -11,6 +11,8 @@ import { emit, burst, dust, sparkLine, ring } from "./particles.js";
 import { FX_DENSITY, HIT_RECIPES, ELEMENT_PALETTES, DASH_FX, PROJ_EMIT, BLACK_FLASH, CHAR_FX } from "./config_fx.js";
 import { rand, pick } from "./utils.js";
 import { state } from "./state.js";
+import { getImage } from "./assets.js";
+import { sharedAdjust } from "./shared_sprites.js";
 
 export function elementOf(hit, owner) {
   return hit.fxElement || owner.char.fxElement || "energy";
@@ -435,6 +437,66 @@ export function steelInstallFx(f) {
   glints(f.x, f.y - 90, -1, n(10, 1), 1.3);
   dust(f.x, f.y, 22);
   f.fxTrailT = 1.0;
+}
+
+// -------------------------------------------------------- one-shot sprite fx
+//
+// The delivered effect round includes a handful of drawings that belong to
+// nobody: the guard dome and its shatter, the boost-jet cone, the blast-zone
+// burst. They are not projectiles — no kit throws them, no move declares their
+// height — so there is no `p.sprite` for them to arrive through, and each was
+// otherwise a bespoke `state.entities.push` at its own call site with its own
+// copy of the fade arithmetic.
+//
+// One primitive instead, and every one of them goes through it. It reads the
+// workbench's placement the same way a projectile does (`sharedAdjust`), so a
+// KO burst can be sized and nudged in the same panel as everything else rather
+// than being the one drawing nobody can touch.
+
+/**
+ * A drawing, once, at a point: grows a little, fades out, gone.
+ *
+ * `h` is its height in game pixels before the workbench's scale. `spin` turns
+ * it over its life, `rise` drifts it upward, `follow` pins it to a fighter so
+ * it travels with them (a jet cone under the feet has to). A missing image is
+ * not an error — the caller's own particles have already been emitted, and the
+ * drawing was always the topping rather than the effect.
+ */
+export function spriteFlash(key, x, y, { h = 120, life = 0.4, grow = 0.35, spin = 0,
+                                         rise = 0, alpha = 1, follow = null,
+                                         anchor = "centre", flip = 0 } = {}) {
+  if (!getImage(key)) return null;
+  const entity = {
+    t: 0, dead: false,
+    update(dt) {
+      this.t += dt;
+      if (this.t >= life) this.dead = true;
+    },
+    draw(ctx) {
+      const img = getImage(key);
+      if (!img) return;
+      const k = Math.min(1, this.t / life);
+      const adj = sharedAdjust(key);
+      const dh = h * adj.scale * (1 + grow * k);
+      const dw = img.width * dh / img.height;
+      const px = (follow ? follow.x : x) + adj.dx;
+      const py = (follow ? follow.y : y) - rise * k + adj.dy;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      // Out fast at the end rather than linearly over the whole life: these are
+      // impacts, and an impact that dims from the first frame reads as a fade
+      // rather than as a hit.
+      ctx.globalAlpha = alpha * Math.min(1, (1 - k) * 2.2);
+      ctx.translate(px, py);
+      if (spin) ctx.rotate(spin * k);
+      if (adj.rot) ctx.rotate(adj.rot);
+      if (flip) ctx.scale(flip < 0 ? -1 : 1, 1);
+      ctx.drawImage(img, -dw / 2, anchor === "feet" ? -dh : -dh / 2, dw, dh);
+      ctx.restore();
+    },
+  };
+  state.entities.push(entity);
+  return entity;
 }
 
 // ------------------------------------------------------------- status ticks
