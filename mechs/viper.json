@@ -1,0 +1,175 @@
+{
+  "mech": "viper",
+  "note": "Standalone export from ROBOTWORLD (tools/export-mech.mjs). Native units are game units and +z is forward; anchors are empty nodes named anchor_<name>; every animation is a real glTF clip. Nothing here needs the game to load it.",
+  "transform": {
+    "yawOffsetFolded": 270,
+    "scaleFolded": 6.854320000000001
+  },
+  "bones": 27,
+  "vertices": 81838,
+  "anchors": [
+    {
+      "name": "core",
+      "node": "anchor_core",
+      "bone": "torso"
+    },
+    {
+      "name": "overhead",
+      "node": "anchor_overhead",
+      "bone": "head"
+    },
+    {
+      "name": "boostL",
+      "node": "anchor_boostL",
+      "bone": "torso"
+    },
+    {
+      "name": "boostR",
+      "node": "anchor_boostR",
+      "bone": "torso"
+    },
+    {
+      "name": "muzzleR",
+      "node": "anchor_muzzleR",
+      "bone": "elbowR"
+    },
+    {
+      "name": "muzzleL",
+      "node": "anchor_muzzleL",
+      "bone": "handL"
+    },
+    {
+      "name": "bladeL",
+      "node": "anchor_bladeL",
+      "bone": "bladeLtip"
+    },
+    {
+      "name": "bladeR",
+      "node": "anchor_bladeR",
+      "bone": "bladeRtip"
+    }
+  ],
+  "clips": [
+    {
+      "name": "ball",
+      "dur": 0.167,
+      "tracks": 16
+    },
+    {
+      "name": "block",
+      "dur": 0.233,
+      "tracks": 16
+    },
+    {
+      "name": "dead",
+      "dur": 1.3,
+      "tracks": 16
+    },
+    {
+      "name": "getup",
+      "dur": 0.767,
+      "tracks": 14
+    },
+    {
+      "name": "groundPound",
+      "dur": 0.9,
+      "tracks": 14
+    },
+    {
+      "name": "hangGrab",
+      "dur": 0.267,
+      "tracks": 14
+    },
+    {
+      "name": "heavy",
+      "dur": 1,
+      "tracks": 14
+    },
+    {
+      "name": "hitFlinch",
+      "dur": 0.333,
+      "tracks": 14
+    },
+    {
+      "name": "intro",
+      "dur": 2.3,
+      "tracks": 14
+    },
+    {
+      "name": "knockdown",
+      "dur": 0.4,
+      "tracks": 12
+    },
+    {
+      "name": "land",
+      "dur": 0.633,
+      "tracks": 14
+    },
+    {
+      "name": "landReach",
+      "dur": 0.233,
+      "tracks": 14
+    },
+    {
+      "name": "launched",
+      "dur": 0.7,
+      "tracks": 14
+    },
+    {
+      "name": "shoot",
+      "dur": 0.5,
+      "tracks": 12
+    },
+    {
+      "name": "taunt",
+      "dur": 7.8,
+      "tracks": 14
+    },
+    {
+      "name": "victory",
+      "dur": 2.6,
+      "tracks": 14
+    },
+    {
+      "name": "viperDrill",
+      "dur": 0.967,
+      "tracks": 16
+    },
+    {
+      "name": "viperHeavy",
+      "dur": 0.8,
+      "tracks": 15
+    },
+    {
+      "name": "viperSlash1",
+      "dur": 0.5,
+      "tracks": 15
+    },
+    {
+      "name": "viperSlash2",
+      "dur": 0.567,
+      "tracks": 10
+    },
+    {
+      "name": "viperStab",
+      "dur": 0.6,
+      "tracks": 15
+    },
+    {
+      "name": "viperWhirl",
+      "dur": 0.5,
+      "tracks": 15
+    },
+    {
+      "name": "walk",
+      "dur": 0.7,
+      "tracks": 11
+    },
+    {
+      "name": "run",
+      "dur": 0.433,
+      "tracks": 11
+    }
+  ],
+  "failed": []
+}
