@@ -56,28 +56,17 @@ function gainFor(entry, intensity) {
 // Exported for the audio workbench (/workbench/?edit=audio), which shows a
 // fighter's whole voice — their grunt trio and KO cry as well as their lines.
 export const GRUNT_GROUPS = {
-  gojo: "gruntYoungMale", yuji: "gruntYoungMale", megumi: "gruntYoungMale",
-  yuta: "gruntYoungMale", inumaki: "gruntYoungMale",
-  nanami: "gruntAdultMale", toji: "gruntAdultMale", geto: "gruntAdultMale",
-  reggie: "gruntAdultMale",
-  maki: "gruntFemale", momo: "gruntFemale", nobara: "gruntFemale",
-  meimei: "gruntFemale", uro: "gruntFemale",
-  jogo: "gruntMonster", hanami: "gruntMonster",
-  panda: "gruntAnimal",
-  // Mahito is shaped like a young man and sounds like one; the animal group is
-  // for the thing that is actually an animal. He was in it because he is a
-  // curse, which is a fact about what he IS rather than about what he sounds
-  // like — and it is the second that a voice group is choosing.
-  mahito: "gruntYoungMale",
-  hakari: "gruntBig", todo: "gruntBig", sukuna: "gruntBig",
-  choso: "gruntBig", gakuganji: "gruntBig",
-  // Staged (round 15). Assigned now, from the groups that already exist, so a
-  // promoted fighter is not mute for a round — an unlisted key is silence, and
-  // silence is the one bug here nobody notices until somebody says "why does
-  // Dagon not make a sound". Kokichi is a seventeen-year-old speaking through
-  // a puppet, so he takes the young-male group like the other students.
-  mechamaru: "gruntYoungMale", yuki: "gruntFemale",
-  dagon: "gruntMonster", kurourushi: "gruntMonster",
+  // Placeholder voice casting for the mech roster, from the human-era groups
+  // that shipped with the engine: the slabs grunt BIG, the beasts grunt
+  // MONSTER, the animal frames grunt ANIMAL, and the slim frames take the
+  // adult grunt until Mech Mayhem's per-mech signature sfx are imported
+  // (robotworld public/sfx <mech>_<event>.mp3 — a later pass).
+  titanus: "gruntBig", colossus: "gruntBig", rhino: "gruntBig",
+  glacier: "gruntBig", cranky: "gruntBig", tritone: "gruntBig",
+  konga: "gruntAnimal", fenrir: "gruntAnimal", saurion: "gruntMonster",
+  jerry: "gruntMonster", frogger: "gruntMonster", nullbot: "gruntMonster",
+  inferno: "gruntBig", vulcan: "gruntAdultMale", tempest: "gruntAdultMale",
+  viper: "gruntFemale", wraith: "gruntAdultMale",
 };
 
 // The KO cry that matches each voice group.
