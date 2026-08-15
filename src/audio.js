@@ -51,29 +51,30 @@ function gainFor(entry, intensity) {
   return Math.min(1, audioSettings.sfxVolume * AUDIO_MIX.master * cat * (entry.gain ?? 1) * intensity);
 }
 
-// Every fighter on the roster maps to a voice group. Before the round-8 sound
-// pass nine of them mapped to nothing and were silent when they attacked.
-// Exported for the audio workbench (/workbench/?edit=audio), which shows a
-// fighter's whole voice — their grunt trio and KO cry as well as their lines.
+// Every fighter on the roster maps to a "voice" — for a mech, the signature
+// noise it makes putting effort into a move. The Mech Mayhem bank carries a
+// per-mech `<mechKey>_cast` for most of the roster; the rest take the sound
+// that is unmistakably theirs (konga's chest beat) or the generic servo whine.
+// Exported for the audio workbench (/workbench/?edit=audio).
 export const GRUNT_GROUPS = {
-  // Placeholder voice casting for the mech roster, from the human-era groups
-  // that shipped with the engine: the slabs grunt BIG, the beasts grunt
-  // MONSTER, the animal frames grunt ANIMAL, and the slim frames take the
-  // adult grunt until Mech Mayhem's per-mech signature sfx are imported
-  // (robotworld public/sfx <mech>_<event>.mp3 — a later pass).
-  titanus: "gruntBig", colossus: "gruntBig", rhino: "gruntBig",
-  glacier: "gruntBig", cranky: "gruntBig", tritone: "gruntBig",
-  konga: "gruntAnimal", fenrir: "gruntAnimal", saurion: "gruntMonster",
-  jerry: "gruntMonster", frogger: "gruntMonster", nullbot: "gruntMonster",
-  inferno: "gruntBig", vulcan: "gruntAdultMale", tempest: "gruntAdultMale",
-  viper: "gruntFemale", wraith: "gruntAdultMale",
+  titanus: "servo", colossus: "servo", rhino: "rhino_cast",
+  glacier: "glacier_cast", cranky: "cranky_cast", tritone: "tritone_cast",
+  konga: "chestBeat", fenrir: "fenrir_cast", saurion: "saurion_cast",
+  jerry: "jerry_cast", frogger: "frogger_cast", nullbot: "servo",
+  inferno: "inferno_cast", vulcan: "vulcan_cast", tempest: "tempest_cast",
+  viper: "viper_cast", wraith: "wraith_cast",
 };
 
-// The KO cry that matches each voice group.
+// The KO sound that matches each voice above: the mech's own `_hitHeavy`
+// signature where the bank has one, the sound of wrecked metal otherwise.
 export const KO_FOR_GROUP = {
-  gruntYoungMale: "koYoungMale", gruntAdultMale: "koAdultMale",
-  gruntBig: "koBig", gruntFemale: "koFemale",
-  gruntMonster: "koMonster", gruntAnimal: "koAnimal",
+  fenrir_cast: "fenrir_hitHeavy", wraith_cast: "wraith_hitHeavy",
+  saurion_cast: "saurion_hitHeavy", chestBeat: "konga_hitHeavy",
+  servo: "metalWreck", rhino_cast: "metalWreck", glacier_cast: "metalWreck",
+  cranky_cast: "metalWreck", tritone_cast: "metalWreck",
+  jerry_cast: "metalWreck", frogger_cast: "metalWreck",
+  inferno_cast: "metalWreck", vulcan_cast: "metalWreck",
+  tempest_cast: "metalWreck", viper_cast: "metalWreck",
 };
 
 export const audioSettings = {
@@ -171,6 +172,7 @@ function validateMoveCalls() {
     }
     const known = new Set([
       ...Object.values(char.specials || {}).map((s) => s.name),
+      char.ranged?.name,   // the RB gun casts through the same handler path
       char.ultimate?.name,
       ...(char.domains || []).map((d) => d.name),
     ]);
@@ -276,6 +278,17 @@ export function audioSuspended() {
  *  sound short keeps the handle; everyone else ignores the return value. */
 export function playSfx(name, intensity = 1, rate = 0) {
   return playSfxEntry(entryFor(name), intensity, rate);
+}
+
+/**
+ * A generic event in a particular mech's voice: plays the bank's
+ * `<charKey>_<name>` signature take where one exists (fenrir_cast, konga_ult,
+ * saurion_hitHeavy…) and the generic sound otherwise. The seam any call site
+ * that knows WHO is making the noise should route through — same arguments as
+ * playSfx, plus the mech.
+ */
+export function playCharSfx(charKey, name, intensity = 1, rate = 0) {
+  return playSfxEntry(SFX[`${charKey}_${name}`] || entryFor(name), intensity, rate);
 }
 
 /**
@@ -447,11 +460,40 @@ export function setBattleStage(stageKey) {
   battleSrc = resolveBattleSrc(stageKey);
 }
 
+// ------------------------------------------------------------ arena ambience
+//
+// Each arena has its own looping bed in the bank (`amb_<stageKey>`, category
+// "ambience" — the 0.35 category trim is what keeps it a bed rather than a
+// layer). It runs while the match is audibly on: started when the phase
+// reaches "playing", held through the screens that hold the battle track
+// (pause, Settings-from-a-match), stopped when the match phase ends. Driven
+// from syncMusic for the transitions and re-asked from stepAudio each frame,
+// so it also comes back by itself after a mute or a suspended tab — same
+// self-healing shape as the fire loop.
+let ambName = null;
+
+function syncAmbience(phase) {
+  const held = MATCH_HOLD_PHASES.has(phase) && matchLive;
+  const want = (phase === "playing" || held) && battleStageKey && SFX[`amb_${battleStageKey}`]
+    ? `amb_${battleStageKey}`
+    : null;
+  if (want !== ambName) {
+    if (ambName) stopLoop(ambName);
+    ambName = want;
+  }
+  // startLoop is a no-op while muted/suspended/locked, and while already held.
+  if (ambName) startLoop(ambName);
+}
+
 export function syncMusic(phase) {
   if (!musicEl) return;
   // A hidden tab is silent whatever the phase says; the phase is re-applied
   // when the page comes back (setAudioSuspended below).
   if (suspended) { musicEl.pause(); return; }
+  // The arena bed rides the same phase transitions as the battle track, but it
+  // is a SOUND EFFECT: it ignores the music mode and the music slider, so an
+  // arena still sounds like itself with the music off.
+  syncAmbience(phase);
   // Paused, or on a screen opened from inside a live match: hold the battle
   // track exactly where it is. `src` stays what is already loaded so the
   // element is only paused, never re-sourced.
@@ -503,6 +545,9 @@ export function stepAudio(dt) {
   if (fireWanted) startLoop("fireBurnLoop");
   else stopLoop("fireBurnLoop");
   fireWanted = false;
+  // Re-ask for the arena bed too, so it recovers after a mute or a hidden tab
+  // without waiting for the next phase change.
+  if (!suspended) syncAmbience(state.phase);
   if (!musicEl || musicBaseVol == null) return;
   if (duckT > 0) {
     duckT -= dt;

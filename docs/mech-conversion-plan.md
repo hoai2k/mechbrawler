@@ -51,7 +51,7 @@ plays nothing like a platform fighter.
         on the splash.
 - [x] P2. Menu palette: JJK flow and layout, MM colours (neon on deep
         blue-black; styles.css theme swap).
-- [ ] P3. Select screen: intake/cards/*.jpg as the hero cards; roster grid
+- [x] P3. Select screen cards at assets/cards/<id>_card.jpg (grid art done; hero-card polish in X-phase): intake/cards/*.jpg as the hero cards; roster grid
         from the new characters.js.
 - [x] P4. Music: replace assets/music with the MM soundtrack; menu theme +
         neon buzz on the splash; per-arena battle tracks per D2.
@@ -59,12 +59,12 @@ plays nothing like a platform fighter.
 
 ## Phase 2 — the roster
 
-- [ ] C1. characters.js rebuilt from mechs/characters.json: 17 mechs,
+- [x] C1. characters.js rebuilt (bbe5167) from mechs/characters.json: 17 mechs,
         identity, stats mapped into this engine's terms, relative sizing from
         real export heights, select-screen bars, quotes.
 - [x] C2. config_metrics.js filled (hand-derived first pass; derive tool refresh pending): reach/width/crouch/air per mech from the
         export's real geometry.
-- [ ] C3. Kits: moves.js/specials.js/ultimates.js/summons.js/domains.js
+- [x] C3. Kits (bbe5167; engine TODO worklist below) — moves.js/specials.js/ultimates.js/summons.js/domains.js
         replaced by the D1 design. JJK cursed-energy framing out; mech
         framing in. frameMeta gating replaced by clip-coverage gating —
         fixes the known smoke_combat failure.
@@ -80,7 +80,7 @@ plays nothing like a platform fighter.
 - [x] M3. Smooth playback (DIALS.onTwos false): on-twos stepping off; MM animation is smooth.
 - [x] M4. Side-view presentation (CAMERA_YAW -60 to -78, both copies): blit camera turned toward profile so
         locomotion reads as travel while attacks still show silhouette.
-- [~] M5. Relative sizing (heightM in manifest; characters.js heightCm pending): heightM per mech from the export feeding the
+- [x] M5. Relative sizing (manifest heightM + characters heightCm) (heightM in manifest; characters.js heightCm pending): heightM per mech from the export feeding the
         existing height-compression curve, so the roster keeps its real
         ordering (a 4 m frog next to a 12+ m artillery walker).
 - [ ] M6. Anchors: muzzle/boost/core/overhead as FX attachment points for
@@ -100,6 +100,36 @@ plays nothing like a platform fighter.
         swap can still follow if distinct card paintings are wanted.
 - [ ] A4. domains.js: replaced per D1's ult design; the JJK domain art
         pipeline deleted.
+
+## Phase 4b — owner directives (added mid-conversion)
+
+- [ ] K1. CONTROLS + INHERENT ENERGY (owner spec): LB = Ultimate at full
+        attack energy (done). LT = shield/dodge. RB = RANGED attack — a new
+        dedicated kit slot (the Mech Mayhem gun, moved out of
+        specials.neutral). RT = special (neutral/side/down). X/Y light/
+        heavy, A jump/fly, D-pad down = taunt. NEW RESOURCE: "inherent
+        energy" — self-recovering over time (Mech Mayhem style); ranged
+        shots spend it, specials spend MORE of it; dash/sprint stays free
+        (base JJK behaviour). Needs: input mapping, fighter.js ranged
+        action + energy pool, characters.js `ranged` slot per mech (gun
+        configs), specials.neutral backfilled per mech (a new move or the
+        old S/D redistributed), HUD inherent-energy bar, docs/characters.md
+        control section updated.
+- [ ] K2. SFX: replace the JJK bank with Mech Mayhem's
+        (robotworld public/sfx: 122 files + manifest — generic camelCase,
+        <mech>_<event> overrides, amb_<arena> beds, step_<material>).
+        Rewrite config_audio SFX table; wire per-mech overrides and arena
+        ambience; drop JJK voice groups/spoken lines.
+- [ ] K3. FACING RULES (owner spec, refines M4): idle = body slightly
+        angled TOWARD camera; run/jump/attack HIT phase = pure left/right
+        profile; attack WIND-UP turns toward camera as appropriate (never
+        away); alternating-strike chains may alternate toward/away, FIRST
+        one toward. Implement as a per-state + per-phase (pre/post beat)
+        yaw bias in render3d pose facing.
+- [ ] K4. DEEP CLEANUP (extends X2/X3): when new content is fully placed,
+        remove ALL assets, docs, history and testing rigs for characters
+        and features no longer in the game (JJK sprites/effects/cards/
+        backgrounds/voice files, JJK docs, JJK-specific tools).
 
 ## Phase 5 — polish and cleanup
 
