@@ -62,6 +62,7 @@ export const DIALS = {
   // the plan says to turn. Five buckets across the stage instead of eight,
   // for a change in implied viewpoint well under what the eye tracks.
   parallaxQuantDeg: 3.5,
+  present: true,             // state/phase presentation yaw (see PRESENT)
   footIK: true,
   breath: true,               // additive shoulder breath on held states
   breathDeg: 1.6,
@@ -89,6 +90,9 @@ const PLANT_STATES = new Set(["idle", "walk", "run", "crouch", "shield", "charge
 const BREATH_STATES = new Set(["idle", "crouch", "shield"]);
 
 const DEG = Math.PI / 180;
+
+/** Scratch for forwardFromFeet — allocation-free at pose time. */
+const _feet = { x: 0, z: 0, n: 0 };
 
 /** Clip time for a state, stepped on twos. The contact beat is always a
  *  sampled frame. Returns seconds into the clip.
@@ -124,6 +128,70 @@ export function parallaxDeg(x, cameraX, worldHalfW) {
   const k = Math.max(-1, Math.min(1, (x - cameraX) / worldHalfW));
   const deg = -k * DIALS.parallaxMaxDeg;
   return Math.round(deg / DIALS.parallaxQuantDeg) * DIALS.parallaxQuantDeg;
+}
+
+// ------------------------------------------------ presentation by state/phase
+//
+// THE OWNER'S FACING RULES (K3): how much of the chest the viewer gets depends
+// on WHAT the fighter is doing, not just where the camera happens to sit.
+//
+//   * IDLE (and the win hold): a clear three-quarter, body slightly angled
+//     TOWARD the camera — a fighter at rest presents, like the sprite art did.
+//   * TRAVEL (run/walk/jump/fall/dash) and every attack's HIT phase (at and
+//     after the contact beat): PURE profile. A brawler reads motion and impact
+//     side-on; the strike's silhouette is the read.
+//   * An attack's WIND-UP (before the beat): turned toward the camera — the
+//     load-up is a pose the viewer is meant to see coming, and it must NEVER
+//     turn away. (Chains that trade hands may alternate per swing in spirit;
+//     no swing index reaches this layer, so every wind-up gets the toward
+//     bias — which satisfies "first/odd toward, never away" by construction.)
+//
+// The dials are ABSOLUTE presented angles, not offsets from the resting
+// camera, and that is the load-bearing choice. The mech deliveries bake a
+// body yaw into their GLB clips — measured off the feet, titanus's idle
+// (glb:intro) stands ~168° off the lens (its BACK three-quarter), the punch
+// holds ~150–160°, while the hand-authored library run sits at ~78° — so a
+// fixed camera-relative nudge lands somewhere different for every clip, and
+// on the holds it lands on the wrong side of the body entirely. Instead the
+// engine MEASURES what the finished pose presents (applyPresentation, off
+// the feet) and yaws the ROOT so the presented angle equals the dial.
+// Rig yaw rather than camera yaw also means the seam is the same one for the
+// flat blit and the in-scene `?camera=3d` path — only the camera each is
+// measured against differs (layers.presentCamRad).
+//
+// Angles use presentRad's convention: 0 is chest-on to the lens, +90 a full
+// profile facing screen-right. The CALLER signs the target with the facing
+// sweep (backend.js), so facing left is the exact mirror and a turnaround
+// swings the body through the lens instead of snapping.
+export const PRESENT = {
+  idleDeg: 63,    // idle/win: a clear ¾, chest toward the lens
+  windupDeg: 64,  // attack wind-up, before the beat: toward the lens
+  profileDeg: 89, // travel + attack hit phase: pure profile
+  quantDeg: 1,    // whole degrees — the cache-key quantum
+};
+
+/** States held angled toward the camera. */
+const PRESENT_TOWARD = new Set(["idle", "win"]);
+
+/** States shown in pure profile throughout. */
+const PRESENT_PROFILE = new Set(["run", "walk", "jump", "fall", "dash"]);
+
+/** The presentation target for this draw: the unsigned angle (degrees off
+ *  the lens) this state and phase is shown at, or null for a state the rules
+ *  leave alone (hurt, crouch, shield...). Attacks split at the contact beat —
+ *  toward while winding up, profile from the instant the hitbox goes live
+ *  (`beatOverride` is the move's own delay, exactly as sampleTime takes it,
+ *  so the turn to profile lands on the same frame as full extension). */
+export function presentTargetDeg(animKey, animTime, beatOverride) {
+  if (!DIALS.present) return null;
+  const name = clipNameFor(animKey);
+  if (PRESENT_TOWARD.has(name)) return PRESENT.idleDeg;
+  if (PRESENT_PROFILE.has(name)) return PRESENT.profileDeg;
+  const beat = beatOverride ?? STATES[name]?.beat;
+  if (beat === undefined) return null;
+  return clipTime(animKey, animTime) >= beat
+    ? PRESENT.profileDeg   // hit: side-on
+    : PRESENT.windupDeg;   // wind-up: toward, never away
 }
 
 /** Which side the attacker is on, for the flinch lean: +1 ahead of the
@@ -404,6 +472,100 @@ export function playClip(rig, animKey, sampled, clip) {
   // keep raw time: the mixer's own wrap is correct for a short loop clip.
   const oneShot = STATES[name] && !STATES[name].loop;
   rig.mixer.setTime(oneShot ? Math.min(sampled, clip.duration - 1e-4) : sampled);
+}
+
+// ------------------------------------------- measuring what a clip presents
+//
+// The feet are the honest compass. The hip axis (presentRad above) needs the
+// thigh bones' left/right labels to be trusted, and on the generated mech
+// skeletons they are not — titanus's `thighL` sits on the body's right, which
+// flips the answer by 180° and put the JJK-era measurement chest-on when the
+// body stood back-on. A toe sticks out the FRONT of its foot whatever the
+// bone is called, so toe-minus-heel is unambiguous. Both feet are averaged
+// (a stride splays them either side of the heading), with the Mixamo names
+// as fallback for the older rigs. Null when no foot answers — that rig keeps
+// the plain facing turnaround.
+
+/** Foot-bone name pairs whose difference points the body's forward:
+ *  mech intake names first, Mixamo second. Rigs matching neither (wraith,
+ *  tempest...) fall back to each ankle's first bone child in
+ *  `forwardFromFeet` — on every generated skeleton the foot/toe hangs off
+ *  the ankle toward the toes, which is the same compass. */
+const FORWARD_FEET = [
+  ["toeL", "heelL"], ["toeR", "heelR"],
+  ["LeftToeBase", "LeftFoot"], ["RightToeBase", "RightFoot"],
+];
+
+/** Sum the horizontal toe-minus-heel vectors of every foot found, into
+ *  `out = {x, z, n}`. Unnormalised on purpose: the sum weights each foot by
+ *  its horizontal reach, so a foot rolled onto a near-vertical toe (the
+ *  run's passing position) contributes almost nothing instead of a random
+ *  heading. */
+function forwardFromFeet(root, out) {
+  out.x = 0; out.z = 0; out.n = 0;
+  const add = (toe, heel) => {
+    toe.getWorldPosition(_v4);
+    heel.getWorldPosition(_v5);
+    const d = _v4.sub(_v5).setY(0);
+    if (d.lengthSq() < 1e-8) return;
+    out.x += d.x; out.z += d.z; out.n++;
+  };
+  for (const [toeName, heelName] of FORWARD_FEET) {
+    const toe = root.getObjectByName(toeName);
+    const heel = root.getObjectByName(heelName);
+    if (toe && heel) add(toe, heel);
+  }
+  if (out.n) return out;
+  for (const side of ["L", "R"]) {
+    const ankle = root.getObjectByName(`ankle${side}`);
+    const toe = ankle?.children.find((o) => o.isBone);
+    if (ankle && toe) add(toe, ankle);
+  }
+  return out;
+}
+
+/** Pin the FINISHED pose's presented angle to the signed target, by turning
+ *  the root — the last act of a pose, after every solver (the same slot
+ *  freezeBones owns), so it corrects the body actually on screen. Measured
+ *  from the pose itself rather than pre-measured per clip on purpose: several
+ *  mech states resolve to clips with no tracks for this skeleton (the
+ *  Mixamo-named library cycles), so what a state SHOWS can include the
+ *  previous clip's leavings — pinning the real body is the only version that
+ *  cannot be fooled by that.
+ *
+ *  `layers.presentDeg` is the SIGNED target the caller quantised into the
+ *  cache key. The camera it presents TO is the flat blit's ¾ lens by default
+ *  and the head-on scene camera when `layers.presentCamRad` says so
+ *  (backend.poseInstance) — same dials, both paths. A rig with no measurable
+ *  feet is left exactly as the facing turnaround posed it.
+ *
+ *  The feet steer ATTACKS too, deliberately. A strike-direction compass was
+ *  tried (pin the farthest fist's heading at the beat) and dropped: the two
+ *  facings pin mirrored STRIKE headings onto the same un-mirrored body, so
+ *  the body's own angles come out asymmetric — a wind-up that faced the lens
+ *  facing right faced away facing left, the exact thing the rule forbids —
+ *  and the beat-time pre-measure inherited whatever pose untracked bones
+ *  were left in, which broke same-token determinism across boot orders. The
+ *  feet give exact dial angles and an exact mirror on every measured mech,
+ *  and the delivered strikes run close enough to the stance axis that the
+ *  hit still travels across the screen (titanus's punch ~20° off his feet).
+ *  The applied turn is quantised to the same whole-degree step as the target,
+ *  which also keeps the per-frame heading steady instead of chasing every
+ *  wobble of the feet. */
+function applyPresentation(rig, layers) {
+  if (!layers.presentDeg) return;
+  const root = rig.root;
+  const cam = layers.presentCamRad ?? CAMERA_YAW_RAD;
+  const want = layers.presentDeg * DEG + cam; // heading that presents at target
+  const q = PRESENT.quantDeg * DEG;
+  root.updateMatrixWorld(true);
+  const f = forwardFromFeet(root, _feet);
+  if (f.n === 0 || f.x * f.x + f.z * f.z < 1e-6) return;
+  const phi = Math.atan2(f.x, f.z); // the body's world heading, as posed
+  let delta = want - phi;
+  delta -= Math.round(delta / (2 * Math.PI)) * 2 * Math.PI;
+  root.rotation.y += Math.round(delta / q) * q;
+  root.updateMatrixWorld(true);
 }
 
 /** NOD `name` by `rad` — a rotation in the vertical plane the character faces
@@ -1051,6 +1213,9 @@ function poseOnce(rig, animKey, sampled, clip, layers = {}) {
   applyPoseEdits(rig.root, layers.postEdits);
   // ...and a limb that does not work stays where it is, after everything.
   if (layers.charKey) freezeBones(rig, layers.charKey);
+  // The K3 facing rules, last of all: turn the finished body to the presented
+  // angle this state and phase calls for (see PRESENT / applyPresentation).
+  applyPresentation(rig, layers);
 }
 
 /** Which layer OWNS each bone in `animKey` — what the workbench has to know to

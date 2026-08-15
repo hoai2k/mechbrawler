@@ -219,7 +219,7 @@ function blendLayer(charKey, animKey, animTime, opts) {
 
 /** The live layers for this draw, every one quantised so it joins the pose
  *  cache key without exploding it (pose.js documents each dial). */
-function liveLayers(charKey, animKey, x, y, opts) {
+function liveLayers(charKey, animKey, animTime, x, y, opts) {
   const D = pose.DIALS;
   const facing = opts.facing ?? 1;
   const aim = opts.aim || null;
@@ -238,8 +238,19 @@ function liveLayers(charKey, animKey, x, y, opts) {
   // (about one per frame of the 70 ms sweep) so it joins the pose-cache key
   // without exploding it; at rest facingVis sits at ±1 and the steps vanish.
   const fq = Math.max(-1, Math.min(1, Math.round(facing * 2) / 2));
+  const beat = beatOverride(animKey, opts);
+  // The presentation target (pose.PRESENT): idle shows chest, travel and the
+  // hit phase show profile, a wind-up turns toward the lens. SIGNED BY THE
+  // FACING SWEEP, so facing left is the mirror and a turnaround swings the
+  // body through the lens (a sweep of 0 pins nearly chest-on — which is what
+  // mid-turn looks like — rather than dropping the pin for a frame). Whole
+  // degrees: it joins the pose-cache key (scene.poseToken).
+  const target = pose.presentTargetDeg(animKey, animTime, beat);
+  const presentDeg = target != null
+    ? (Math.round(target * fq) || (facing < 0 ? -1 : 1)) : 0;
   return {
-    beat: beatOverride(animKey, opts),
+    beat,
+    presentDeg,
     aimRad: D.aim && aimable(animKey) ? pitch : 0,
     reach: solved ? { dx: solved.dx, dy: solved.dy, targetPx } : null,
     lookRad: D.lookAt && pose.LOOK_STATES.has(clipNameFor(animKey)) ? pitch : 0,
@@ -305,6 +316,7 @@ export const scene3d = {
     const resolved = rigs.resolveClip(charKey, animKey);
     if (!resolved) return false;
     const beat = beatOverride(animKey, opts);
+    const target = pose.presentTargetDeg(animKey, animTime, beat);
     pose.poseRig(inst, animKey, pose.sampleTime(animKey, animTime, beat), resolved.clip, {
       charKey,
       beat,
@@ -320,6 +332,18 @@ export const scene3d = {
       // and carry it mirrored. See scene.sceneFacingYaw for why the pair that
       // used to be here pointed one facing at the lens and the other away.
       turnYawRad: scene.sceneFacingYaw(facing),
+      // The presentation pin (pose.PRESENT / presentYaw) works here too —
+      // the seam is a rig yaw, and this path is live geometry — it just has
+      // to be told the camera it presents TO: this one is head-on (yaw 0),
+      // not the flat blit's −78° lens. The signed target rides the same
+      // clamped facing sweep sceneFacingYaw does, so a turnaround stays a
+      // swing through the lens. No cache here, so no quantising needed —
+      // rounded anyway to keep the two paths pixel-comparable.
+      presentDeg: target != null
+        ? (Math.round(target * Math.max(-1, Math.min(1, facing)))
+           || (facing < 0 ? -1 : 1))
+        : 0,
+      presentCamRad: 0,
       facing,
       // No `presentMirror`: ±¾ IS the mirror here, exactly and by
       // construction. See pose.facingYaw.
@@ -350,7 +374,7 @@ export function drawCharFrame(ctx, charKey, frameKey, x, y, opts = {}) {
   const [, animKey, t] = m;
   const animTime = parseFloat(t);
   try {
-    const layers = liveLayers(charKey, animKey, x, y, opts);
+    const layers = liveLayers(charKey, animKey, animTime, x, y, opts);
     layers.blend = blendLayer(charKey, animKey, animTime, opts);
     const rig = rigs.getRig(charKey);
     const resolved = rigs.resolveClip(charKey, animKey);
