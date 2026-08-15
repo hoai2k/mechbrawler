@@ -141,6 +141,20 @@ plays nothing like a platform fighter.
         and features no longer in the game (JJK sprites/effects/cards/
         backgrounds/voice files, JJK docs, JJK-specific tools).
 
+- [ ] K5. ANIMATION MAPPING REFINEMENTS (owner, verified vs MM sources —
+        jump/crouch are PROCEDURAL in MM, no clips exist anywhere):
+        idle = frozen first frame of the mech's own heavy wind-up (battle
+        carriage; exported clips carry combatPose) + existing breath layer;
+        charge = frozen mid-wind-up of the heavy; jump + crouch = drop the
+        glb mapping, use render3d's generic pose set (real biped poses on
+        the mech rig); dodge keeps ball (each mech's own tuck/spin variant
+        — heavies exported stiff tucks, so nobody rolls who shouldn't);
+        jump never uses ball. dizzy/teeter/hurt stay hitFlinch (confirmed
+        as MM's struck anim). Input: B DOUBLES RT as special; grab moves
+        to D-pad up. Needs freeze-frame support in resolveClip (subclip or
+        freezeT carried to the sampler) + mech_intake PREFER updates +
+        input remap. IMPLEMENT AFTER K3 lands (same render3d files).
+
 ## Phase 5 — polish and cleanup
 
 - [ ] X1. Brighter grade: toon ramp lift, stage light rigs per arena palette,
