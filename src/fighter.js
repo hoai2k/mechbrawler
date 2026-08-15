@@ -6,10 +6,10 @@ import { spawnMelee, opponentOf, updateStatuses } from "./combat.js";
 import { performSpecial, performRanged, updateSpecialState } from "./specials.js";
 import { performUltimate } from "./ultimates.js";
 import { domainInput, activeDomain } from "./domains.js";
-import { burst, dust, popup, banner, ring, spriteFlash } from "./particles.js";
+import { burst, dust, popup, banner, ring } from "./particles.js";
 import { playSfx, playGrunt, playKoCry, startShieldLoop, stopShieldLoop, noteFireBurning } from "./audio.js";
 import { rumbleEvent } from "./rumble.js";
-import { counterShimmerFx, healMotesFx } from "./fx.js";
+import { counterShimmerFx, healMotesFx, spriteFlash } from "./fx.js";
 import {
   GRAVITY, MAX_FALL, FASTFALL_MULT, BLAST, JUMP_BUFFER, COYOTE_TIME,
   SHORT_HOP_WINDOW, SHORT_HOP_CUT, AIR_JUMP_MULT, DASH_TAP_WINDOW, DASH_TIME,
@@ -757,10 +757,11 @@ export function ringOut(f) {
   const bx = clamp(f.x, 80, 1200);
   const by = clamp(f.y, 80, 640);
   burst(bx, by, f.char.theme, 54, 1.9);
+  // The blast-zone flash itself — clamped to the same point as the particles,
+  // so a fighter launched a long way past the boundary still leaves the burst
+  // on screen rather than off the side of it.
+  spriteFlash("effect:ko_burst", bx, by, { h: 300, life: 0.55, grow: 0.9, spin: 0.5 });
   ring(bx, by, f.char.theme, 200);
-  // The blast-zone KO burst (delivered art): a radial neon starburst over the
-  // procedural pop, growing and fading through the slow-mo beat.
-  spriteFlash(bx, by, "effect:ko_burst", { h: 220, life: 0.55, grow: 1.6, spin: 0.5 });
   banner("KO!", "#ffffff", { y: 200, size: 84, life: 1.0 });
 
   // clear this fighter's combat objects — including scripted entities
@@ -1418,9 +1419,10 @@ export function updateFighter(f, dt, input) {
       f.takeoffT = TAKEOFF_STRETCH_TIME;
       f.fastFalling = false;
       dust(f.x, f.y, 10);
-      // The air jump is a jet burn, not a leg push — the boost cone under the
-      // feet (delivered art), pointed straight down.
-      spriteFlash(f.x, f.y + 26, "effect:jet_flame", { h: 96, life: 0.32, rot: 0.8, alpha: 0.85 });
+      // These are jets, not flight (docs/characters.md) — so the second jump
+      // burns, and it burns UNDER the mech: the cone stands on their feet and
+      // stays there for the fifth of a second the burn lasts.
+      spriteFlash("effect:jet_flame", f.x, f.y, { h: 96, life: 0.22, grow: 0.5, anchor: "feet", follow: f });
     }
   }
 

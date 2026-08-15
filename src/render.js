@@ -590,6 +590,7 @@ function drawFighters(ctx, { bodies = true } = {}) {
     if (f.dizzy > 0) drawDizzyStars(ctx, f);
     if (f.counter) drawCounterAura(ctx, f);
     if (f.simpleDomain) drawSimpleDomain(ctx, f);
+    drawStatusArt(ctx, f);
     if (f.statuses.nailMarks > 0) drawNailMarks(ctx, f);
     if (f.statuses.blind > 0) drawBlindSplatter(ctx, f);
     if (f.grabbedBy) drawGrabStruggle(ctx, f);
@@ -753,24 +754,71 @@ function drawMissingArt(ctx, f, flicker) {
   ctx.restore();
 }
 
+// A status that is DOING something to you, drawn on you while it lasts.
+//
+// The ticks already throw particles (burnTickFx and friends, every 0.45s), and
+// particles are the wrong shape for this: they say "something just happened",
+// and a status is a state you are IN. The clinging art says it continuously,
+// which is what a player needs to read off an opponent at a glance.
+//
+// Two clinging plates, and each one is drawn twice, offset and out of phase, so
+// the flames on a burning mech are not one sprite pulsing in place. `shock_arc`
+// is delivered and loaded but has no home here yet: no move in the mech roster
+// applies an electric status (docs/image-requests.md §2 asked for one against
+// Tempest's kit, which ended up applying none), so wiring it would mean
+// inventing the status rather than drawing it.
+const STATUS_ART = {
+  burn: { key: "effect:burn_flame", h: 58, rate: 9, alpha: 0.85 },
+  poison: { key: "effect:venom_drip", h: 46, rate: 5, alpha: 0.7 },
+};
+
+function drawStatusArt(ctx, f) {
+  for (const [name, art] of Object.entries(STATUS_ART)) {
+    if (!f.statuses[name]?.t) continue;
+    const img = getImage(art.key);
+    if (!img) continue;
+    const adj = sharedAdjust(art.key);
+    const h = art.h * adj.scale;
+    const w = img.width * h / img.height;
+    const half = bodyWidth(f.charKey) * 0.3;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const side of [-1, 1]) {
+      // Out of phase by half a beat, so the pair reads as fire crawling over
+      // the body rather than as one drawing blinking on both shoulders.
+      const t = state.matchTime * art.rate + (side > 0 ? Math.PI : 0);
+      ctx.globalAlpha = art.alpha * (0.65 + 0.35 * Math.sin(t));
+      const x = f.x + side * half - w / 2 + adj.dx;
+      const y = f.y - 70 + Math.sin(t * 0.7) * 6 - h / 2 + adj.dy;
+      ctx.drawImage(img, x, y, w, h);
+    }
+    ctx.restore();
+  }
+}
+
+// The guard, as a hex-tessellated energy dome (docs/image-requests.md §2). The
+// smooth two-tone bubble it replaces is still here and still correct — the
+// plate is optional art like every other shared drawing, and a dome that has
+// not loaded yet has to leave a guarding fighter visibly guarding.
+//
+// The dome is sized off the shield METER, the same as the bubble was, because
+// that is the one thing this drawing has to say: a guard about to break is a
+// small dome, and a player reads it without looking at the bar.
 function drawShieldBubble(ctx, f) {
   const pct = f.shield / SHIELD_MAX;
   const fresh = state.matchTime - f.shieldRaisedAt <= PARRY_WINDOW;
-  // The delivered hex-tessellated energy dome (effect:shield_dome) replaces
-  // the old smooth bubble. It shrinks with the shield's health exactly as the
-  // bubble did, breathes slightly, and the procedural circle stays as the
-  // fallback while the art streams in. A fresh (parry-window) shield flashes
-  // white via a brightness bump rather than a different drawing.
+  const r = 52 + pct * 20;
   const dome = getImage("effect:shield_dome");
   if (dome) {
-    const r = 52 + pct * 20;
-    const h = r * 1.9 * (1 + 0.02 * Math.sin(state.matchTime * 6));
+    const adj = sharedAdjust("effect:shield_dome");
+    const h = r * 2 * adj.scale;
     const w = dome.width * h / dome.height;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
+    // A fresh guard is the parry window, and it flashes white-bright for it —
+    // the same tell the stroke colour used to carry.
     ctx.globalAlpha = fresh ? 0.95 : 0.55 + pct * 0.2;
-    if (fresh) ctx.filter = "brightness(1.5)";
-    ctx.drawImage(dome, f.x - w / 2, f.y + 8 - h, w, h);
+    ctx.drawImage(dome, f.x - w / 2 + adj.dx, f.y - 70 - h / 2 + adj.dy, w, h);
     ctx.restore();
     return;
   }
@@ -780,7 +828,7 @@ function drawShieldBubble(ctx, f) {
   ctx.lineWidth = 2 + pct * 5;
   ctx.fillStyle = f.char.shadow;
   ctx.beginPath();
-  ctx.arc(f.x, f.y - 70, 52 + pct * 20, 0, Math.PI * 2);
+  ctx.arc(f.x, f.y - 70, r, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
   ctx.restore();

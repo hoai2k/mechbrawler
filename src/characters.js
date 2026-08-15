@@ -84,7 +84,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Rocket Fist", type: "projectile", cooldown: 2.4,
       desc: "A fist leaves the arm as real ordnance, hits like a truck, and flies home to re-dock.",
-      p: { energyCost: 18, speed: 600, vy: 0, r: 30, dur: 0.85, dmg: 11, base: 480, growth: 8.0, angle: 0.34, color: "#ffa832", label: "Rocket Fist", sprite: "effect:rocket_fist", spriteH: 72 },
+      p: { sprite: "effect:rocket_fist", spriteH: 84, energyCost: 18, speed: 600, vy: 0, r: 30, dur: 0.85, dmg: 11, base: 480, growth: 8.0, angle: 0.34, color: "#ffa832", label: "Rocket Fist" },
     },
     specials: {
       // New N (the gun moved to RB): the charge-punch identity as a special —
@@ -113,7 +113,7 @@ export const CHARACTERS = {
       desc: "He reaches to the sky and it answers — a meteor hammers the zone in front and leaves the ground burning.",
       // TODO(engine): docs/characters.md stages this as a SHOWER (62×14); the
       // meteor director drops one rock, so it lands as one huge one.
-      p: { dmg: 32, base: 920, growth: 11, r: 200, fallTime: 1.1, burnField: 2.6, color: "#ffa832", label: "METEOR BREAKER", sprite: "effect:meteor_rock", spriteH: 300 },
+      p: { sprite: "effect:meteor_rock", spriteH: 310, dmg: 32, base: 920, growth: 11, r: 200, fallTime: 1.1, burnField: 2.6, color: "#ffa832", label: "METEOR BREAKER" },
     },
     // TODO(engine): implement — no flinch from jabs while charging anything.
     passive: { id: "siegePlating", name: "Siege Plating", desc: "Armor plate over everything: jabs cannot flinch him while a charge is banking." },
@@ -143,7 +143,7 @@ export const CHARACTERS = {
       // TODO(engine): docs/characters.md wants a held CHANNEL (stream while
       // the trigger is down, barrels spinning up, arms swapping); the
       // projectile handler fires a burst per press instead.
-      p: { energyCost: 4, speed: 900, vy: 0, r: 14, dur: 0.55, dmg: 2, base: 130, growth: 2.2, angle: 0.28, color: "#ff8c30", count: 3, spread: 70, label: "Gatling", sprite: "effect:gatling_tracer", spriteH: 34 },
+      p: { sprite: "effect:gatling_tracer", spriteH: 40, energyCost: 4, speed: 900, vy: 0, r: 14, dur: 0.55, dmg: 2, base: 130, growth: 2.2, angle: 0.28, color: "#ff8c30", count: 3, spread: 70, label: "Gatling" },
     },
     specials: {
       // New N (the gun moved to RB): more ammunition, of course — a lobbed
@@ -156,7 +156,7 @@ export const CHARACTERS = {
       side: {
         name: "Micro-Missile Volley", type: "projectile", cooldown: 4.1,
         desc: "Both shoulder pods ripple-fire six seekers that arc onto the target.",
-        p: { speed: 480, vy: -60, r: 20, dur: 1.3, dmg: 4.5, base: 250, growth: 5.0, angle: 0.4, color: "#ff8c30", count: 6, spread: 130, homing: 150, label: "Missiles", sprite: "effect:micro_missile", spriteH: 48 },
+        p: { sprite: "effect:micro_missile", spriteH: 46, speed: 480, vy: -60, r: 20, dur: 1.3, dmg: 4.5, base: 250, growth: 5.0, angle: 0.4, color: "#ff8c30", count: 6, spread: 130, homing: 150, label: "Missiles" },
       },
       down: {
         name: "Flak Fan", type: "projectile", cooldown: 3.5,
@@ -167,7 +167,7 @@ export const CHARACTERS = {
     ultimate: {
       name: "BULLET HURRICANE", type: "vortex",
       desc: "A hundred rounds fall into orbit around him — a storm of lead that folds onto whoever strays close.",
-      p: { speed: 300, r: 120, dur: 2.8, tickRate: 0.16, dmgTick: 3.5, base: 200, growth: 4.2, finalBase: 780, pull: 340, color: "#ff8c30", label: "BULLET HURRICANE" },
+      p: { sprite: "effect:gatling_tracer", spriteH: 250, speed: 300, r: 120, dur: 2.8, tickRate: 0.16, dmgTick: 3.5, base: 200, growth: 4.2, finalBase: 780, pull: 340, color: "#ff8c30", label: "BULLET HURRICANE" },
     },
     // TODO(engine): implement — consecutive Gatling bursts tighten the spread.
     passive: { id: "spinUp", name: "Spin-Up", desc: "The barrels remember: consecutive Gatling seconds tighten its spread." },
@@ -194,7 +194,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Fang Throw", type: "projectile", cooldown: 0.8,
       desc: "A thrown forearm dagger — the blade visibly leaves her arm and regrows. Fast, flat, spammable.",
-      p: { energyCost: 6, speed: 720, vy: -2, r: 18, dur: 0.7, dmg: 6.5, base: 260, growth: 5.4, angle: 0.3, color: "#5aff2e", label: "Fang Throw", sprite: "effect:fang_dagger", spriteH: 48 },
+      p: { sprite: "effect:fang_dagger", spriteH: 58, energyCost: 6, speed: 720, vy: -2, r: 18, dur: 0.7, dmg: 6.5, base: 260, growth: 5.4, angle: 0.3, color: "#5aff2e", label: "Fang Throw" },
     },
     specials: {
       // New N (the dagger moved to RB): the fencer's mixup — a backstep that
@@ -221,7 +221,7 @@ export const CHARACTERS = {
       // TODO(engine): VENOM (damage over time + a beat of paralysis on
       // application) is a new status; the eruption waves carry plain damage
       // until it exists.
-      p: { waves: 5, waveGap: 0.45, dmg: 11, base: 400, growth: 7.0, color: "#5aff2e", label: "SERPENT STORM", sprite: "effect:energy_serpent" },
+      p: { sprite: "effect:energy_serpent", waves: 5, waveGap: 0.45, dmg: 11, base: 400, growth: 7.0, color: "#5aff2e", label: "SERPENT STORM" },
     },
     // TODO(engine): implement — +15% damage when striking from behind.
     passive: { id: "assassinsRead", name: "Assassin's Read", desc: "Angles nobody teaches: +15% damage striking from behind." },
@@ -248,7 +248,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Shoulder Cannon", type: "projectile", cooldown: 1.3,
       desc: "A hand cannon per fist, alternating — slow shells with real splash, a mid-range poke.",
-      p: { energyCost: 14, speed: 550, vy: -8, r: 26, dur: 0.9, dmg: 11, base: 420, growth: 7.0, angle: 0.4, color: "#ff2a20", explode: 70, label: "Shoulder Cannon", sprite: "effect:cannon_shell", spriteH: 62 },
+      p: { sprite: "effect:cannon_shell", spriteH: 62, energyCost: 14, speed: 550, vy: -8, r: 26, dur: 0.9, dmg: 11, base: 420, growth: 7.0, angle: 0.4, color: "#ff2a20", explode: 70, label: "Shoulder Cannon" },
     },
     specials: {
       // New N (the cannon moved to RB): the horn, thrown UP — a planted
@@ -303,7 +303,7 @@ export const CHARACTERS = {
       desc: "Lightning that jumps — it finds its mark and wants a second body nearby.",
       // TODO(engine): SHOCK status (brief hitstun extension) and the
       // chain-to-a-second-target behavior are new engine work.
-      p: { energyCost: 8, speed: 760, vy: 0, r: 22, dur: 0.7, dmg: 8, base: 330, growth: 6.4, angle: 0.36, color: "#3fd8ff", label: "Arc Bolt", sprite: "effect:arc_bolt", spriteH: 60 },
+      p: { sprite: "effect:arc_bolt", spriteH: 70, energyCost: 8, speed: 760, vy: 0, r: 22, dur: 0.7, dmg: 8, base: 330, growth: 6.4, angle: 0.36, color: "#3fd8ff", label: "Arc Bolt" },
     },
     specials: {
       // New N (the bolt moved to RB): the concert made a weapon — a resonant
@@ -316,7 +316,7 @@ export const CHARACTERS = {
       side: {
         name: "Static Overload", type: "trap", cooldown: 4.4,
         desc: "Places a storm cell a short way ahead — the cloud gathers, then bolts hammer down into the zone.",
-        p: { dist: 240, armTime: 0.6, lifetime: 4, w: 150, h: 240, dmg: 14, base: 470, growth: 7.6, angle: 1.1, color: "#3fd8ff", label: "Static Overload", sprite: "effect:storm_cell", spriteH: 250 },
+        p: { sprite: "effect:storm_cell", spriteH: 150, dist: 240, armTime: 0.6, lifetime: 4, w: 150, h: 240, dmg: 14, base: 470, growth: 7.6, angle: 1.1, color: "#3fd8ff", label: "Static Overload" },
       },
       down: {
         name: "Feedback Coil", type: "counter", cooldown: 3.5,
@@ -327,7 +327,7 @@ export const CHARACTERS = {
     ultimate: {
       name: "THUNDERFALL", type: "tempest",
       desc: "The sky goes dark over most of the stage and the weather answers — bolts hammer everyone caught in the gloom.",
-      p: { duration: 3.4, dmgTick: 4, tickRate: 0.28, base: 210, growth: 4.5, finalBase: 760, color: "#3fd8ff", label: "THUNDERFALL" },
+      p: { sprite: "effect:storm_cell", spriteH: 420, duration: 3.4, dmgTick: 4, tickRate: 0.28, base: 210, growth: 4.5, finalBase: 760, color: "#3fd8ff", label: "THUNDERFALL" },
     },
     // TODO(engine): implement — +25% energy gain while a foe is in SHOCK.
     passive: { id: "groundedRod", name: "Grounded Rod", desc: "The storm feeds the showman: +25% energy gain while a foe is shocked." },
@@ -354,7 +354,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Rend Wave", type: "wave", cooldown: 1.0,
       desc: "A crescent of torn air off the claws — his poke, medium speed, good arc.",
-      p: { energyCost: 8, speed: 460, r: 34, dur: 0.9, dmg: 7, base: 340, growth: 6.4, angle: 0.36, color: "#6cd8ff", label: "Rend Wave", sprite: "effect:rend_wave", spriteH: 84 },
+      p: { sprite: "effect:rend_wave", spriteH: 120, energyCost: 8, speed: 460, r: 34, dur: 0.9, dmg: 7, base: 340, growth: 6.4, angle: 0.36, color: "#6cd8ff", label: "Rend Wave" },
     },
     specials: {
       // New N (the wave moved to RB): the claws up close — a savaging flurry
@@ -417,7 +417,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Mortar Lob", type: "projectile", cooldown: 1.7,
       desc: "A high arcing shell that lands where you are about to be — the slowest, meanest projectile in the game.",
-      p: { energyCost: 22, speed: 430, vy: -260, gravity: 420, r: 34, dur: 1.5, dmg: 13.5, base: 520, growth: 8.4, angle: 0.6, color: "#ffc23c", explode: 100, label: "Mortar Lob", sprite: "effect:mortar_shell", spriteH: 80 },
+      p: { sprite: "effect:mortar_shell", spriteH: 68, energyCost: 22, speed: 430, vy: -260, gravity: 420, r: 34, dur: 1.5, dmg: 13.5, base: 520, growth: 8.4, angle: 0.6, color: "#ffc23c", explode: 100, label: "Mortar Lob" },
     },
     specials: {
       // New N (the mortar moved to RB): artillery patience as a special — a
@@ -426,7 +426,7 @@ export const CHARACTERS = {
       neutral: {
         name: "Fire Mission", type: "trap", cooldown: 4.0,
         desc: "He designates a stretch of ground three moves ahead — then the shells arrive on it.",
-        p: { dist: 260, armTime: 0.7, lifetime: 3.5, w: 170, h: 200, dmg: 13, base: 460, growth: 7.4, angle: 0.9, color: "#ffc23c", label: "Fire Mission" },
+        p: { sprite: "effect:mortar_shell", spriteH: 90, dist: 260, armTime: 0.7, lifetime: 3.5, w: 170, h: 200, dmg: 13, base: 460, growth: 7.4, angle: 0.9, color: "#ffc23c", label: "Fire Mission" },
       },
       side: {
         name: "Skyline Toss", type: "commandGrab", cooldown: 5.0,
@@ -475,7 +475,7 @@ export const CHARACTERS = {
       name: "Sniper Round", type: "projectile", cooldown: 1.5,
       desc: "A piercing shot down the rifle line — slow to aim, flat, hits through bodies.",
       // TODO(engine): hold-to-steady charge and the laser-sight telegraph.
-      p: { energyCost: 16, speed: 940, vy: 0, r: 18, dur: 0.6, dmg: 12, base: 430, growth: 7.2, angle: 0.24, color: "#ff2030", pierce: true, label: "Sniper Round", sprite: "effect:sniper_beam", spriteH: 36 },
+      p: { sprite: "effect:sniper_beam", spriteH: 40, energyCost: 16, speed: 940, vy: 0, r: 18, dur: 0.6, dmg: 12, base: 430, growth: 7.2, angle: 0.24, color: "#ff2030", pierce: true, label: "Sniper Round" },
     },
     specials: {
       // New N (the rifle moved to RB): sniper theatre without the rifle — a
@@ -484,12 +484,12 @@ export const CHARACTERS = {
       neutral: {
         name: "Deadman's Mark", type: "warpStrike", cooldown: 3.5,
         desc: "He marks the spot you are standing on. Officially, nothing happens there. Move.",
-        p: { delay: 0.4, r: 95, dmg: 11, base: 420, growth: 7.0, angle: 0.6, color: "#ff2030", label: "Deadman's Mark" },
+        p: { sprite: "effect:bat_wisp", spriteH: 130, delay: 0.4, r: 95, dmg: 11, base: 420, growth: 7.0, angle: 0.6, color: "#ff2030", label: "Deadman's Mark" },
       },
       side: {
         name: "Night Swarm", type: "projectile", cooldown: 3.5,
         desc: "Three bats that drift and home lazily — screen control while he lines up the rifle.",
-        p: { speed: 330, vy: -20, r: 22, dur: 1.6, dmg: 5, base: 240, growth: 4.6, angle: 0.36, color: "#ff2030", count: 3, spread: 110, homing: 130, label: "Night Swarm", sprite: "effect:bat_wisp", spriteH: 52 },
+        p: { sprite: "effect:bat_wisp", spriteH: 62, speed: 330, vy: -20, r: 22, dur: 1.6, dmg: 5, base: 240, growth: 4.6, angle: 0.36, color: "#ff2030", count: 3, spread: 110, homing: 130, label: "Night Swarm" },
       },
       down: {
         name: "Ghost Protocol", type: "shadowPort", cooldown: 5.6,
@@ -502,7 +502,7 @@ export const CHARACTERS = {
     ultimate: {
       name: "DEATH SWARM", type: "vortex",
       desc: "The flock becomes a real gyre that wheels around him and takes turns stooping on whoever he hates.",
-      p: { speed: 300, r: 130, dur: 2.8, tickRate: 0.16, dmgTick: 3.5, base: 200, growth: 4.2, finalBase: 780, pull: 300, color: "#ff2030", label: "DEATH SWARM", sprite: "effect:bat_wisp", spriteH: 190 },
+      p: { sprite: "effect:bat_wisp", spriteH: 250, speed: 300, r: 130, dur: 2.8, tickRate: 0.16, dmgTick: 3.5, base: 200, growth: 4.2, finalBase: 780, pull: 300, color: "#ff2030", label: "DEATH SWARM" },
     },
     // TODO(engine): implement — Sniper Round damage grows with distance flown.
     passive: { id: "eightHundredMetres", name: "800 Metres", desc: "The round is patient: Sniper Round damage grows with distance flown." },
@@ -533,7 +533,7 @@ export const CHARACTERS = {
       desc: "A long narrow jet of held flame — the cone is a wall; walking into it is the mistake.",
       // TODO(engine): a held channel (stream while the trigger is down); fires
       // a burning tongue per press instead.
-      p: { energyCost: 5, speed: 420, vy: 0, r: 30, dur: 0.8, dmg: 6, base: 160, growth: 3.2, angle: 0.34, color: "#ff8a1e", effect: "burn", pierce: true, label: "Dragon's Breath", sprite: "effect:flame_jet", spriteH: 78 },
+      p: { sprite: "effect:flame_jet", spriteH: 96, energyCost: 5, speed: 420, vy: 0, r: 30, dur: 0.8, dmg: 6, base: 160, growth: 3.2, angle: 0.34, color: "#ff8a1e", effect: "burn", pierce: true, label: "Dragon's Breath" },
     },
     specials: {
       // New N (the flamer moved to RB): the brawler half of him — a torch-hand
@@ -546,7 +546,7 @@ export const CHARACTERS = {
       side: {
         name: "Napalm Carpet", type: "trap", cooldown: 4.7,
         desc: "Lobbed patches of burning ground — stage control that stays.",
-        p: { dist: 250, armTime: 0.4, lifetime: 5, w: 220, h: 120, dmg: 11, base: 380, growth: 6.4, angle: 0.9, color: "#ff8a1e", effect: "burn", label: "Napalm Carpet", sprite: "effect:napalm_patch", spriteH: 110 },
+        p: { sprite: "effect:napalm_patch", spriteH: 70, dist: 250, armTime: 0.4, lifetime: 5, w: 220, h: 120, dmg: 11, base: 380, growth: 6.4, angle: 0.9, color: "#ff8a1e", effect: "burn", label: "Napalm Carpet" },
       },
       down: {
         name: "Vent Burst", type: "updraft", cooldown: 3.5,
@@ -557,7 +557,7 @@ export const CHARACTERS = {
     ultimate: {
       name: "FIRE TORNADO", type: "vortex",
       desc: "A wandering fire funnel hunts the nearest enemy, growing as it goes; whoever it catches rides it into the sky.",
-      p: { speed: 280, r: 110, dur: 2.8, tickRate: 0.18, dmgTick: 4, base: 200, growth: 4.4, finalBase: 800, pull: 380, color: "#ff8a1e", label: "FIRE TORNADO" },
+      p: { sprite: "effect:flame_jet", spriteH: 250, speed: 280, r: 110, dur: 2.8, tickRate: 0.18, dmgTick: 4, base: 200, growth: 4.4, finalBase: 800, pull: 380, color: "#ff8a1e", label: "FIRE TORNADO" },
     },
     // Reuses the JJK burn-amplifier passive: combat.js multiplies his burn
     // ticks — the exact "his BURN lasts/ticks longer" identity.
@@ -585,7 +585,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Icicle Barrage", type: "projectile", cooldown: 1.15,
       desc: "A fan of shards off the left-hand lance — his main conversation.",
-      p: { energyCost: 9, speed: 620, vy: -4, r: 18, dur: 0.8, dmg: 2.6, base: 200, growth: 4.0, angle: 0.32, color: "#7ce0ff", count: 3, spread: 110, label: "Icicle Barrage", sprite: "effect:icicle_shard", spriteH: 44 },
+      p: { sprite: "effect:icicle_shard", spriteH: 56, energyCost: 9, speed: 620, vy: -4, r: 18, dur: 0.8, dmg: 2.6, base: 200, growth: 4.0, angle: 0.32, color: "#7ce0ff", count: 3, spread: 110, label: "Icicle Barrage" },
     },
     specials: {
       // New N (the barrage moved to RB): the zoner's get-off-me — a point-blank
@@ -593,21 +593,21 @@ export const CHARACTERS = {
       neutral: {
         name: "Cold Snap", type: "burst", cooldown: 3.5,
         desc: "The air around him flash-freezes — a point-blank nova for anyone rude enough to get close.",
-        p: { delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 250, h: 160, dmg: 9, base: 420, growth: 6.6, angle: 0.6, effect: "drench", label: "Cold Snap", color: "#7ce0ff", sfx: "punch" },
+        p: { sprite: "effect:frost_rime", spriteH: 180, delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 250, h: 160, dmg: 9, base: 420, growth: 6.6, angle: 0.6, effect: "drench", label: "Cold Snap", color: "#7ce0ff", sfx: "punch" },
       },
       side: {
         name: "Cryo Beam", type: "wave", cooldown: 5.0,
         desc: "A held beam that frosts — the slow is the payload; a frosted foe can't escape the next barrage.",
         // TODO(engine): FROST (movement + fall-speed slow with ice rime) is a
         // new status; `drench` is the engine's nearest movement tax for now.
-        p: { speed: 540, r: 30, dur: 0.8, dmg: 4, base: 180, growth: 3.6, angle: 0.3, color: "#7ce0ff", effect: "drench", pierce: true, label: "Cryo Beam" },
+        p: { sprite: "effect:icicle_shard", spriteH: 96, speed: 540, r: 30, dur: 0.8, dmg: 4, base: 180, growth: 3.6, angle: 0.3, color: "#7ce0ff", effect: "drench", pierce: true, label: "Cryo Beam" },
       },
       down: {
         name: "Ice Wall", type: "trap", cooldown: 4.5,
         desc: "Raises a pillar of ice ahead — architecture that objects to approaches.",
         // TODO(engine): a real blocking wall (stops projectiles, bodies and
         // recoveries, shatters after hits); the trap erupts on contact instead.
-        p: { dist: 180, armTime: 0.2, lifetime: 4, w: 100, h: 220, dmg: 8, base: 380, growth: 6.0, angle: 0.7, color: "#7ce0ff", label: "Ice Wall", sprite: "effect:ice_wall", spriteH: 210 },
+        p: { sprite: "effect:ice_wall", spriteH: 150, dist: 180, armTime: 0.2, lifetime: 4, w: 100, h: 220, dmg: 8, base: 380, growth: 6.0, angle: 0.7, color: "#7ce0ff", label: "Ice Wall" },
       },
     },
     ultimate: {
@@ -615,7 +615,7 @@ export const CHARACTERS = {
       desc: "The stage floor flash-freezes white — everyone else on the sheet frosts over and skates, traction gone.",
       // TODO(engine): the frozen floor-state (skating traction for the
       // duration) is arena work; the freeze waves carry the damage today.
-      p: { waves: 5, waveGap: 0.45, dmg: 10, base: 380, growth: 6.8, color: "#7ce0ff", label: "ABSOLUTE ZERO" },
+      p: { sprite: "effect:ice_wall", waves: 5, waveGap: 0.45, dmg: 10, base: 380, growth: 6.8, color: "#7ce0ff", label: "ABSOLUTE ZERO" },
     },
     // TODO(engine): implement — melee attackers who hit his shield take FROST.
     passive: { id: "coldShoulder", name: "Cold Shoulder", desc: "Touch at your own risk: melee attackers who strike his shield are frosted." },
@@ -644,7 +644,7 @@ export const CHARACTERS = {
       desc: "Held water pressure — less a gun than a push. Shoves bodies off platforms and stuffs approaches.",
       // TODO(engine): a held channel; fires a pressure slug per press. The
       // push IS the move: tiny damage, outsized base knockback.
-      p: { energyCost: 4, speed: 560, vy: 0, r: 26, dur: 0.65, dmg: 2, base: 300, growth: 3.0, angle: 0.2, color: "#4fc3ff", effect: "drench", pierce: true, label: "Hydro Hose", sprite: "effect:water_jet", spriteH: 64 },
+      p: { sprite: "effect:water_jet", spriteH: 74, energyCost: 4, speed: 560, vy: 0, r: 26, dur: 0.65, dmg: 2, base: 300, growth: 3.0, angle: 0.2, color: "#4fc3ff", effect: "drench", pierce: true, label: "Hydro Hose" },
     },
     specials: {
       // New N (the hose moved to RB): the pincers themselves — a command grab
@@ -657,7 +657,7 @@ export const CHARACTERS = {
       side: {
         name: "Geyser", type: "trap", cooldown: 4.4,
         desc: "A bubbling patch telegraphs under the target, then a water column erupts — his anti-air lives in the floor.",
-        p: { atOpponent: true, armTime: 0.5, lifetime: 0.7, w: 120, h: 260, dmg: 12.5, base: 520, growth: 8.0, angle: 1.25, color: "#4fc3ff", effect: "drench", label: "Geyser", sprite: "effect:geyser_column", spriteH: 280 },
+        p: { sprite: "effect:geyser_column", spriteH: 260, atOpponent: true, armTime: 0.5, lifetime: 0.7, w: 120, h: 260, dmg: 12.5, base: 520, growth: 8.0, angle: 1.25, color: "#4fc3ff", effect: "drench", label: "Geyser" },
       },
       down: {
         name: "Shell Up", type: "counter", cooldown: 4.0,
@@ -670,7 +670,7 @@ export const CHARACTERS = {
     ultimate: {
       name: "TSUNAMI", type: "beam",
       desc: "The sea answers — a wall of water rises behind him and rolls the full stage length. Jump it or ride it out.",
-      p: { dmg: 27, base: 880, growth: 10.5, color: "#4fc3ff", width: 220, duration: 1.5, label: "TSUNAMI", sprite: "effect:tsunami_wall", spriteH: 240 },
+      p: { sprite: "effect:tsunami_wall", spriteH: 300, dmg: 27, base: 880, growth: 10.5, color: "#4fc3ff", width: 220, duration: 1.5, label: "TSUNAMI" },
     },
     // The 45% shield-damage reduction is exactly what combat.js gives
     // `limitlessGuard` (0.55 multiplier), so the id is reused verbatim.
@@ -700,7 +700,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Quill Fan", type: "projectile", cooldown: 0.9,
       desc: "A fan of black blade-feathers off both forearms — his own plumage, quickest gun in the game.",
-      p: { energyCost: 7, speed: 700, vy: -2, r: 18, dur: 0.7, dmg: 4, base: 220, growth: 4.4, angle: 0.3, color: "#ff2418", count: 3, spread: 120, label: "Quill Fan", sprite: "effect:quill_feather", spriteH: 42 },
+      p: { sprite: "effect:quill_feather", spriteH: 52, energyCost: 7, speed: 700, vy: -2, r: 18, dur: 0.7, dmg: 4, base: 220, growth: 4.4, angle: 0.3, color: "#ff2418", count: 3, spread: 120, label: "Quill Fan" },
     },
     specials: {
       // New N (the quills moved to RB): the predator's mixup — a coiling hop
@@ -731,10 +731,11 @@ export const CHARACTERS = {
       // kickable by saurion, hatching one at a time) — the best idea in the
       // upstream ult. The summon director fields one hatched raptor today.
       p: {
+        sprites: ["effect:raptor_egg"],
         id: "raptorPack", behavior: "chaser", duration: 12, speed: 520, maxActive: 1,
         color: "#ff2418", h: 120, hitW: 104, hitH: 92, standOff: 22,
         attack: { dmg: 7, base: 320, growth: 5.6, angle: 0.34, cd: 0.8, sfx: "slash" },
-        label: "RAPTOR PACK", eggSprite: "effect:raptor_egg", eggSpriteH: 150,
+        label: "RAPTOR PACK",
       },
     },
     // TODO(engine): implement — the pounce's shield-shatter, plus +10% damage
@@ -765,7 +766,7 @@ export const CHARACTERS = {
       desc: "A lobbed glob; the splash gunks — heavier jumps, slower dashes.",
       // GUNK is the engine's waterlog movement tax, recoloured — which is
       // exactly what `drench` is (docs/characters.md, statuses table).
-      p: { energyCost: 7, speed: 470, vy: -120, gravity: 300, r: 30, dur: 1.1, dmg: 7.5, base: 330, growth: 6.2, angle: 0.45, color: "#aef23c", effect: "drench", explode: 60, label: "Slime Slinger", sprite: "effect:slime_glob", spriteH: 62 },
+      p: { sprite: "effect:slime_glob", spriteH: 58, energyCost: 7, speed: 470, vy: -120, gravity: 300, r: 30, dur: 1.1, dmg: 7.5, base: 330, growth: 6.2, angle: 0.45, color: "#aef23c", effect: "drench", explode: 60, label: "Slime Slinger" },
     },
     specials: {
       // New N (the slinger moved to RB): the frog's tongue — a sticky command
@@ -773,12 +774,12 @@ export const CHARACTERS = {
       neutral: {
         name: "Tongue Lash", type: "commandGrab", cooldown: 4.5,
         desc: "The tongue snaps out, sticks, and hauls them through the gunk on the way back.",
-        p: { range: 150, dmg: 13, base: 500, growth: 7.4, angle: 0.6, effect: "drench", color: "#aef23c", label: "Tongue Lash", sprite: "effect:gunk_splat", spriteH: 110, spriteForward: 90 },
+        p: { range: 150, dmg: 13, base: 500, growth: 7.4, angle: 0.6, effect: "drench", color: "#aef23c", label: "Tongue Lash" },
       },
       side: {
         name: "Quad Gunk Barrage", type: "projectile", cooldown: 4.1,
         desc: "All four guns lob a sticky mortar carpet at once.",
-        p: { speed: 430, vy: -180, gravity: 340, r: 24, dur: 1.3, dmg: 5, base: 280, growth: 5.4, angle: 0.5, color: "#aef23c", effect: "drench", count: 4, spread: 150, explode: 55, label: "Gunk Barrage", sprite: "effect:slime_glob", spriteH: 52 },
+        p: { sprite: "effect:gunk_splat", spriteH: 56, speed: 430, vy: -180, gravity: 340, r: 24, dur: 1.3, dmg: 5, base: 280, growth: 5.4, angle: 0.5, color: "#aef23c", effect: "drench", count: 4, spread: 150, explode: 55, label: "Gunk Barrage" },
       },
       down: {
         name: "Spring Coil", type: "updraft", cooldown: 3.5,
@@ -791,7 +792,7 @@ export const CHARACTERS = {
     ultimate: {
       name: "SONIC CROAK", type: "shout",
       desc: "The jaw drops open and the croak comes out — a resonant blast that locks every nearby servo solid.",
-      p: { ox: -320, oy: -220, w: 940, h: 320, dmg: 28, base: 940, growth: 10.5, angle: 0.5, color: "#aef23c", ultShout: true, label: "SONIC CROAK", sprite: "effect:croak_ring", spriteH: 330 },
+      p: { sprite: "effect:croak_ring", spriteH: 330, ox: -320, oy: -220, w: 940, h: 320, dmg: 28, base: 940, growth: 10.5, angle: 0.5, color: "#aef23c", ultShout: true, label: "SONIC CROAK" },
     },
     // TODO(engine): implement — crouch transitions 30% faster, smallest crouch
     // hurtbox on the roster.
@@ -826,7 +827,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Bilge Spit", type: "projectile", cooldown: 1.1,
       desc: "A lead glob with trailing wads — long range, gunks on hit.",
-      p: { energyCost: 6, speed: 540, vy: -30, gravity: 120, r: 26, dur: 1.0, dmg: 4, base: 260, growth: 5.0, angle: 0.36, color: "#ff2818", effect: "drench", count: 2, spread: 90, label: "Bilge Spit", sprite: "effect:goo_wad", spriteH: 56 },
+      p: { sprite: "effect:goo_wad", spriteH: 58, energyCost: 6, speed: 540, vy: -30, gravity: 120, r: 26, dur: 1.0, dmg: 4, base: 260, growth: 5.0, angle: 0.36, color: "#ff2818", effect: "drench", count: 2, spread: 90, label: "Bilge Spit" },
     },
     specials: {
       // New N (the spit moved to RB): the spring itself — a shell-first launch
@@ -840,7 +841,7 @@ export const CHARACTERS = {
       side: {
         name: "Brine Swarm", type: "projectile", cooldown: 4.7,
         desc: "Coughs up three hopping shrimp-mines that bounce forward and pop on contact.",
-        p: { speed: 380, vy: -220, gravity: 420, r: 22, dur: 1.4, dmg: 5, base: 300, growth: 5.6, angle: 0.5, color: "#ff2818", count: 3, spread: 120, explode: 60, label: "Brine Swarm", sprite: "effect:shrimp_mine", spriteH: 48 },
+        p: { sprite: "effect:shrimp_mine", spriteH: 52, speed: 380, vy: -220, gravity: 420, r: 22, dur: 1.4, dmg: 5, base: 300, growth: 5.6, angle: 0.5, color: "#ff2818", count: 3, spread: 120, explode: 60, label: "Brine Swarm" },
       },
       down: {
         name: "Anchor Drop", type: "burst", cooldown: 3.5,
@@ -856,6 +857,7 @@ export const CHARACTERS = {
       // TODO(engine): FOUR ricocheting copies; the summon director fields one
       // flea-jerry per cast today.
       p: {
+        sprites: ["effect:shrimp_mine"],
         id: "fleaCircus", behavior: "chaser", duration: 6, speed: 620, maxActive: 1,
         color: "#ff2818", h: 130, hitW: 100, hitH: 110, standOff: 20,
         attack: { dmg: 6, base: 280, growth: 5.0, angle: 0.4, cd: 0.7, sfx: "punch" },
@@ -890,7 +892,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Null Pointer", type: "projectile", cooldown: 0.75,
       desc: "A de-rez bolt off either claw — the ranged stack-builder.",
-      p: { energyCost: 5, speed: 640, vy: 0, r: 22, dur: 0.8, dmg: 6, base: 300, growth: 5.8, angle: 0.3, color: "#27f6ff", label: "Null Pointer", sprite: "effect:null_bolt", spriteH: 52 },
+      p: { sprite: "effect:null_bolt", spriteH: 62, energyCost: 5, speed: 640, vy: 0, r: 22, dur: 0.8, dmg: 6, base: 300, growth: 5.8, angle: 0.3, color: "#27f6ff", label: "Null Pointer" },
     },
     specials: {
       // New N (the bolt moved to RB): the crash weaponised as a stance —
@@ -912,7 +914,7 @@ export const CHARACTERS = {
         desc: "Cashes the corruption out early instead of waiting for the crash.",
         // TODO(engine): detonate GLITCH stacks on nearby foes for scaling
         // burst damage (nobara's detonate, keyed to glitch); flat burst now.
-        p: { delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 260, h: 160, dmg: 13, base: 470, growth: 7.4, angle: 0.5, label: "Stack Overflow", color: "#27f6ff", sfx: "punch" },
+        p: { sprite: "effect:glitch_shard", spriteH: 190, delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 260, h: 160, dmg: 13, base: 470, growth: 7.4, angle: 0.5, label: "Stack Overflow", color: "#27f6ff", sfx: "punch" },
       },
     },
     ultimate: {
@@ -920,7 +922,7 @@ export const CHARACTERS = {
       desc: "The arena stops rendering right — and every so often the floor fails under an opponent.",
       // TODO(engine): the stage-wide corruption visual and the floor-drop
       // (opponents fall through the world and re-enter from the sky).
-      p: { waves: 5, waveGap: 0.5, dmg: 10, base: 420, growth: 7.2, color: "#27f6ff", label: "SYSTEM CRASH", sprite: "effect:glitch_shard" },
+      p: { sprite: "effect:glitch_shard", waves: 5, waveGap: 0.5, dmg: 10, base: 420, growth: 7.2, color: "#27f6ff", label: "SYSTEM CRASH" },
     },
     // TODO(engine): implement — the glitch stack, above.
     passive: { id: "glitchStack", name: "The Glitch Stack", desc: "Every landed hit corrupts; at six stacks the victim CRASHES — 1.2s of stun — and the count clears." },
@@ -947,7 +949,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Shoulder Salvo", type: "projectile", cooldown: 2.1,
       desc: "Both pods empty in a ripple — a rolling barrage that exists mainly to make you walk into the fists.",
-      p: { energyCost: 12, speed: 460, vy: -100, gravity: 260, r: 22, dur: 1.2, dmg: 2.6, base: 220, growth: 4.2, angle: 0.4, color: "#ffa432", count: 4, spread: 140, explode: 60, label: "Shoulder Salvo", sprite: "effect:salvo_rocket", spriteH: 44 },
+      p: { sprite: "effect:salvo_rocket", spriteH: 50, energyCost: 12, speed: 460, vy: -100, gravity: 260, r: 22, dur: 1.2, dmg: 2.6, base: 220, growth: 4.2, angle: 0.4, color: "#ffa432", count: 4, spread: 140, explode: 60, label: "Shoulder Salvo" },
     },
     specials: {
       // New N (the salvo moved to RB): the longest reach on the roster, swept
@@ -976,7 +978,7 @@ export const CHARACTERS = {
       // TODO(engine): the walking-drummer staging (mobile ult, waves on the
       // beat, triple-damage fist on downed bodies); rampage passes carry the
       // ground-wave read today.
-      p: { passes: 3, speed: 800, dmg: 14, base: 520, growth: 8.0, color: "#ffa432", label: "APEX POUND", waveSprite: "effect:shockwave_arc", waveSpriteH: 150 },
+      p: { passes: 3, speed: 800, dmg: 14, base: 520, growth: 8.0, color: "#ffa432", label: "APEX POUND" },
     },
     // TODO(engine): implement — the measured long-arm reach, and wall-cling +
     // wall-jump like jerry.
@@ -1006,7 +1008,7 @@ export const CHARACTERS = {
     ranged: {
       name: "Flank Cannons", type: "projectile", cooldown: 1.6,
       desc: "Both cannons traverse for a visible half-beat, then fire together — the fastest heavy ordnance in the game.",
-      p: { energyCost: 16, speed: 800, vy: 0, r: 26, dur: 0.8, dmg: 8.5, base: 380, growth: 6.6, angle: 0.36, color: "#ff8a24", count: 2, spread: 80, explode: 70, label: "Flank Cannons", sprite: "effect:siege_shell", spriteH: 58 },
+      p: { sprite: "effect:siege_shell", spriteH: 64, energyCost: 16, speed: 800, vy: 0, r: 26, dur: 0.8, dmg: 8.5, base: 380, growth: 6.6, angle: 0.36, color: "#ff8a24", count: 2, spread: 80, explode: 70, label: "Flank Cannons" },
     },
     specials: {
       // New N (the cannons moved to RB): the animal underneath — a ground-
@@ -1027,7 +1029,7 @@ export const CHARACTERS = {
         name: "Frill Bulwark", type: "counter", cooldown: 4.0,
         desc: "Braces behind the frill — a front-facing counter; the display organ flares as the tell.",
         // TODO(engine): reflect projectiles during the window.
-        p: { window: 0.6, dmg: 14, base: 520, growth: 7.8, angle: 0.45, color: "#ff8a24", label: "Frill Bulwark", sprite: "effect:frill_flare", spriteH: 180 },
+        p: { window: 0.6, dmg: 14, base: 520, growth: 7.8, angle: 0.45, color: "#ff8a24", label: "Frill Bulwark" },
       },
     },
     ultimate: {

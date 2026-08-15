@@ -22,6 +22,7 @@ import { playSfx } from "./audio.js";
 import { burst, dust, popup, banner, ring, sparkLine, spriteFlash } from "./particles.js";
 import { getImage } from "./assets.js";
 import { hitboxRect, shieldBreak } from "./combat.js";
+import { sharedAdjust, stageFxSpec } from "./shared_sprites.js";
 import { clamp, sign } from "./utils.js";
 // Camera cues: each gimmick pokes the 2.5D rig at its big moment. A no-op in
 // flat mode (camera_mode.js swallows the call when no rig is listening), so
@@ -124,6 +125,51 @@ function movePlatform(plat, nx, ny) {
 
 const smoothstep = (t) => t * t * (3 - 2 * t);
 
+/**
+ * A delivered hazard plate, drawn over the procedural hazard it dresses.
+ *
+ * OVER, not instead of. Every board in this file paints its hazard out of
+ * gradients and rectangles, and those drawings are tuned to the timings — the
+ * pour widens as it lands, the train's streak leads its nose. A plate that
+ * replaced all of that would have to re-earn the timing; a plate drawn ON it
+ * gives the hazard a face and keeps the motion that was already right. It also
+ * means a board whose art has not landed looks exactly as it did.
+ *
+ * `h` is the plate's height in game pixels before the workbench's scale, taken
+ * from STAGE_FX in src/shared_sprites.js — that table is what the effect
+ * workbench sizes these against, so the number it shows and the number drawn
+ * here are the same number.
+ *
+ * `anchor` says which part of the drawing lands on (x, y): "centre" for
+ * something crossing the air, "top" for something hanging, "feet" for
+ * something standing on the floor.
+ */
+function hazardArt(ctx, key, x, y, h, { anchor = null, alpha = 1, flip = 0,
+                                        rotate = 0, additive = true } = {}) {
+  const img = getImage(key);
+  if (!img) return false;
+  const adj = sharedAdjust(key);
+  // The plate's own entry answers both questions a call site should not have
+  // to: how big this drawing is against the board, and which part of it lands
+  // on (x, y). A caller may override either — the hazards that hand-tuned a
+  // height before the table existed still do — but passing nothing is the
+  // path that survives a workbench tuning pass.
+  const spec = stageFxSpec(key);
+  const dh = (h || spec?.h || 0) * adj.scale;
+  if (!dh) return false;
+  anchor = anchor || spec?.anchor || "centre";
+  const dw = img.width * dh / img.height;
+  ctx.save();
+  if (additive) ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = alpha;
+  ctx.translate(x + adj.dx, y + adj.dy);
+  if (rotate || adj.rot) ctx.rotate(rotate + adj.rot);
+  if (flip) ctx.scale(flip < 0 ? -1 : 1, 1);
+  ctx.drawImage(img, -dw / 2, anchor === "feet" ? -dh : anchor === "top" ? 0 : -dh / 2, dw, dh);
+  ctx.restore();
+  return true;
+}
+
 // The topmost landable surface under a world x — where a dropped object
 // (container, car husk) actually comes to rest. Falls back to the main.
 function surfaceUnder(x) {
@@ -145,23 +191,37 @@ function glowRect(ctx, x, y, w, h, color, alpha) {
   ctx.restore();
 }
 
-// A delivered hazard sprite (assets/sprites/effects, K9), anchored at its
-// bottom-centre by default. Returns false while the art is still streaming so
-// every call site can keep its procedural drawing as the fallback — the
-// hazards ran placeholder-drawn before the round landed and still can.
-function drawFx(ctx, key, x, y, h, { flip = false, alpha = 1, rot = 0, anchor = "bottom", glow = null } = {}) {
-  const img = getImage(key);
-  if (!img) return false;
-  const w = img.width * h / img.height;
-  ctx.save();
-  ctx.translate(x, y);
-  if (rot) ctx.rotate(rot);
-  if (flip) ctx.scale(-1, 1);
-  ctx.globalAlpha = alpha;
-  if (glow) { ctx.shadowColor = glow; ctx.shadowBlur = 16; }
-  ctx.drawImage(img, -w / 2, anchor === "bottom" ? -h : -h / 2, w, h);
-  ctx.restore();
-  return true;
+// A delivered hazard plate, at a call site that has its own tuned placement.
+//
+// This is the CALL-SITE SUGAR over `hazardArt` below, which owns the actual
+// drawing, the shared-sprite nudges and the sizes the effect workbench edits.
+// Two functions rather than one because the call sites and the system want
+// different things said: a hazard's `draw` knows the alpha it wants this
+// frame, whether the plate is flying left, and how far it has tilted into its
+// lash — all per-frame facts. Where the plate SITS on its anchor, how big it
+// is against the board, and the hand-nudge that lines the art up with the
+// collision are per-PLATE facts and belong in one table (STAGE_FX in
+// src/shared_sprites.js), not repeated at seventeen call sites.
+//
+// So: this translates a call site's frame-by-frame intent into the system's
+// vocabulary and lets the table answer everything else. `h` is only a HINT —
+// passing 0 (the usual) takes the table's height, which is the number the
+// workbench sizes against and therefore the one that stays true after a tuning
+// pass. Returns false while the art is still streaming, so every call site
+// keeps its procedural drawing as the fallback.
+function drawFx(ctx, key, x, y, h, { flip = false, alpha = 1, rot = 0, anchor = null, glow = null } = {}) {
+  return hazardArt(ctx, key, x, y, h || 0, {
+    // "bottom" and "center" are this file's words for the two anchors it
+    // actually uses; the table speaks the system's.
+    anchor: anchor === "center" ? "centre" : anchor === "bottom" ? "feet" : anchor,
+    alpha,
+    flip: flip ? -1 : 1,
+    rotate: rot,
+    // A glow asked for at the call site is a lit plate: additive compositing
+    // is how this renderer says that, and it is what the old shadowBlur was
+    // approximating at four times the cost.
+    additive: !!glow,
+  });
 }
 
 // Total stocks on the board — watched by Desert Ruins to rebuild its columns
@@ -247,8 +307,11 @@ const STAGE_FX = {
           ctx.fillStyle = grad;
           ctx.fillRect(Math.min(train.x, train.x - train.dir * 320), track.y - 52, 320 + 40, 46);
           ctx.restore();
-          // the maglev itself (delivered sprite; nose drawn facing left)
-          drawFx(ctx, "effect:monorail_train", train.x, track.y + 2, 76, { flip: train.dir > 0, glow: "#ff4dd8" });
+          // The nose itself, riding the streak. Mirrored to the travel
+          // direction the same way a projectile is — the plate is drawn facing
+          // one way and the pass alternates.
+          hazardArt(ctx, "stagefx:monorail_train", train.x, track.y - 30, 150,
+                    { anchor: "centre", alpha: 0.95, flip: train.dir > 0 ? -1 : 1, additive: false });
         }
         // ambient neon motes
         ctx.save();
@@ -335,7 +398,7 @@ const STAGE_FX = {
         // procedural molten sheet kept underneath for the heat-haze fill
         if (t >= pourAt && t < pourAt + POUR) {
           const fade = Math.min(1, (t - pourAt) * 6) * Math.min(1, (pourAt + POUR - t) * 3);
-          drawFx(ctx, "effect:ladle_pour", strip.x + strip.w / 2, plat.y + 6, 330, { alpha: fade * 0.9, glow: "#ff9e40" });
+          drawFx(ctx, "stagefx:ladle_pour", strip.x + strip.w / 2, plat.y + 6, 330, { alpha: fade * 0.9, glow: "#ff9e40" });
         }
         if (t >= pourAt && t < pourAt + POUR) {
           ctx.save();
@@ -347,6 +410,10 @@ const STAGE_FX = {
           const wob = Math.sin(state.matchTime * 22) * 6;
           ctx.fillRect(strip.x + 30 + wob, 200, strip.w - 60, plat.y - 200);
           ctx.restore();
+          // The crucible doing the pouring, hung at the top of the sheet: the
+          // gradient is the metal falling, this is what it falls out of.
+          hazardArt(ctx, "stagefx:ladle_pour", strip.x + strip.w / 2 + wob, 96, 210,
+                    { anchor: "top", alpha: 0.95, additive: false });
         }
         // cooling patch
         const left = patchUntil - state.matchTime;
@@ -424,11 +491,11 @@ const STAGE_FX = {
         // a two-beat flicker plus the occasional one-frame horizontal tear
         const beat = Math.floor(state.matchTime * 1.6) % 2 === 0;
         const tear = Math.sin(state.matchTime * 23) > 0.96 ? 6 : 0;
-        drawFx(ctx, "effect:billboard_ad", 1120 + tear, 268, 150, {
+        drawFx(ctx, "stagefx:billboard_ad", 1120 + tear, 268, 150, {
           alpha: (beat ? 0.5 : 0.34) + 0.05 * Math.sin(state.matchTime * 9),
         });
         if (taxi) {
-          drawFx(ctx, "effect:drone_taxi", taxi.x, taxi.y, 44, {
+          drawFx(ctx, "stagefx:drone_taxi", taxi.x, taxi.y, 44, {
             anchor: "center", alpha: 0.55, flip: taxi.dir < 0,
           });
         }
@@ -549,12 +616,12 @@ const STAGE_FX = {
         ctx.restore();
         // the crane hook, swinging idle under the spreader between carries
         if (!carrying) {
-          drawFx(ctx, "effect:crane_hook", spreader.x + spreader.w / 2 + Math.sin(state.matchTime * 1.3) * 6, spreader.y + 96, 84, { alpha: 0.92 });
+          drawFx(ctx, "stagefx:crane_hook", spreader.x + spreader.w / 2 + Math.sin(state.matchTime * 1.3) * 6, spreader.y + 96, 84, { alpha: 0.92 });
         }
         // the hanging container while carried
         if (carrying) {
           const cx = spreader.x + spreader.w / 2;
-          if (!drawFx(ctx, "effect:cargo_container", cx, spreader.y + 116, 76, { glow: "#53e8ff" })) {
+          if (!drawFx(ctx, "stagefx:cargo_container", cx, spreader.y + 116, 76, { glow: "#53e8ff" })) {
             ctx.save();
             ctx.strokeStyle = "rgba(70, 60, 60, 0.9)";
             ctx.lineWidth = 2;
@@ -580,7 +647,7 @@ const STAGE_FX = {
           ctx.ellipse(dropped.x, dropped.landY + 4, 60, 8, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
-          if (!drawFx(ctx, "effect:cargo_container", dropped.x, dropped.y + 20, 76)) {
+          if (!drawFx(ctx, "stagefx:cargo_container", dropped.x, dropped.y + 20, 76)) {
             ctx.save();
             ctx.fillStyle = "#b25438";
             ctx.strokeStyle = "#5e2c1c";
@@ -591,7 +658,7 @@ const STAGE_FX = {
         }
         if (block) {
           // the landed container's body below its walkable top
-          if (drawFx(ctx, "effect:cargo_container", block.x + block.w / 2, block.y + block.h + 32, 78, { alpha: blockHits >= 2 ? 0.72 : 1 })) {
+          if (drawFx(ctx, "stagefx:cargo_container", block.x + block.w / 2, block.y + block.h + 32, 78, { alpha: blockHits >= 2 ? 0.72 : 1 })) {
             if (blockHits > 0) {
               ctx.save();
               ctx.strokeStyle = "rgba(10, 6, 4, 0.8)";
@@ -676,7 +743,7 @@ const STAGE_FX = {
           const y = 80 + ((s.seed * 91) % 520) + Math.sin(state.matchTime * 2 + s.seed) * 10;
           ctx.globalAlpha = a * (0.4 + 0.6 * ((s.seed % 10) / 10));
           // every third streak is the delivered gust ribbon; the rest stay lines
-          if (s.seed % 3 < 1 && drawFx(ctx, "effect:wind_streak", x, y, 34, { flip: dir < 0, anchor: "center", alpha: a })) continue;
+          if (s.seed % 3 < 1 && drawFx(ctx, "stagefx:wind_streak", x, y, 34, { flip: dir < 0, anchor: "center", alpha: a })) continue;
           ctx.beginPath();
           ctx.moveTo(x, y);
           ctx.lineTo(x - dir * len, y + 4);
@@ -781,7 +848,7 @@ const STAGE_FX = {
         ctx.moveTo(mx, 60);
         ctx.lineTo(mx, MAG_Y);
         ctx.stroke();
-        if (!drawFx(ctx, "effect:magnet_crane", mx, MAG_Y + 44, 84, { glow: phase === "hum" || phase === "snap" ? "#ffd35a" : null })) {
+        if (!drawFx(ctx, "stagefx:magnet_crane", mx, MAG_Y + 44, 84, { glow: phase === "hum" || phase === "snap" ? "#ffd35a" : null })) {
           ctx.fillStyle = "#7a5c3a";
           ctx.strokeStyle = "#3d2c1a";
           ctx.beginPath();
@@ -811,7 +878,7 @@ const STAGE_FX = {
             ctx.globalAlpha = 1;
           }
           const y = husk ? h.y : h.y - 10;
-          if (!drawFx(ctx, "effect:car_husk", h.x, y + 6, 66, { alpha: debris ? Math.min(1, (debris.until - state.matchTime)) : 1 })) {
+          if (!drawFx(ctx, "stagefx:car_husk", h.x, y + 6, 66, { alpha: debris ? Math.min(1, (debris.until - state.matchTime)) : 1 })) {
             ctx.fillStyle = "#8a6a4a";
             ctx.strokeStyle = "#3d2c1a";
             ctx.lineWidth = 2;
@@ -891,7 +958,7 @@ const STAGE_FX = {
             const blink = Math.floor(state.matchTime * 8) % 2 === 0;
             glowRect(ctx, spots[i] - 78, plat.y - 8, 156, 10, "#ffb43c", blink ? 0.4 : 0.15);
             // the charge itself: stacked red sticks + warning ring (delivered art)
-            drawFx(ctx, "effect:blast_charge", spots[i], plat.y + 2, 48, { alpha: blink ? 1 : 0.8 });
+            drawFx(ctx, "stagefx:blast_charge", spots[i], plat.y + 2, 48, { alpha: blink ? 1 : 0.8 });
             ctx.save();
             ctx.fillStyle = blink ? "#ffb43c" : "#7a5620";
             ctx.beginPath();
@@ -992,7 +1059,7 @@ const STAGE_FX = {
           for (let i = 0; i < gouts; i++) {
             const gx = branch.x + (i + 0.5) * (branch.w / gouts);
             const gh = 130 + 30 * Math.sin(state.matchTime * 15 + i * 2.4);
-            drawFx(ctx, "effect:magma_gout", gx, plat.y + 4, gh, { alpha: 0.9, glow: "#ff6a3d" });
+            drawFx(ctx, "stagefx:magma_gout", gx, plat.y + 4, gh, { alpha: 0.9, glow: "#ff6a3d" });
           }
           ctx.save();
           ctx.globalCompositeOperation = "lighter";
@@ -1007,6 +1074,16 @@ const STAGE_FX = {
             ctx.fillRect(jx - 12, plat.y - h, 24, h);
           }
           ctx.restore();
+          // A gout on each jet, standing in the fissure and rising out of it.
+          // Sized off the jet it dresses rather than off a constant, so the
+          // art breathes with the same 17Hz wobble the gradient does.
+          const count2 = Math.max(3, Math.round(branch.w / 60));
+          for (let i = 0; i < count2; i++) {
+            const jx = branch.x + (i + 0.5) * (branch.w / count2);
+            const h = 70 + 26 * Math.sin(state.matchTime * 17 + i * 2);
+            hazardArt(ctx, "stagefx:magma_gout", jx, plat.y + 4, h * 2.6,
+                      { anchor: "feet", alpha: 0.8, flip: i % 2 ? -1 : 1 });
+          }
         }
         // ambient embers + ash
         ctx.save();
@@ -1104,7 +1181,7 @@ const STAGE_FX = {
           for (let i = 0; i < 2; i++) {
             const fx = zone.x + zone.w * (0.3 + i * 0.4) + Math.sin(state.matchTime * 1.6 + i * 2.4) * 12;
             const bob = Math.sin(state.matchTime * 2.2 + i * 1.9) * 3;
-            drawFx(ctx, "effect:ice_floe", fx, plat.y + 12 + bob, 34, { alpha: 0.95, rot: Math.sin(state.matchTime * 1.1 + i) * 0.06 });
+            drawFx(ctx, "stagefx:ice_floe", fx, plat.y + 12 + bob, 34, { alpha: 0.95, rot: Math.sin(state.matchTime * 1.1 + i) * 0.06 });
           }
         }
         // refrozen gleam
@@ -1209,7 +1286,7 @@ const STAGE_FX = {
               burst(home.x + lintel.w / 2, plat.y - 20, "#e8c690", 30, 1.4);
               dust(home.x + lintel.w / 2, plat.y, 20);
               // the column-collapse dust bloom (delivered art)
-              spriteFlash(home.x + lintel.w / 2, plat.y - 70, "effect:collapse_dust", { h: 220, life: 0.9, grow: 1.5, alpha: 0.85, additive: false });
+              spriteFlash(home.x + lintel.w / 2, plat.y - 70, "stagefx:collapse_dust", { h: 220, life: 0.9, grow: 1.5, alpha: 0.85, additive: false });
               playSfx("explosionSmall", 0.8, 0.6);
               state.camera.shake = Math.max(state.camera.shake, 8);
               cameraCue("lightning", 0.6); // the big beat
@@ -1351,13 +1428,13 @@ const STAGE_FX = {
           ctx.stroke();
           ctx.restore();
           // the vine itself (delivered art), leaning into the lash
-          drawFx(ctx, "effect:vine_whip", whip.x, plat.y + 12, plat.y - 70, { alpha: 0.95, rot: -0.12, glow: "#62ff9a" });
+          drawFx(ctx, "stagefx:vine_whip", whip.x, plat.y + 12, plat.y - 70, { alpha: 0.95, rot: -0.12, glow: "#62ff9a" });
         }
         // drifting glowing spore puffs (delivered art), slow ambient layer
         for (let i = 0; i < 3; i++) {
           const sx = ((i * 460 + state.matchTime * 26) % 1400) - 60;
           const sy = 140 + i * 130 + Math.sin(state.matchTime * 0.7 + i * 2.1) * 26;
-          drawFx(ctx, "effect:spore_cloud", sx, sy, 60, { anchor: "center", alpha: 0.16 + 0.06 * Math.sin(state.matchTime * 1.3 + i) });
+          drawFx(ctx, "stagefx:spore_cloud", sx, sy, 60, { anchor: "center", alpha: 0.16 + 0.06 * Math.sin(state.matchTime * 1.3 + i) });
         }
         ctx.save();
         for (const l of leaves) {
@@ -1491,7 +1568,7 @@ const STAGE_FX = {
           ctx.restore();
           // the tumbling satellite chunk (delivered art) over the streak
           for (const c of chunks) {
-            drawFx(ctx, "effect:debris_sat", c.x, c.y, 62, { anchor: "center", rot: state.matchTime * 3.4 + c.y, flip: c.vx < 0 });
+            drawFx(ctx, "stagefx:debris_sat", c.x, c.y, 62, { anchor: "center", rot: state.matchTime * 3.4 + c.y, flip: c.vx < 0 });
           }
         }
       },
