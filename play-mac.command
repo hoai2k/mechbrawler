@@ -1,5 +1,5 @@
 #!/bin/bash
-# JJK Brawler II launcher (macOS). Double-click to play.
+# Mech Brawler launcher (macOS). Double-click to play.
 # Starts a local server with whatever runtime the system has (node, python3,
 # or the ruby that ships with macOS) and opens the game in your browser.
 
@@ -43,6 +43,6 @@ done
 open "$URL"
 
 echo
-echo "JJK Brawler II is running at $URL"
+echo "Mech Brawler is running at $URL"
 echo "Keep this window open while playing. Close it (or press Ctrl+C) to stop."
 wait "$SERVER_PID"

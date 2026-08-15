@@ -46,7 +46,11 @@
 }
 
 :root {
-  --bg: #05060d;
+  /* The Mech Mayhem palette: five neon HUD hues on deep blue-black. Cyan is
+     SELECTION — the thing your cursor is on lights the cyan tube. Magenta is
+     the accent for state you cannot move: the second neon tube, the hot end
+     of a stat bar, the bounce light under a heading. */
+  --bg: #05070c;
   /* The slash: the ONE angle the whole interface leans on. Buttons, plates,
      ribbons, HUD panels and entrance motion all use it — a second angle
      anywhere would read as a mistake, so it lives here and nowhere else.
@@ -55,19 +59,20 @@
   --skew: skewX(var(--slash));
   --unskew: skewX(calc(-1 * var(--slash)));
   --font-display: "Barlow Condensed", "Arial Narrow", "Inter", sans-serif;
-  /* Victory gold: the results screen only. Nothing else may borrow it. */
-  --gold: #ffd97a;
-  --panel: rgba(10, 14, 26, 0.92);
-  --panel-soft: rgba(16, 22, 40, 0.85);
-  --line: rgba(120, 140, 200, 0.22);
-  --text: #e8ecf8;
-  --text-dim: #9aa4c0;
-  --accent: #62dcff;
-  --accent-2: #ff4c55;
-  --p1-theme: #62dcff;
-  --p2-theme: #ff4c55;
-  --p3-theme: #8cff65;
-  --p4-theme: #ffd35a;
+  /* Victory gold: the results screen and the full-energy flare only. */
+  --gold: #ffd23c;
+  --panel: rgba(8, 14, 24, 0.88);
+  --panel-soft: rgba(12, 20, 34, 0.82);
+  --line: rgba(96, 200, 255, 0.3);
+  --text: #e8f4ff;
+  --text-dim: #8fb4cc;
+  --accent: #38e8ff;
+  --accent-2: #ff4d5e;
+  --accent-3: #ff4dd8;
+  --p1-theme: #38e8ff;
+  --p2-theme: #ff4d5e;
+  --p3-theme: #62ff9a;
+  --p4-theme: #ffb43c;
   font-size: 16px;
 
   /* Scrollbars, wherever one turns up — the move list, the controls screen,
@@ -657,29 +662,94 @@ html, body {
   cursor: pointer;
   gap: 0;
   background:
-    repeating-linear-gradient(100deg, transparent 0 130px, rgba(130, 170, 255, 0.03) 130px 210px),
-    radial-gradient(70% 55% at 50% 38%, rgba(56, 96, 190, 0.4) 0%, transparent 68%),
-    linear-gradient(rgba(3, 5, 13, 0.82), rgba(3, 5, 13, 0.94)),
+    linear-gradient(rgba(3, 5, 13, 0.38), rgba(3, 5, 13, 0.66)),
     url("assets/backgrounds/menu.jpg") center / cover no-repeat;
-  background-color: #04060e;
+  background-color: #05070c;
 }
 
-.title-logo {
+/* The wordmark is a NEON SIGN, built from type — the Mech Mayhem treatment.
+   Each word is a tube: hollow letters (stroke, no fill) so the backdrop reads
+   through them, three glow layers (a tight 18px halo at 0.9, then 60px and
+   120px washes at 0.42), and a hard-cut flicker. The two words run on
+   co-prime clocks (7.3s vs 9.1s, one offset -2.4s) so they never sync — a
+   real pair of tubes fails independently. Dips go to 0.2-0.45, NEVER to 0:
+   a neon tube starving reads as a stutter, not a blackout. */
+.neon-title {
   display: block;
-  /* Sized by the composition, not by the source file: the splash is the
-     logo, so it takes as much of the frame as the PRESS START line and the
-     credit will leave it. The artwork carries transparent margin of its own,
-     so the drawn mark reads smaller than this box — hence the generous cap.
-     Any higher-resolution file dropped in at the same path sharpens this
-     automatically; nothing here is tied to the current 900px asset. */
-  width: min(74vw, 1000px);
-  max-height: 58vh;
-  object-fit: contain;
-  /* The logo is its own light source on this screen. */
-  filter:
-    drop-shadow(0 18px 40px rgba(0, 0, 0, 0.75))
-    drop-shadow(0 0 46px rgba(98, 220, 255, 0.28))
-    drop-shadow(0 0 90px rgba(255, 76, 85, 0.16));
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(56px, 11vw, 150px);
+  line-height: 0.95;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: transparent;
+}
+
+.neon-title .tube {
+  display: inline-block;
+  -webkit-text-stroke: 3px var(--tube);
+  text-shadow:
+    0 0 18px var(--tube-glow),
+    0 0 60px var(--tube-halo),
+    0 0 120px var(--tube-halo);
+  animation: tubeA 7.3s steps(1, end) infinite;
+}
+
+.neon-title .tube-0 {
+  --tube: #38e8ff;
+  --tube-glow: rgba(56, 232, 255, 0.9);
+  --tube-halo: rgba(56, 232, 255, 0.42);
+}
+
+.neon-title .tube-1 {
+  --tube: #ff4dd8;
+  --tube-glow: rgba(255, 77, 216, 0.9);
+  --tube-halo: rgba(255, 77, 216, 0.42);
+  animation: tubeB 9.1s steps(1, end) infinite;
+  animation-delay: -2.4s;
+}
+
+/* Drop-outs come in stutter pairs — a dip, a blink back, a second dip — with
+   one shallow "nearly holds" dip per cycle and long steady burns between. */
+@keyframes tubeA {
+  0%, 7.9% { opacity: 1; }
+  8%, 8.9% { opacity: 0.22; }
+  9%, 9.7% { opacity: 1; }
+  9.8%, 10.6% { opacity: 0.32; }
+  10.7%, 51.9% { opacity: 1; }
+  52%, 52.9% { opacity: 0.25; }
+  53%, 72.9% { opacity: 1; }
+  73%, 73.7% { opacity: 0.45; }
+  73.8%, 100% { opacity: 1; }
+}
+
+@keyframes tubeB {
+  0%, 21.9% { opacity: 1; }
+  22%, 22.8% { opacity: 0.28; }
+  22.9%, 35.9% { opacity: 1; }
+  36%, 37% { opacity: 0.2; }
+  37.1%, 37.8% { opacity: 1; }
+  37.9%, 38.7% { opacity: 0.35; }
+  38.8%, 88.9% { opacity: 1; }
+  89%, 89.9% { opacity: 0.3; }
+  90%, 100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-title .tube { animation: none; }
+}
+
+.neon-sub {
+  display: block;
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(13px, 1.6vw, 22px);
+  font-weight: 600;
+  letter-spacing: 0.55em;
+  text-indent: 0.55em;
+  text-transform: uppercase;
+  color: #9fd8ef;
 }
 
 /* The generic overlay entrance (`.overlay.is-entering > *`) outranks a plain
@@ -687,17 +757,8 @@ html, body {
    animation declared on the child alone silently never runs. These two rules
    outrank it and re-declare the entrance themselves, with the loop second in
    the list so it takes over the moment the arrival finishes. */
-.overlay.title-screen .title-logo {
-  animation:
-    overlayContentIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both,
-    titleBreathe 5.5s ease-in-out 260ms infinite;
-}
-
-/* Barely there: enough that the screen is alive while it waits, not enough to
-   read as an effect. */
-@keyframes titleBreathe {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-6px) scale(1.012); }
+.overlay.title-screen .neon-title {
+  animation: overlayContentIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* The arcade blink: a hard on/off on a steps() timing function, not a fade —
@@ -751,7 +812,7 @@ html, body {
    rather than as a screen change, which is the point — the player has not
    started the game yet, they have switched the sound on. Specificity high
    enough to beat the looping `.overlay.title-screen` rules above. */
-.overlay.title-screen.is-waking .title-logo {
+.overlay.title-screen.is-waking .neon-title {
   animation: titleWake 620ms cubic-bezier(0.2, 1.2, 0.3, 1) both;
 }
 
@@ -775,8 +836,8 @@ html, body {
 @media (prefers-reduced-motion: reduce) {
   .overlay.title-screen .press-start,
   .overlay.title-screen.is-waking .press-start { animation: none; opacity: 1; }
-  .overlay.title-screen .title-logo,
-  .overlay.title-screen.is-waking .title-logo { animation: none; }
+  .overlay.title-screen .neon-title,
+  .overlay.title-screen.is-waking .neon-title { animation: none; }
 }
 
 /* ---------- Loading ---------- */

@@ -47,15 +47,15 @@ plays nothing like a platform fighter.
 
 ## Phase 1 — presentation shell
 
-- [ ] P1. Title screen: flickering neon MECH BRAWLER wordmark, MM palette
+- [x] P1. Title screen: flickering neon MECH BRAWLER wordmark, MM palette
         on the splash.
-- [ ] P2. Menu palette: JJK flow and layout, MM colours (neon on deep
+- [x] P2. Menu palette: JJK flow and layout, MM colours (neon on deep
         blue-black; styles.css theme swap).
 - [ ] P3. Select screen: intake/cards/*.jpg as the hero cards; roster grid
         from the new characters.js.
-- [ ] P4. Music: replace assets/music with the MM soundtrack; menu theme +
+- [x] P4. Music: replace assets/music with the MM soundtrack; menu theme +
         neon buzz on the splash; per-arena battle tracks per D2.
-- [ ] P5. README + site chrome (page title, manifest, favicons note).
+- [x] P5. README + site chrome (page title, manifest, favicons note).
 
 ## Phase 2 — the roster
 

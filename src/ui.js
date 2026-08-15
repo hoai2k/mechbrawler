@@ -126,8 +126,8 @@ function applyStaticText() {
   set(els.titlePressStart, TEXT.title.pressStart);
   set(els.titleCredit, TEXT.title.credit);
   set(els.titleHint, TEXT.title.hint);
-  const titleLogo = els.titleOverlay?.querySelector(".title-logo");
-  if (titleLogo) titleLogo.alt = TEXT.title.logoAlt;
+  els.titleOverlay?.querySelector(".neon-title")
+    ?.setAttribute("aria-label", TEXT.title.logoAlt);
   set(els.startButton, TEXT.menu.startWaiting);
   set(els.loadStatus, TEXT.loading.title);
   set(els.randomStageButton, TEXT.stages.random);
@@ -1174,6 +1174,47 @@ function titleNeedsWake() {
  *  the window, and the pad path calls noteGamepadGesture), so this only has to
  *  ask for the title track again — a pad press unlocks after that re-ask has
  *  already been made for the frame. */
+// ---------------------------------------------------------------- neon buzz
+//
+// The title sign's sound. The CSS owns the flicker (styles.css tubeA/tubeB);
+// this watcher only OBSERVES it: every ~120ms it reads each tube's computed
+// opacity, and the frame a tube dips below 0.9 it plays a short random slice
+// of the buzz recording — so sound and light can never drift apart, because
+// the light is the clock. The recording is one long take with dozens of
+// flicker events in it; a random seek plays a different one each time.
+const NEON_BUZZ_URL = new URL("../assets/sfx/neon_buzz.mp3", import.meta.url).href;
+const buzzEl = typeof Audio !== "undefined" ? new Audio(NEON_BUZZ_URL) : null;
+if (buzzEl) buzzEl.preload = "auto";
+let buzzTubes = null;
+let buzzLit = [];
+let buzzStopTimer = 0;
+
+function watchNeonBuzz() {
+  const overlay = els.titleOverlay;
+  if (!overlay || overlay.classList.contains("hidden") || !buzzEl) return;
+  if (!buzzTubes) {
+    buzzTubes = [...overlay.querySelectorAll(".neon-title .tube")];
+    buzzLit = buzzTubes.map(() => true);
+  }
+  for (let i = 0; i < buzzTubes.length; i++) {
+    const o = parseFloat(getComputedStyle(buzzTubes[i]).opacity);
+    const dim = o < 0.9;
+    if (dim && buzzLit[i] && titleArmed && !audioSettings.muted) {
+      // Louder the deeper the dip, quieter than any real sfx.
+      buzzEl.volume = Math.min(1, 0.16 * (0.8 + (1 - o) * 0.45) * audioSettings.sfxVolume * 4);
+      const dur = buzzEl.duration;
+      if (Number.isFinite(dur) && dur > 1) {
+        buzzEl.currentTime = Math.random() * (dur - 0.6);
+      }
+      buzzEl.play().catch(() => {});
+      clearTimeout(buzzStopTimer);
+      buzzStopTimer = setTimeout(() => buzzEl.pause(), 380);
+    }
+    buzzLit[i] = !dim;
+  }
+}
+setInterval(watchNeonBuzz, 120);
+
 function wakeTitle() {
   titleArmed = true;
   syncMusic(state.phase);

@@ -133,11 +133,11 @@ export const CHARACTER_QUOTES = {
 export const TEXT = {
   // The title splash — the first screen of the game.
   title: {
-    logoAlt: "JJK Brawler II",
+    logoAlt: "Mech Brawler",
     // Deliberately the arcade formula, not a sentence: this line is furniture
     // every player already knows how to read.
     pressStart: "Press Start",
-    credit: "A cursed brawler by Hoai and Francis Nguyen",
+    credit: "A mech brawler by Hoai and Francis Nguyen",
     // Says what each input actually does, because they differ: a pad press
     // takes the game fullscreen, a mouse click deliberately does not.
     hint: "Start on a controller · Enter · or click to begin",
@@ -146,7 +146,7 @@ export const TEXT = {
   // Fighter select
   menu: {
     eyebrow: "Cursed energy platform fighter",
-    logoAlt: "JJK Brawler II",
+    logoAlt: "Mech Brawler",
     startReady: "Choose Stage",
     startWaiting: "Waiting for fighters…",
     hintPicking: "Pick a fighter to lock in. B / Backspace un-readies · LB/RB cycles the corner menus.",

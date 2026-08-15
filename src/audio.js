@@ -101,8 +101,9 @@ export const audioSettings = {
 const trackUrl = (dir, file) => new URL(encodeURI(`${dir}${file}${MUSIC_EXT}`), ASSET_BASE).href;
 const MENU_SRC = trackUrl(MUSIC_DIR, MENU_TRACK.file);
 // The title screen's own track. A battle track, played at battle volume — see
-// TITLE_TRACK in config_music.js for why it is not simply the menu track.
-const TITLE_SRC = trackUrl(MUSIC_DIR, TITLE_TRACK.file);
+// TITLE_TRACK in config_music.js: null means the title screen is SILENT —
+// its audio signature is the neon buzz, not a track.
+const TITLE_SRC = TITLE_TRACK ? trackUrl(MUSIC_DIR, TITLE_TRACK.file) : null;
 const FALLBACK_SRCS = FALLBACK_TRACKS.map((t) => trackUrl(MUSIC_DIR, t.file));
 const BOARD_TRACK_SET = new Set(BOARD_TRACKS);
 
@@ -467,9 +468,9 @@ export function syncMusic(phase) {
   // element is only paused, never re-sourced.
   const hold = MATCH_HOLD_PHASES.has(phase) && (matchLive || titleLive);
   const menu = !hold && MENU_PHASES.has(phase);
-  // The title screen is deliberately NOT a menu phase: it takes its own track
-  // and skips MENU_TRACK.volumeScale below, so the splash opens at full
-  // battle volume and pressing start drops into the quieter menu mix.
+  // The title screen is deliberately NOT a menu phase: with TITLE_TRACK null
+  // its src resolves to null and the splash stays silent under the sign buzz;
+  // were a track ever configured again it would play at full battle volume.
   const title = !hold && phase === "title";
   const src = hold ? null
     : phase === "playing" ? battleSrc

@@ -155,5 +155,5 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
 }
 
 server.listen(port, host, () => {
-  console.log(`JJK Brawler II running at http://${host}:${port}`);
+  console.log(`Mech Brawler running at http://${host}:${port}`);
 });
