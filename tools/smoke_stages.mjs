@@ -11,13 +11,11 @@ import { pressStart } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 const STAGE_KEYS = [
-  "trainingBridge", "quietHall", "floodedGate", "shibuyaNight", "curseMaw",
-  "gardenSteps", "lanternCorridor", "sunkenCrossing", "neonSplit", "boneSanctum",
-  "bridgeDuel", "academyHall", "mistPier", "crosswalkRush", "cursedTeeth",
-  "riverGate", "schoolWing", "emptyCity", "billboardRoof", "domainCore",
+  "neon", "foundry", "uptown", "harbor", "skyterrace", "scrapyard",
+  "quarry", "volcano", "frozen", "ruins", "jungle", "orbital",
 ];
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-proxy-server"] });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-proxy-server", "--use-gl=angle", "--use-angle=swiftshader", "--no-sandbox"] });
 const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push({ stage: current, err: String(e) }));
@@ -31,6 +29,9 @@ const OPTIONAL_ART = [
   "/assets/sprites/summons/",
   "/assets/sprites/effects/",
   "/assets/backgrounds/domains/",
+  // The mech roster's select cards (intake/cards) are a Phase-1 delivery that
+  // trails the roster code; the select screen falls back without them.
+  "/assets/cards/",
 ];
 const undelivered = new Set();
 page.on("response", (r) => {
@@ -43,8 +44,11 @@ let current = "boot";
 await page.goto(`${BASE}/index.html?camera=flat`, { waitUntil: "load" });
 await pressStart(page);
 // wait for asset load -> menu phase
-await page.waitForSelector('[data-character="gojo"]', { timeout: 60000 });
-await page.click('[data-character="gojo"]');
+// Pick whichever fighter sits first in the grid rather than naming one, so
+// the roster swap (JJK -> mechs) cannot strand this test.
+await page.waitForSelector("[data-character]", { timeout: 60000 });
+const pickFighter = () => page.locator("[data-character]").first().click();
+await pickFighter();
 await page.waitForTimeout(400);
 
 // Sprite art loads lazily now (src/assets.js), so picking a stage can put a
@@ -68,7 +72,7 @@ for (let i = 0; i < STAGE_KEYS.length; i++) {
   current = STAGE_KEYS[i];
   const before = errors.length;
   // re-lock the fighter (quitting to menu un-readies) then menu -> stage select
-  await page.click('[data-character="gojo"]');
+  await pickFighter();
   await page.waitForTimeout(250);
   await page.click("#startButton");
   await page.waitForSelector(".stage-card", { timeout: 5000 });
@@ -108,7 +112,7 @@ for (let i = 0; i < STAGE_KEYS.length; i++) {
 
 // toggle OFF check: no fx entity, neutral mods
 current = "toggle-off";
-await page.click('[data-character="gojo"]');
+await pickFighter();
 await page.waitForTimeout(250);
 await page.click("#settingsButton");
 await page.waitForTimeout(200);
@@ -117,7 +121,7 @@ const label = await page.textContent("#settingsBoardsButton");
 await page.click("#settingsBackButton");
 await page.click("#startButton");
 await page.waitForSelector(".stage-card");
-await page.locator(".stage-card").nth(9).click(); // Bone Sanctum
+await page.locator(".stage-card").nth(11).click(); // Orbital Platform (mods must stay neutral)
 await waitForMatch();
 const off = await page.evaluate(async () => {
   const { state } = await import("/src/state.js");

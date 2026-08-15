@@ -65,24 +65,19 @@ export const USE_SIMPLE_CARDS = false;
 
 export const CHARACTER_GROUPS = [
   {
-    key: "students",
-    label: "Students",
-    members: ["yuji", "nobara", "megumi", "yuta", "maki", "inumaki", "panda", "mechamaru", "todo", "momo"],
+    key: "power",
+    label: "Power",
+    members: ["titanus", "colossus", "rhino", "konga", "tritone"],
   },
   {
-    key: "faculty",
-    label: "Faculty",
-    members: ["gojo", "nanami", "meimei", "gakuganji"],
+    key: "speed",
+    label: "Speed",
+    members: ["viper", "saurion", "fenrir", "tempest", "wraith", "frogger", "jerry"],
   },
   {
-    key: "sorcerers",
-    label: "Other Sorcerers",
-    members: ["toji", "yuki", "hakari", "uro", "reggie"],
-  },
-  {
-    key: "curses",
-    label: "Curses and Curse Users",
-    members: ["mahito", "jogo", "hanami", "dagon", "kurourushi", "geto", "choso", "sukuna"],
+    key: "tech",
+    label: "Tech",
+    members: ["vulcan", "inferno", "glacier", "cranky", "nullbot"],
   },
 ];
 
@@ -206,7 +201,7 @@ export const TEXT = {
     specialDown: `Down + ${padName("special")}`,
     ultimate: padName("ult"),
     ultimateNote: "Costs a FULL Cursed Energy bar.",
-    domainSectionTitle: "Domain Expansion",
+    domainSectionTitle: "Ultimate",
     domainInput: padName("domain"),
     // Only ever used by a fighter with more than one domain, who picks between
     // them with the left stick. Nobody has two — domains.js owns that rule and
@@ -249,7 +244,7 @@ export const TEXT = {
       + "SHOVE the stick from centre to dash — roll it out gently and you walk — or double-tap a "
       + `direction. Attacking out of a run throws that fighter's dash attack: ${padName("light")} `
       + `for the lunge, ${padName("heavy")} for the charge, both of them committal. `
-      + `${padName("domain")} opens a Domain Expansion and ${padName("ult")} fires the ultimate. `
+      + `${padName("domain")} and ${padName("ult")} both fire the Ultimate at full Energy. `
       + "The RIGHT STICK throws tilt attacks — flick it for the tilt or aerial in that direction, or hold it "
       + "while a smash charges to angle the swing. The D-pad steers any summon you have on the stage."
       + (THROW_ENABLED

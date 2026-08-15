@@ -96,7 +96,12 @@ export async function init() {
     const rigsParam = (params.get("rigs") || "").toLowerCase();
     const touch = typeof navigator !== "undefined" && (navigator.maxTouchPoints || 0) > 0
       && /Mobi|iP(hone|ad|od)|Android/i.test(navigator.userAgent || "");
-    lazyRigs = rigsParam === "lazy" || (touch && rigsParam !== "eager");
+    // LAZY IS THE DEFAULT NOW, everywhere. The JJK rigs this path was tuned
+    // on were ~2 MB each; a mech GLB with its baked animation is 8-46 MB and
+    // seventeen of them decoded at init is a tab-killer on any machine, not
+    // just iOS. The select screen's preloadChar warms the fighters actually
+    // picked, which is the load pattern the roster was priced for.
+    lazyRigs = rigsParam !== "eager";
     await rigs.initRigs(three, GLTFLoaderRef, mannequin, CHARACTER_KEYS,
       lazyRigs ? [] : null);
 

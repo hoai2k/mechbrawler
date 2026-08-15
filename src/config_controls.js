@@ -25,7 +25,7 @@ export const KEY_BINDS = {
     light: ["KeyJ"], heavy: ["KeyK"], special: ["KeyL"], ult: ["KeyI"],
     shield: ["ShiftLeft"],
     dash: ["KeyQ"],
-    // Domain Expansion — one key, like the one shoulder button it mirrors.
+    // The Ultimate — one key, like the one shoulder button (LB) it mirrors.
     domain: ["KeyU"],
     // Summon steering — the keyboard's stand-in for the d-pad. A cluster left
     // of the attack keys, reachable without leaving the WASD hand's
@@ -142,7 +142,7 @@ const ROWS = [
   { id: "dash", action: "Dash", pad: "Shove the stick, or double-tap" },
   { id: "dashAttack", action: "Dash attack", pad: "Light or heavy, while running" },
   { id: "ult", action: "Ultimate", bind: "ult" },
-  { id: "domain", action: "Domain Expansion", bind: "domain", short: "Domain" },
+  { id: "domain", action: "Ultimate", bind: "domain", short: "Ult" },
   { id: "shield", action: "Shield / dodges", bind: "shield", short: "Shield / dodge" },
   // Only listed while the mechanic is on (the default; `?throw=false` drops
   // it): a control row the game does not read would be a lie in every

@@ -14,15 +14,17 @@ import { chromium } from "playwright";
 import { pressStart } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
-const SECONDS = 40;
+const SECONDS = 24;
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
-  args: ["--no-proxy-server"],
+  args: ["--no-proxy-server", "--use-gl=angle", "--use-angle=swiftshader", "--no-sandbox"],
 });
 const page = await browser.newPage();
 
 const errors = [];
+page.on("crash", () => console.error("RENDERER CRASHED (sad tab)"));
+browser.on("disconnected", () => console.error("BROWSER DISCONNECTED"));
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 
