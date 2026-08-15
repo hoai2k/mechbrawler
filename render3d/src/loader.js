@@ -1,7 +1,8 @@
 // The render3d rig registry: which characters have a 3D body, which clip
-// answers each animation state — and the conversion every body goes through
-// on the way in (toon materials + ink outlines), so nothing downstream ever
-// meets a raw PBR material.
+// answers each animation state — and the material pass every body goes
+// through on the way in. Since K6 the DEFAULT pass is native PBR: the mech
+// exports' own baked metal/rough materials, kept as delivered. The old
+// conversion (toon materials + ink outlines) survives behind `?render=toon`.
 //
 // The one rig registry for both 3D backends. It used to have a twin in
 // billboards/, and the two
@@ -11,20 +12,20 @@
 // What differs is the registry itself (each backend loads its own manifest
 // from its own assets/) and the intake conversion above.
 //
-// CLIP RESOLUTION — identical inheritance to billboards, edited in the
-// render3d workbench. For character C in state S, first answer wins:
+// CLIP RESOLUTION — for character C in state S, first answer wins:
 //   1. manifest characters[C].clips[S].glb    (the rig's OWN exported clip,
 //      by its export name; optional `.freeze: <s>` holds it at one time)
-//   2. the pose-library build (POSE_LIBRARY_CLIPS — OFF since K5, and always
-//      refused for a mech entry)
-//   3. manifest characters[C].clips[S].from   (hand-set override)
-//   4. C's own rig clip named S
-//   5. manifest characters[C].inheritClips    (whole-set fallback, no chains)
-//   6. the default pose set (the mannequin's clips) — NEVER for a mech: a
-//      mech state with no glb mapping resolves null and draws the
-//      placeholder loudly rather than a JJK pose silently.
+//   2. manifest characters[C].clips[S].from   (hand-set override, another rig)
+//   3. C's own rig clip named S               (how the mannequin's spec-built
+//      set answers — its clips are keyed by state name)
+//   4. manifest characters[C].inheritClips    (whole-set fallback, no chains)
 // ...then characters[C].clips[S].mirror / characters[C].mirrorClips may flip
 // the answer left-right (see finishClip below).
+//
+// A mech state nothing answers resolves null and draws the placeholder
+// loudly. The JJK-era pose libraries and the loader's default pose set that
+// used to sit in this chain were DELETED in K7 (K5 had already cut them out
+// of resolution): every pose on a mech comes from the mech's own export.
 //
 // ALL-OR-NOTHING per fighter: only `approved: true` manifest entries
 // register, exactly like billboards — art is in the repo before it is in the
@@ -32,41 +33,16 @@
 
 import { clipNameFor } from "./states.js";
 import { mirrorClip } from "./clips.js";
-import { buildMannequin, buildBoneProxy, buildDefaultClips, MANNEQUIN_HEIGHT_M } from "./mannequin.js";
+import { buildMannequin, buildBoneProxy, MANNEQUIN_HEIGHT_M } from "./mannequin.js";
 import { clone as cloneSkinned } from "../../vendor/three/utils/SkeletonUtils.js";
-import { applyToonMaterials, characterToon } from "./toon.js";
+import { applyToonMaterials, applyNativeMaterials, characterToon, TOON_STYLE } from "./toon.js";
 import { addOutlines, setOutlineFor } from "./outline.js";
 import { captureCleanPose, poseRig } from "./pose.js";
 import { reachChain } from "./ik.js";
-import { buildCharacterClips } from "./pose_clips.js";
-import { CLIP_STATES } from "./states.js";
 
 /** charKey -> { root, height, clips: Map, mixer, actions: Map, entry } */
 const RIGS = new Map();
 
-/**
- * ANIMATE FROM THE POSE LIBRARIES rather than from delivered clips.
- *
- * OFF since K5, by owner decision: every pose and animation on a mech must
- * come from the mech's own exported MM GLB clips — the libraries are the
- * JJK-era sprite poses and have no business posing this roster. The dial and
- * the build machinery are still here only because deleting the library files
- * is a separate follow-up task; nothing resolves through them while this is
- * off, and resolveClip additionally refuses the library branch for any rig
- * delivered with a glb clip table even if someone flips it back on.
- */
-export const POSE_LIBRARY_CLIPS = { on: false };
-
-/** charKey -> Map(clipName -> AnimationClip), built once per rig. */
-const BUILT = new Map();
-/** charKey -> Map(frame -> "matched" | "baseline:<intent>"), for the report. */
-const BUILT_SOURCES = new Map();
-
-/** What the libraries covered for a character, once its clips are built. */
-export function builtPoseSources(charKey) {
-  return BUILT_SOURCES.get(charKey) || null;
-}
-let DEFAULT_CLIPS = null;
 let MANIFEST = { characters: {} };
 let THREE = null;
 
@@ -82,10 +58,6 @@ export function getRig(charKey) {
 
 export function rigCount() {
   return RIGS.size;
-}
-
-export function defaultClips() {
-  return DEFAULT_CLIPS;
 }
 
 export function rigManifest() {
@@ -104,11 +76,10 @@ export function resolveClip(charKey, state) {
   // exported animations (Mech Mayhem clip names — walk, clawSnap,
   // viperSlash1 …). This is how the 26-state contract maps onto a GLB whose
   // clips were named by a different game; tools/mech_intake.mjs writes the
-  // table. It beats the pose-library branch below on purpose (K5): a manifest
-  // glb mapping is an EXPLICIT decision about this rig, while the library
-  // cycles are Mixamo-boned and empty on the mech skeletons — resolving them
-  // first left walk/run/dash showing whatever carriage the previous clip had
-  // left in the untracked bones.
+  // table. It comes first on purpose (K5): a manifest glb mapping is an
+  // EXPLICIT decision about this rig, and nothing may outrank it. (The
+  // pose-library branch that used to sit below it — Mixamo-boned, empty on
+  // the mech skeletons — was deleted in K7.)
   //
   // `clips[name].freeze: <seconds>` freezes the named clip: the state holds
   // the pose the clip has at that time (K5 — idle is the first frame of the
@@ -125,23 +96,15 @@ export function resolveClip(charKey, state) {
     return answer(src, `glb:${glbName}`);
   }
 
-  // BUILT FROM THE POSE LIBRARIES — dead by default (POSE_LIBRARY_CLIPS is
-  // off since K5) and refused outright for a mech: those built clips are the
-  // JJK-era sprite poses, and a rig delivered with its own glb table animates
-  // from its own export only.
-  if (POSE_LIBRARY_CLIPS.on && !isMechEntry(entry) && !entry?.clips?.[name]?.from) {
-    const built = BUILT.get(charKey)?.get(name);
-    if (built) return answer(built, "library");
-  }
-
   const override = entry?.clips?.[name]?.from;
   if (override) {
-    const clip = override === "default"
-      ? DEFAULT_CLIPS?.get(name)
-      : RIGS.get(override)?.clips?.get(name);
-    if (clip) return answer(clip, override === "default" ? "default" : `from:${override}`);
+    const clip = RIGS.get(override)?.clips?.get(name);
+    if (clip) return answer(clip, `from:${override}`);
   }
 
+  // The rig's own clip named for the state. This is also how a MANNEQUIN
+  // stand-in answers everything: its spec-built clip set (mannequin.js
+  // buildDefaultClips) is registered as its OWN clips, keyed by state name.
   if (own?.clips?.has(name)) return answer(own.clips.get(name), "own");
 
   const inherit = entry?.inheritClips;
@@ -150,20 +113,13 @@ export function resolveClip(charKey, state) {
     if (clip) return answer(clip, `inherit:${inherit}`);
   }
 
-  // MM CLIPS ONLY for mechs (K5): a rig delivered with a glb clip table never
-  // falls through to the default (JJK-era) pose set. A state the intake gave
-  // no mapping is a hole to fix in tools/mech_intake.mjs, and it should look
-  // like one — the fighter draws the placeholder body loudly (backend.js
-  // handles the null), not a JJK pose silently. A MANNEQUIN stand-in is
-  // exempt: it has no glb clips at all (it is the spec-built proof body the
-  // `?mannequin` workbenches pose), so it keeps the default pose set.
-  if (isMechEntry(entry) && !own?.isMannequin) {
-    warnNoMechClip(charKey, name);
-    return null;
-  }
-
-  const fallback = DEFAULT_CLIPS?.get(name);
-  return fallback ? answer(fallback, "default") : null;
+  // MM CLIPS ONLY (K5, files deleted in K7): there is no default pose set
+  // to fall through to any more. A state the intake gave no mapping is a
+  // hole to fix in tools/mech_intake.mjs, and it should look like one — the
+  // fighter draws the placeholder body loudly (backend.js handles the null),
+  // not an old pose silently.
+  if (isMechEntry(entry) && !own?.isMannequin) warnNoMechClip(charKey, name);
+  return null;
 }
 
 /** A manifest entry whose clip table names the rig's own exported GLB
@@ -181,7 +137,7 @@ function warnNoMechClip(charKey, name) {
   const key = `${charKey}:${name}`;
   if (WARNED_NO_CLIP.has(key)) return;
   WARNED_NO_CLIP.add(key);
-  console.warn(`render3d: ${charKey} has no glb mapping for "${name}" — drawing the placeholder (mechs never fall back to the JJK pose sets; fix tools/mech_intake.mjs).`);
+  console.warn(`render3d: ${charKey} has no glb mapping for "${name}" — drawing the placeholder (mechs animate from their own export only; fix tools/mech_intake.mjs).`);
 }
 
 // FREEZE FRAMES (K5). A frozen state is the source clip sampled once, at
@@ -666,37 +622,23 @@ function registerRig(charKey, { root, height, clips, isMannequin = false }, entr
                 actions: new Map(), entry, isMannequin };
   applyEntrySettings(rig, entry);
   RIGS.set(charKey, rig);
-  buildLibraryClips(charKey, root);
-}
-
-/**
- * Build this character's clips from the pose libraries, once, at registration.
- *
- * It needs the rig, not just the tables: the libraries are written in the
- * fighter's own frame against a T-pose, and turning that into the local bone
- * rotations a clip track holds means posing THIS rig and reading it back.
- * Failures are swallowed to a warning on purpose — a fighter whose sheet the
- * libraries cannot schedule should fall through to their delivered clip, not
- * take the loader down with them.
- */
-function buildLibraryClips(charKey, root) {
-  if (!THREE || !root) return;
-  try {
-    const { clips: built, sources } = buildCharacterClips(THREE, charKey, root, CLIP_STATES);
-    if (built.size) { BUILT.set(charKey, built); BUILT_SOURCES.set(charKey, sources); }
-  } catch (err) {
-    console.warn(`pose library: could not build clips for ${charKey} —`, err.message);
-  }
 }
 
 async function loadGlbRig(charKey, entry, GLTFLoader) {
   const url = new URL(`assets/${entry.model}`, BASE).href;
   const gltf = await new GLTFLoader().loadAsync(url);
-  // The anime pass: every delivered material becomes a toon material (with
-  // the manifest's per-character `toon` overrides and the .glb's own extras
-  // applied), and every mesh grows its ink shell.
-  applyToonMaterials(THREE, gltf.scene, characterToon(entry));
-  addOutlines(THREE, gltf.scene);
+  // The material pass, per style (K6). DEFAULT: the delivery's OWN baked PBR
+  // materials, untouched — the mech exports carry real metal/rough textures
+  // authored for exactly this body, and scene.js grades them the way Mech
+  // Mayhem does. `?render=toon` keeps the old anime pass: every material
+  // becomes a toon material (manifest `toon` overrides + the .glb's extras)
+  // and every mesh grows its ink shell.
+  if (TOON_STYLE) {
+    applyToonMaterials(THREE, gltf.scene, characterToon(entry));
+    addOutlines(THREE, gltf.scene);
+  } else {
+    applyNativeMaterials(gltf.scene);
+  }
   const clips = new Map(gltf.animations.map((c) => [c.name, c]));
   registerRig(charKey, {
     root: gltf.scene,
@@ -800,7 +742,6 @@ export function inGame(charKey) {
 export async function initRigs(three, GLTFLoader, mannequinFor = [], allCharKeys = [],
                                eager = null, opts = {}) {
   THREE = three;
-  DEFAULT_CLIPS = buildDefaultClips(THREE);
 
   try {
     const res = await fetch(new URL("assets/manifest.json", BASE).href, { cache: "no-cache" });
@@ -831,14 +772,19 @@ export async function initRigs(three, GLTFLoader, mannequinFor = [], allCharKeys
   for (const charKey of keys) {
     if (RIGS.has(charKey)) continue;
     const m = buildMannequin(THREE, charKey);
-    // The proof body goes through the same anime pass as a delivery: a grey
-    // toon-ramped, ink-outlined mannequin is the look-dev canvas D1 needs
-    // before any character exists.
-    applyToonMaterials(THREE, m.root);
-    addOutlines(THREE, m.root);
+    // In the toon style the proof body goes through the same anime pass as a
+    // delivery — a grey toon-ramped, ink-outlined mannequin. Under the PBR
+    // default it keeps its own flat materials: there is no baked PBR to
+    // honour, and a plain grey stand-in is exactly what a stand-in should be.
+    if (TOON_STYLE) {
+      applyToonMaterials(THREE, m.root);
+      addOutlines(THREE, m.root);
+    }
     // Flagged, so a later ensureRig() knows a stand-in is still standing in
-    // and goes and fetches the real delivery.
-    registerRig(charKey, { root: m.root, height: m.height, clips: new Map(),
+    // and goes and fetches the real delivery. The mannequin's spec-built clip
+    // set registers as its OWN clips (keyed by state name), which is how it
+    // animates now that the loader's default-pose fallback is gone (K7).
+    registerRig(charKey, { root: m.root, height: m.height, clips: m.clips,
       isMannequin: true },
       MANIFEST.characters?.[charKey] || null);
   }

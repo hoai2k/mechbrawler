@@ -31,7 +31,6 @@
 
 import { STATES, clipNameFor, clipTime, aimable } from "./states.js";
 import { applyRigFixes, applySkeletonSymmetry, modelFixesEnabled } from "./rig_fixes.js";
-import { groundOffset } from "./pose_library.js";
 import {
   applyReach, reaches, makeScratch, applyTwoHandGrip, applyCarry, applyGrip, applyMorphs, applyIdleStand, applyIdleArms, applyShoulderWidth, applyBindPose, applyKneeTurn, clearIdleStand,
   characterLateral, rotateBoneAboutWorldAxis, initLayerAxes,
@@ -368,7 +367,7 @@ export const IDLE_ARM_DEG = 9;
 // ------------------------------------------------------------ posing proper
 
 let THREE = null;
-let _q1, _q2, _q3, _v1, _v2, _v3, _v4, _v5, _e1;
+let _q1, _q2, _q3, _v1, _v2, _v3, _v4, _v5, _e1, _vGround;
 let _ik = null, _reachTarget = null, _lateral = null;
 
 export function initPose(three) {
@@ -382,6 +381,7 @@ export function initPose(three) {
   _q2 = new THREE.Quaternion();
   _q3 = new THREE.Quaternion();
   _v1 = new THREE.Vector3();
+  _vGround = new THREE.Vector3();
   _v2 = new THREE.Vector3();
   _v3 = new THREE.Vector3();
   _v4 = new THREE.Vector3();
@@ -688,6 +688,70 @@ const GROUNDED = new Set([
  *  is applied fresh every frame instead of accumulating. */
 const _armature = new WeakMap();
 
+/** The bones the body stands on — mech intake names first (ankleL/toeL...),
+ *  Mixamo second for the mannequin stand-ins. */
+const SUPPORT_BONES = [
+  "ankleL", "ankleR", "toeL", "toeR", "heelL", "heelR",
+  "LeftFoot", "RightFoot", "LeftToeBase", "RightToeBase",
+];
+
+/**
+ * How far the root has to drop for the fighter to stand on the floor: the
+ * negated height of the LOWEST support bone given, measured in the fighter's
+ * own frame (`root`'s y = 0 is the floor — never world y = 0; those agree
+ * only while the rig stands at the origin, which is false on every raised
+ * platform in `?camera=3d`). Lived in pose_library.js until K7 deleted the
+ * JJK pose data; the feet-are-the-support reasoning survives here: the lowest
+ * BONE would be the origin-parked armature node, and once past that, a fist
+ * swung below the feet would plant the fighter on its knuckles.
+ */
+/**
+ * How far the VISIBLE soles sit below (or above) the support bones, metres in
+ * the root's frame — a fact about the DELIVERY, measured once per rig.
+ *
+ * The mech exports bind their body geometry offset from their own skeleton:
+ * titanus's bind pose puts his toe bones at y=0.88 while the skinned mesh's
+ * soles rest at y=4.48 — the whole visible body rides ~3.6m above the bones
+ * that drive it. Grounding by bones alone therefore left the RENDER floating
+ * hip-high with the head cropped out of the frame, while every bone probe
+ * swore the feet were on the floor (the K6 wild-goose chase). The feet are
+ * skinned rigidly to the ankle/toe bones, so the offset is one number per
+ * rig, read off the posed SKINNED vertices (Box3.expandByObject precise runs
+ * them through their bone transforms) the first time the rig is grounded —
+ * per-frame precise passes would make the live-geometry camera path pay a
+ * full vertex walk per fighter per frame for a constant.
+ */
+function meshSoleDelta(rig, bones, root) {
+  if (rig._soleDelta !== undefined) return rig._soleDelta;
+  const box = new THREE.Box3();
+  let any = false;
+  root.traverse((o) => {
+    if (!o.isMesh || o.userData.isOutline) return;
+    for (let p = o; p; p = p.parent) {
+      if (/^(Prop_|Chain_)/.test(p.name || "")) return;
+    }
+    box.expandByObject(o, true);
+    any = true;
+  });
+  if (!any || !Number.isFinite(box.min.y)) { rig._soleDelta = 0; return 0; }
+  _vGround.set(0, box.min.y, 0);
+  if (root) root.worldToLocal(_vGround);
+  const meshMin = _vGround.y;
+  const boneMin = -groundOffset(bones, root);
+  rig._soleDelta = bones.size ? meshMin - boneMin : 0;
+  return rig._soleDelta;
+}
+
+function groundOffset(bones, root) {
+  let low = Infinity;
+  for (const bone of bones.values()) {
+    _vGround.setFromMatrixPosition(bone.matrixWorld);
+    if (root) root.worldToLocal(_vGround);
+    if (_vGround.y < low) low = _vGround.y;
+  }
+  return Number.isFinite(low) ? -low : 0;
+}
+
 /**
  * DROP THE BODY UNTIL ITS FEET ARE ON THE FLOOR.
  *
@@ -706,7 +770,14 @@ function standOnGround(rig, animKey) {
   if (!root) return;
   let node = _armature.get(root);
   if (node === undefined) {
-    const hips = root.getObjectByName("Hips") || root.getObjectByName("mixamorigHips");
+    // Mech intake skeletons name the pelvis `hips`; Mixamo-era stand-ins
+    // `Hips`. Finding neither used to mean this pass silently never ran on a
+    // mech — and the exported MM clips carry the whole carriage several
+    // metres above the rig's own floor, so every mech rendered hips-high in
+    // the frame with its top half cropped off (found under K6, when native
+    // PBR made the crop impossible to blame on the toon pass).
+    const hips = root.getObjectByName("hips") || root.getObjectByName("Hips")
+      || root.getObjectByName("mixamorigHips");
     node = hips?.parent === root ? hips : (hips || null);
     _armature.set(root, node ? Object.assign(node, { _bindY: node.position.y }) : null);
     node = _armature.get(root);
@@ -716,24 +787,30 @@ function standOnGround(rig, animKey) {
   if (!GROUNDED.has(clipNameFor(animKey))) { root.updateMatrixWorld(true); return; }
   root.updateMatrixWorld(true);
   const bones = new Map();
-  for (const name of ["LeftFoot", "RightFoot", "LeftToeBase", "RightToeBase"]) {
+  for (const name of SUPPORT_BONES) {
     const b = root.getObjectByName(name);
     if (b) bones.set(name, b);
   }
   // Measured in the ROOT's frame: `node.position.y` is local to the root, and
-  // so is the floor the fighter stands on. See groundOffset.
-  const drop = groundOffset(THREE, bones, { root });
+  // so is the floor the fighter stands on. See groundOffset. The bones alone
+  // are not the whole answer — meshSoleDelta says why.
+  const drop = groundOffset(bones, root) - meshSoleDelta(rig, bones, root);
   // A hard clamp, because this is a correction and not a lift: a pose that
-  // wants the body a metre lower than its bind is a broken pose, and hoisting
-  // a fighter UP to meet a stray foot would be worse than leaving them be.
-  node.position.y = node._bindY + Math.min(0, Math.max(-0.6, drop));
+  // wants the body far lower than its bind is a broken pose, and hoisting a
+  // fighter UP to meet a stray foot would be worse than leaving them be. The
+  // clamp scales with the body — 0.6m was a third of the JJK roster's height,
+  // and a flat 0.6 on a 7m mech would strand it mid-air (the MM exports
+  // carry their carriage roughly hip-height above the floor, so the honest
+  // drop is over half the mech's height).
+  const limit = Math.max(0.6, 0.75 * (rig.height || 0));
+  node.position.y = node._bindY + Math.min(0, Math.max(-limit, drop));
   root.updateMatrixWorld(true);
 }
 
 // ------------------------------------------------------ both feet on the floor
 //
-// The crouch is authored as a SPRINTER'S THREE-POINT SET (battle_poses.js
-// crouch_a, read off Yuji's own sheet): front knee ~90°, rear knee ~125°, hips
+// The crouch was authored (in the deleted JJK pose library) as a SPRINTER'S
+// THREE-POINT SET: front knee ~90°, rear knee ~125°, hips
 // high, trunk folded over. Read as a drawing that is exactly right. Stood up
 // as a body it is not, because the rear knee is folded so far that the rear
 // foot rides well clear of the floor — so every fighter crouched with one leg
@@ -834,7 +911,7 @@ function soleY(root, side) {
   if (!bones.size) return null;
   // groundOffset hands back the DROP to the lowest of what it is given, so
   // the sole's height is its negation.
-  return -groundOffset(THREE, bones, { root });
+  return -groundOffset(bones, root);
 }
 
 /** Put the trailing foot down, by TILTING THE WHOLE BODY.

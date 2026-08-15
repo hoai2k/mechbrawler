@@ -209,7 +209,7 @@ plays nothing like a platform fighter.
         action cache and mirror cache keep object identity; breath still
         animates on top of the frozen idle).
 
-- [ ] K6. PBR RENDER (owner decision): fighters render with their NATIVE
+- [x] K6. PBR RENDER (owner decision): fighters render with their NATIVE
         baked PBR materials (the export's own metal/rough textures) under
         per-arena lighting with an MM-style grade (ACES-ish exposure,
         bloom-adjacent glow) — parity with how Mech Mayhem draws them. The
@@ -220,8 +220,18 @@ plays nothing like a platform fighter.
         IMPLEMENT AFTER K5 (same render3d files: loader applyToonMaterials
         becomes conditional, scene tone mapping per style, outline pass
         gated, brightness X1 folds into this).
+        DONE: PBR default (toon.js RENDER_STYLE; `?render=toon` keeps the
+        full anime pass), ACESFilmic + exposure 1.05, MM's rig (key 2.4
+        warm / hemi 0.8 / rim light 0.85, HOT 1.3 in the stage tint via the
+        stageLightTint seam), PMREM'd synthetic room env 0.85 for the
+        metals (light_rig.js PBR_LIGHT_RIG); style rides the cache's light
+        key. Also fixed under this task: mech grounding — the exports bind
+        the mesh ~3.6m above their own skeleton, so standOnGround now knows
+        the mech bone names AND folds in a once-per-rig mesh-vs-bone sole
+        delta (pose.js meshSoleDelta); before this every mech rendered
+        hip-high with its top cropped out of the frame.
 
-- [ ] K7. DELETE THE OLD 3D POSE CODE (owner): no JJK pose data may drive
+- [x] K7. DELETE THE OLD 3D POSE CODE (owner): no JJK pose data may drive
         anything — all posing/animation from MM GLB clips only. K5 (amended
         mid-flight) already stops RESOLUTION through the library (jump/
         crouch become MM-clip freeze frames; POSE_LIBRARY_CLIPS off;
@@ -232,6 +242,14 @@ plays nothing like a platform fighter.
         DEFAULT_CLIPS/mannequin-pose machinery in loader.js (keep the
         mannequin BODY if the placeholder needs it), plus their imports.
         AFTER K5 + K6 land (same files).
+        DONE: all eight files deleted, plus tools/check_battle_poses.mjs
+        (it existed to check the deleted tables; npm run check updated).
+        groundOffset moved into pose.js. The mannequin BODY survives with
+        its own spec-built clip set registered as its OWN clips (resolves
+        via the "own" step), so `?mannequin=all` and the mannequin smoke
+        passes still work; loader's DEFAULT_CLIPS fallback and the
+        pose-library build are gone — a mech state with no glb mapping
+        resolves null and draws the placeholder loudly.
 
 - [x] K8. SAMPLE MM'S PROCEDURAL JUMP/CROUCH INTO CLIPS (owner confirmed
         they exist — they are ANIMATOR LAYERS, not named clips: the
@@ -246,6 +264,41 @@ plays nothing like a platform fighter.
         jump<-jumpRise, fall<-jumpFall, crouch<-crouch, and the jet-burn
         air-jump <-hover. Supersedes K5's freeze-frame stopgap for jump/
         crouch (idle/charge freezes stay). AFTER K5 lands.
+
+- [x] K9. WIRE THE DELIVERED ART (owner uploaded the full image-request
+        round to assets/intake/: 58 effect sprites + stock_chip, vs_flash,
+        wordmark_mech_brawler). Downscale/copy into assets/sprites/effects
+        (game path), wire: power-effect sprites onto the kit configs'
+        projectile/zone sprite refs (rocket_fist, arc_bolt, icicle_shard,
+        raptor_egg, tsunami_wall…), status FX (burn_flame, frost_rime,
+        shock_arc, venom_drip, glitch_shard, energy_flare, shield_dome/
+        burst, jet_flame, ko_burst), hazard sprites into stage_fx per
+        docs/arenas.md (ladle_pour, monorail_train, crane_hook+container,
+        magnet_crane+car_husk, blast_charge, ice_floe, vine_whip,
+        wind_streak, debris_sat, collapse_dust…), UI (stock chip, VS
+        flash; EVALUATE the painted wordmark vs the CSS neon title
+        side-by-side and keep whichever reads better, owner said the image
+        is optional).
+        DONE: all 61 intake pieces downscaled to game scale (effects ≤512
+        long side into assets/sprites/effects, UI into assets/ui) and
+        registered in assets.js EFFECT_KEYS; 33 power sprites wired onto the
+        kits via the `sprite`/`spriteH` convention (ranged/specials/ults;
+        shared_sprites now folds scales over the K1 `ranged` slot too, plus
+        new waveSprite/eggSprite pairs); statuses+shared via a new
+        particles.spriteFlash image particle (ko_burst on ring-out,
+        shield_burst on break, burn_flame on burn ticks, frost_rime on
+        drench, jet_flame on the air jump) and the shield bubble in
+        render.js is now the hex shield_dome art; all 12 arenas draw their
+        delivered hazard sprites over/instead of the procedural placeholders
+        (stage_fx.js drawFx, procedural kept as streaming fallback); UI:
+        stock_chip is the stock counter, vs_flash tears behind the VS
+        splash, energy_flare pulses off a full ENERGY meter, and the
+        PAINTED WORDMARK WON the side-by-side (kept on a .tube element so
+        the flicker keyframes + neon-buzz reader still drive it).
+        shock_arc/venom_drip registered, awaiting their TODO(engine)
+        statuses; frill_flare rides a new counter-stance flash in
+        specials.js. Validated: check_imports, smoke_stages 12/12,
+        smoke_combat, match screenshots reviewed by eye.
 
 ## Phase 5 — polish and cleanup
 

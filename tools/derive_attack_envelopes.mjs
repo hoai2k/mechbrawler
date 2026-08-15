@@ -39,9 +39,10 @@ const CHECK = process.argv.includes("--check");
 // Everything the measurement is a function of. A change to any of these can
 // move a measured reach, so any of them changing marks the config stale.
 const POSE_SOURCES = [
-  "render3d/src/states.js", "render3d/src/battle_poses.js",
-  "render3d/src/baseline_poses.js", "render3d/src/pose_clips.js",
-  "render3d/src/sprite_poses.js", "render3d/src/pose_library.js",
+  // The JJK pose-library files that used to sit here were deleted in K7 —
+  // every pose comes from the mech exports (hashed as `models` below) and
+  // the solver/correction layers listed here.
+  "render3d/src/states.js", "render3d/src/pose.js",
   "render3d/src/rig_fixes.js", "render3d/src/props.js",
 ];
 

@@ -26,16 +26,11 @@
 
 export const STATES = {
   idle:           { loop: true,  duration: 0.909, tier: "library" },
-  // The sprint. Like the walk below, NOT built from the sheet: it plays the
-  // hand-authored four-phase cycle in run_cycle.js. The four sprite frames are
-  // a reach and a pass, mirrored — the strike and the float between them are
-  // the phases a four-frame sheet cannot afford and a rig cannot do without.
+  // The sprint. Every mech plays its export's own run clip (the JJK-era
+  // hand-authored cycles were deleted in K7; the mannequin carries its own).
   run:            { loop: true,  duration: 0.308, tier: "library" },
-  // The walk (constants.js RUN_TILT). NOT aliased and NOT built from the
-  // sheet: it plays a hand-authored four-phase cycle (walk_cycle.js), because
-  // round 21 asks the artists for two contacts and a rig interpolated between
-  // two contacts floats instead of walking — the passing position it needs is
-  // the one a two-frame sheet cannot afford and 3D gets for nothing.
+  // The walk (constants.js RUN_TILT). Same story as the run: the export's
+  // own walk clip.
   walk:           { loop: true,  duration: 1.0,   tier: "library" },
   // Standing on a lip (fighter.js updateTeeter). Aliased to idle: the read is
   // a LEAN, which motion.js supplies procedurally in every backend, so the
@@ -51,10 +46,9 @@ export const STATES = {
   // One-shot attacks carry a RECOVERY TAIL past the last sprite key: the
   // durations here approximate the move's own delay+dur+recover (moves.js),
   // where they used to stop at the last drawing — which froze the fighter at
-  // full extension for the back ~40% of every attack. The tail is a settle
-  // key back toward the wind-up (pose_clips.js buildStateClip), so the swing
-  // retracts instead of holding. The beat is unchanged; a clip that outlives
-  // its action is simply cut by the next state, which the cross-fade smooths.
+  // full extension for the back ~40% of every attack. The delivered clips
+  // carry their own recoveries; a clip that outlives its action is simply
+  // cut by the next state, which the cross-fade smooths.
   crouchAttack:   { loop: false, duration: 0.30,  beat: 0.09,  aim: true,  tier: "archetype" },
   shield:         { loop: true,  duration: 0.6,   tier: "library" },
   ledge:          { loop: true,  duration: 0.8,   tier: "library" },

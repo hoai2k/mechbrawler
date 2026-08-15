@@ -1,5 +1,8 @@
 // The offscreen scene: (character, state, time, live layers) -> a texture of
-// the anime-shaded figure, cached.
+// the lit figure, cached. Two styles share the pipeline (toon.js RENDER_STYLE):
+// the PBR default renders the mech's own baked materials under an ACES grade
+// and an MM-style rig; `?render=toon` keeps the anime ramp, ink outlines and
+// NoToneMapping exactly as before.
 //
 // The billboard renderer's shape, kept deliberately — one shared WebGL canvas,
 // one render only when the cache misses, foot line at a known row so the blit
@@ -29,8 +32,8 @@ import { swayChains, simulateChains, simulates } from "./props.js";
 import { state } from "../../src/state.js";
 import { getStage } from "../../src/stages.js";
 import { DIALS, sampleTime, poseRig } from "./pose.js";
-import { setRimColor, TOON } from "./toon.js";
-import { LIGHT_RIG } from "./light_rig.js";
+import { setRimColor, TOON, TOON_STYLE, RENDER_STYLE } from "./toon.js";
+import { LIGHT_RIG, PBR_LIGHT_RIG } from "./light_rig.js";
 import { setWorldWidth, OUTLINE } from "./outline.js";
 
 export const TEX_SIZE = 384;
@@ -50,6 +53,7 @@ let scene = null;
 let camera = null;
 let keyLight = null;
 let hemiLight = null;
+let rimLight = null; // PBR style only: a real back light, re-coloured per stage
 let rimStage = null; // last stage key the light rig was derived from
 let neutralRim = null; // toon.js's own rim, captured before any stage override
 let contextLost = false;
@@ -87,17 +91,31 @@ export function initScene(three) {
   // the downsample averages anyway.
   renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false });
   renderer.setClearColor(0x000000, 0);
-  // Colour management stated rather than inherited: the output space and the
-  // absence of tone mapping are both load-bearing for the toon ramp (a filmic
-  // curve would re-grade the two bands), so they are set here even where they
-  // match the three.js defaults of the vendored build.
+  // Colour management stated rather than inherited, per style. The TOON path
+  // keeps NoToneMapping because it is load-bearing for the ramp — a filmic
+  // curve would re-grade the two hand-placed bands. The PBR DEFAULT (K6) is
+  // the opposite call for the same reason: the mechs' baked metal/rough
+  // materials were authored under Mech Mayhem's ACES grade, so they get ACES
+  // at MM's exposure, and the ramp argument dies with the toon default.
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.NoToneMapping;
+  renderer.toneMapping = TOON_STYLE ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+  if (!TOON_STYLE) renderer.toneMappingExposure = PBR_LIGHT_RIG.exposure;
   scene = new THREE.Scene();
-  hemiLight = new THREE.HemisphereLight(LIGHT_RIG.hemi.sky, LIGHT_RIG.hemi.ground, LIGHT_RIG.hemi.intensity);
-  keyLight = new THREE.DirectionalLight(LIGHT_RIG.key.color, LIGHT_RIG.key.intensity);
-  keyLight.position.set(...LIGHT_RIG.key.position);
+  const RIG = TOON_STYLE ? LIGHT_RIG : PBR_LIGHT_RIG;
+  hemiLight = new THREE.HemisphereLight(RIG.hemi.sky, RIG.hemi.ground, RIG.hemi.intensity);
+  keyLight = new THREE.DirectionalLight(RIG.key.color, RIG.key.intensity);
+  keyLight.position.set(...RIG.key.position);
   scene.add(hemiLight, keyLight);
+  if (!TOON_STYLE) {
+    // The rim is a real light here, not a shader term (light_rig.js says why),
+    // and the metals need something to mirror: a PMREM'd synthetic room, the
+    // same job MM's RoomEnvironment does at the same weight.
+    rimLight = new THREE.DirectionalLight(RIG.rim.color, RIG.rim.intensity);
+    rimLight.position.set(...RIG.rim.position);
+    scene.add(rimLight);
+    scene.environment = buildEnvironment();
+    scene.environmentIntensity = RIG.envIntensity;
+  }
   camera = new THREE.PerspectiveCamera(FOV_DEG, 1, 0.05, 80);
   _proj = new THREE.Vector3();
 
@@ -147,6 +165,41 @@ export function setKeyLightAngle(angleRad, elevRad = 0.8) {
   );
 }
 
+// ----------------------------------------------- PBR environment (K6)
+//
+// MeshStandardMaterial metal is BLACK under direct lights alone — metalness
+// means "reflect the environment", and an offscreen scene with no environment
+// gives it nothing to reflect. MM hands its engine RoomEnvironment; that file
+// is not vendored here, so this builds the same thing by hand: a dim shell
+// with a hot overhead softbox, a warm card on the key side and a cool card on
+// the rim side, PMREM'd once at init. The panels use unclamped colours (>1)
+// so they read as light sources, not walls.
+function buildEnvironment() {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = new THREE.Scene();
+  const shell = new THREE.Mesh(
+    new THREE.BoxGeometry(30, 30, 30),
+    new THREE.MeshBasicMaterial({ color: 0x20242c, side: THREE.BackSide }));
+  shell.position.y = 10;
+  env.add(shell);
+  const panel = (r, g, b, x, y, z, sx, sy) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial());
+    m.material.color.setRGB(r, g, b);
+    m.position.set(x, y, z);
+    m.scale.set(sx, sy, 1);
+    m.lookAt(0, 1, 0); // aim every card at head height
+    env.add(m);
+  };
+  panel(9, 9, 9, 0, 13, 0.01, 8, 8);       // overhead softbox
+  panel(4.2, 3.5, 2.6, 10, 5, 8, 7, 5);    // warm, key side
+  panel(1.2, 1.9, 3.4, -10, 5, -8, 7, 5);  // cool, rim side
+  panel(0.7, 0.75, 0.9, 0.01, -14, 0, 10, 10); // faint floor bounce
+  const tex = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+  shell.geometry.dispose();
+  return tex;
+}
+
 // ------------------------------------------------------- stage light rig
 
 /** Parse the "rgba(r, g, b, a)" strings stages.js uses. */
@@ -157,9 +210,11 @@ function parseTint(tint) {
 
 /** The part of the cache key that owns lighting: when the stage (or a
  *  domain) re-keys the light, tokens change and stale renders age out of
- *  the LRU instead of being served. */
+ *  the LRU instead of being served. The render style rides here too — toon
+ *  and PBR are different materials, lights and grade, so a style switch must
+ *  never serve the other style's pixels. */
 export function lightKey() {
-  return `${state.stageKey || "-"}${state.domain ? "+dom" : ""}`;
+  return `${state.stageKey || "-"}${state.domain ? "+dom" : ""}@${RENDER_STYLE}`;
 }
 
 /** The stage's light, as numbers — key colour and rim colour derived from the
@@ -187,6 +242,21 @@ function syncStageLight() {
   if (key === rimStage) return;
   rimStage = key;
   const t = stageLightTint();
+  if (!TOON_STYLE) {
+    // PBR (K6): the key leans toward the stage tint and the rim light goes
+    // HOT in it — MM's neon-arena treatment (dim-ish warm sun + a coloured
+    // rim at 1.25–1.4). An untinted stage gets MM's neutral rig back.
+    if (t) {
+      keyLight.color.setRGB(...t.key);
+      rimLight.color.setRGB(...t.rim);
+      rimLight.intensity = PBR_LIGHT_RIG.rim.tintedIntensity;
+    } else {
+      keyLight.color.setHex(PBR_LIGHT_RIG.key.color);
+      rimLight.color.setHex(PBR_LIGHT_RIG.rim.color);
+      rimLight.intensity = PBR_LIGHT_RIG.rim.intensity;
+    }
+    return;
+  }
   // A stage with no tint gets the NEUTRAL rig — white key, toon.js's own rim
   // — instead of whatever the previous stage left in the lights. This resets
   // once per stage change (rimStage is already recorded above), so it does
@@ -434,7 +504,7 @@ export function clearCache() {
 }
 
 /**
- * The posed, toon-shaded character as a canvas, plus the metres->rows
+ * The posed, lit character as a canvas, plus the metres->rows
  * mapping the blit needs. Returns null when the character has no rig or no
  * resolvable clip — the caller falls back to sprites.
  */

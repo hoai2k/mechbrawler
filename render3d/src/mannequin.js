@@ -126,11 +126,10 @@ const POSES = {
   // them has no weight in it at all. Vertical travel stays out of the clip
   // (motion.js owns the bob, and doubling it is the delivery rule everyone
   // breaks once); the read comes from the legs and the counter-swinging arms.
-  // A WALK, so the stand-in does not answer a walk with an idle wobble. The
-  // delivered rigs play the authored cycle in walk_cycle.js; this is the same
-  // four phases on the mannequin's own skeleton, which bends elbows about z
-  // rather than x and so cannot share that table. Half the cycle, mirrored
-  // below like the run's.
+  // A WALK, so the stand-in does not answer a walk with an idle wobble.
+  // Four hand-authored phases on the mannequin's own skeleton (the delivered
+  // mechs play their exports' walk clips). Half the cycle, mirrored below
+  // like the run's.
   //
   // Against the run directly above: the torso is upright (2° against 15), the
   // stride is half as long, the knees stay far straighter, and one foot is

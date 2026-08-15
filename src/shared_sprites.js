@@ -63,6 +63,8 @@ const SPRITE_FIELDS = [
   // name would leave that drawing unscalable.
   ["sprite", ["spriteH", "h"]],
   ["orbSprite", ["orbSpriteH"], { r: "orbR" }],
+  ["waveSprite", ["waveSpriteH"]],  // rampage ground-wave (Konga APEX POUND)
+  ["eggSprite", ["eggSpriteH"]],    // summon warp-in prop (Saurion RAPTOR PACK)
   ["key", ["h"]],          // a random-drop entry: `{ key: "effect:…", w, h }`
   ["aura", []],
   ["domainSprite", []],
@@ -266,6 +268,8 @@ export function applySharedSpriteScales() {
     visit(char?.ranged);
     visit(char?.specials);
     visit(char?.ultimate);
+    // The RB gun slot (K1) declares sprites the same way the specials do.
+    visit(char?.ranged);
   }
 }
 
@@ -298,29 +302,36 @@ export const AURA_PREVIEW_H = Math.round(AURA_H * AURA_PULSE.base);
  *  the workbench's Size is for, and why this table is the thing it sizes
  *  against.
  *
- *  `drawn: false` marks a plate that has LANDED but whose hazard still paints
- *  itself procedurally — the art is loaded and placeable here, and one edit to
- *  that hazard's `draw` puts it on the board. Saying so is the difference
- *  between "not delivered" and "delivered, not yet hung", and only the second
- *  is true of any of these. */
+ *  Every plate here is HUNG: each one's hazard draws it (stage_fx.js), over
+ *  the procedural shape rather than instead of it, so a board keeps the motion
+ *  that was already tuned to its timings and gains a face. `anchor` says which
+ *  part of the drawing lands on the point — "centre" for something crossing
+ *  the air, "top" for something hanging, "feet" for something standing. */
 const STAGE_FX = {
   "stagefx:monorail_train": { h: 150, anchor: "centre", board: "neon", what: "the maglev crossing the track" },
   "stagefx:ladle_pour": { h: 210, anchor: "top", board: "foundry", what: "the crucible tipping over the floor" },
   "stagefx:magma_gout": { h: 260, anchor: "feet", board: "volcano", what: "the lava burst out of the vent" },
-  "stagefx:ice_floe": { h: 90, anchor: "feet", board: "frozen", drawn: false, what: "a drifting slab of the floor" },
-  "stagefx:crane_hook": { h: 220, anchor: "top", board: "harbor", drawn: false, what: "the crane hook on its swing" },
-  "stagefx:cargo_container": { h: 110, anchor: "feet", board: "harbor", drawn: false, what: "a dropped container" },
-  "stagefx:debris_sat": { h: 96, anchor: "centre", board: "orbital", drawn: false, what: "tumbling wreckage" },
-  "stagefx:blast_charge": { h: 70, anchor: "feet", board: "quarry", drawn: false, what: "the planted mining charge" },
-  "stagefx:vine_whip": { h: 200, anchor: "top", board: "jungle", drawn: false, what: "the cable-vine that lashes across" },
-  "stagefx:spore_cloud": { h: 130, anchor: "centre", board: "jungle", drawn: false, what: "a drifting puff of spores" },
-  "stagefx:magnet_crane": { h: 120, anchor: "top", board: "scrapyard", drawn: false, what: "the scrap magnet on its cable" },
-  "stagefx:car_husk": { h: 90, anchor: "feet", board: "scrapyard", drawn: false, what: "a dropped car body" },
-  "stagefx:wind_streak": { h: 80, anchor: "centre", board: "skyterrace", drawn: false, what: "the gust crossing the terrace" },
-  "stagefx:billboard_ad": { h: 160, anchor: "top", board: "uptown", drawn: false, what: "the glitching ad panel" },
-  "stagefx:drone_taxi": { h: 70, anchor: "centre", board: "uptown", drawn: false, what: "an air-taxi crossing behind" },
-  "stagefx:collapse_dust": { h: 240, anchor: "feet", board: "ruins", drawn: false, what: "the bloom off a collapsing column" },
+  "stagefx:ice_floe": { h: 90, anchor: "feet", board: "frozen", what: "a drifting slab of the floor" },
+  "stagefx:crane_hook": { h: 220, anchor: "top", board: "harbor", what: "the crane hook on its swing" },
+  "stagefx:cargo_container": { h: 110, anchor: "feet", board: "harbor", what: "a dropped container" },
+  "stagefx:debris_sat": { h: 96, anchor: "centre", board: "orbital", what: "tumbling wreckage" },
+  "stagefx:blast_charge": { h: 70, anchor: "feet", board: "quarry", what: "the planted mining charge" },
+  "stagefx:vine_whip": { h: 200, anchor: "top", board: "jungle", what: "the cable-vine that lashes across" },
+  "stagefx:spore_cloud": { h: 130, anchor: "centre", board: "jungle", what: "a drifting puff of spores" },
+  "stagefx:magnet_crane": { h: 120, anchor: "top", board: "scrapyard", what: "the scrap magnet on its cable" },
+  "stagefx:car_husk": { h: 90, anchor: "feet", board: "scrapyard", what: "a dropped car body" },
+  "stagefx:wind_streak": { h: 80, anchor: "centre", board: "skyterrace", what: "the gust crossing the terrace" },
+  "stagefx:billboard_ad": { h: 160, anchor: "top", board: "uptown", what: "the glitching ad panel" },
+  "stagefx:drone_taxi": { h: 70, anchor: "centre", board: "uptown", what: "an air-taxi crossing behind" },
+  "stagefx:collapse_dust": { h: 240, anchor: "feet", board: "ruins", what: "the bloom off a collapsing column" },
 };
+
+/** One plate's entry: how tall it is drawn against the board and which part of
+ *  it lands on the point. stage_fx.js asks per draw, so the table is the one
+ *  place a size or an anchor is decided and the workbench edits it once. */
+export function stageFxSpec(key) {
+  return STAGE_FX[key] || null;
+}
 
 /** The usual answer: this drawing's spawn site reads sharedAdjust, so a dx/dy
  *  and a tilt set against it are honoured. Spread into an entry rather than

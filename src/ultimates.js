@@ -166,6 +166,28 @@ const DIRECTORS = {
       offsetX: dir * 150,
       backOff: 0,
     });
+    // The warp-in prop (Saurion's egg): the delivered art for the summon's
+    // arrival, fading out as the creature takes over the spot.
+    if (p.eggSprite) {
+      const ex = f.x + dir * 150;
+      const groundY = state.platforms[0]?.y ?? 568;
+      state.entities.push({
+        owner: f, t: 0, dead: false,
+        update(dt) { this.t += dt; if (this.t > 0.7) this.dead = true; },
+        draw(ctx) {
+          const img = getImage(p.eggSprite);
+          if (!img) return;
+          const h = p.eggSpriteH || 150;
+          const w = img.width * h / img.height;
+          ctx.save();
+          ctx.globalAlpha = Math.max(0, 1 - this.t / 0.7) * 0.95;
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 18;
+          ctx.drawImage(img, ex - w / 2, groundY - h, w, h);
+          ctx.restore();
+        },
+      });
+    }
     state.camera.shake = Math.max(state.camera.shake, 10);
   },
 
@@ -701,6 +723,21 @@ const DIRECTORS = {
         if (Math.random() < dt * 14) dust(f.x - this.dir * 40, f.y, 5);
       },
       draw(ctx) {
+        // The delivered ground-wave art (Konga's APEX POUND shockwave front)
+        // rides just behind the charge; the speed lines stay underneath.
+        const wave = p.waveSprite ? getImage(p.waveSprite) : null;
+        if (wave) {
+          const h = p.waveSpriteH || 150;
+          const w = wave.width * h / wave.height;
+          ctx.save();
+          ctx.translate(f.x - this.dir * 60, f.y + 6);
+          ctx.scale(this.dir > 0 ? -1 : 1, 1);
+          ctx.globalAlpha = 0.8;
+          ctx.shadowColor = p.color;
+          ctx.shadowBlur = 16;
+          ctx.drawImage(wave, -w / 2, -h, w, h);
+          ctx.restore();
+        }
         ctx.save();
         ctx.globalAlpha = 0.55;
         ctx.strokeStyle = p.color;
