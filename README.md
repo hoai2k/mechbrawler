@@ -1,10 +1,9 @@
-# JJK Brawler II
+# Mech Brawler
 
-A cursed-energy platform fighter. Plain HTML/CSS/JS — no build step, no dependencies.
-
-## Play online
-
-https://hoai2k.github.io/jjkbrawler/
+A neon mech platform fighter — JJK Brawler II's engine wearing Mech Mayhem's
+everything else. Seventeen war machines, twelve hazardous arenas, flickering
+neon, and a soundtrack with opinions. Plain HTML/CSS/JS — no build step, no
+dependencies.
 
 ## Play locally
 
@@ -29,22 +28,19 @@ Or double-click `play-mac.command` (macOS) / `play-windows.bat` (Windows).
 | Ultimate | `I` | `'` or `Numpad 0` |
 | Shield | `Left Shift` | `Right Shift` or `Numpad Enter` |
 
-Gamepads are supported too.
+Gamepads are supported too (Ultimate on LB).
 
 Press `Esc` to pause. The in-game `i` button lists the full move set.
 
+## Status
+
+Mid-conversion from JJK Brawler II. The live plan and progress tracker is
+[docs/mech-conversion-plan.md](docs/mech-conversion-plan.md).
+
 ## Docs
 
+- [The roster](docs/characters.md) — every mech's kit and why it is that way
+- [The arenas](docs/arenas.md) — every stage and its hazard
 - [Game mechanics](docs/game-mechanics.md)
-- [Move list](docs/move-list.md) — every fighter's specials, ultimate and domain
-  in one table (generated from the kits)
-- [Characters](docs/characters.md) — why each kit is the way it is
-- [Asset pipeline](docs/asset-pipeline.md)
-- [Automating the placement pass](docs/sprite-auto-adjust.md) — what the hand
-  tuning data says is mechanical, and what is judgement
-- [Full sprite cleanup](docs/sprite-cleanup.md) — the runbook for answering every
-  flag set in the sprite workbench
-- [Asset requests](docs/asset-requests.md) — open art rounds
-  ([history](docs/asset-requests-history.md))
-- [Audio requests](docs/audio-requests.md) — nothing outstanding; the sound round
-  and its prompts are in [history](docs/audio-requests-history.md)
+- [Image requests](docs/image-requests.md) — open art round
+- [mechs/PROVENANCE.md](mechs/PROVENANCE.md) — where the models come from

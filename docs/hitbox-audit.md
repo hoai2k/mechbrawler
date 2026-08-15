@@ -17,7 +17,7 @@ Ultimate) solves the same three problems.
 **How the numbers were taken.** Hitbox extents come from `moves.js`
 (`REACH_SCALE = 0.62`, plus each move's `ox`/`w`). Art extents come from the
 alpha bounding box of every character's attack frames in
-`assets/sprites/manifest.json`, put through the same scale solve `heights.js`
+`sprites/assets/manifest.json`, put through the same scale solve `heights.js`
 runs (`heightSpans` / `headHeights` → `scale`), so they are in the same world
 pixels the hitboxes are. Hurtboxes come from `hurtbox()` in `combat.js`.
 

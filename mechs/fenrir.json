@@ -1,0 +1,170 @@
+{
+  "mech": "fenrir",
+  "note": "Standalone export from ROBOTWORLD (tools/export-mech.mjs). Native units are game units and +z is forward; anchors are empty nodes named anchor_<name>; every animation is a real glTF clip. Nothing here needs the game to load it.",
+  "transform": {
+    "yawOffsetFolded": 270,
+    "scaleFolded": 6.99389
+  },
+  "bones": 27,
+  "vertices": 85870,
+  "anchors": [
+    {
+      "name": "core",
+      "node": "anchor_core",
+      "bone": "torso"
+    },
+    {
+      "name": "overhead",
+      "node": "anchor_overhead",
+      "bone": "head"
+    },
+    {
+      "name": "boostL",
+      "node": "anchor_boostL",
+      "bone": "ankleL"
+    },
+    {
+      "name": "boostR",
+      "node": "anchor_boostR",
+      "bone": "ankleR"
+    },
+    {
+      "name": "muzzleR",
+      "node": "anchor_muzzleR",
+      "bone": "handR"
+    },
+    {
+      "name": "muzzleL",
+      "node": "anchor_muzzleL",
+      "bone": "handL"
+    }
+  ],
+  "clips": [
+    {
+      "name": "ball",
+      "dur": 0.167,
+      "tracks": 22
+    },
+    {
+      "name": "block",
+      "dur": 0.233,
+      "tracks": 22
+    },
+    {
+      "name": "castRaise",
+      "dur": 0.967,
+      "tracks": 22
+    },
+    {
+      "name": "dead",
+      "dur": 1.3,
+      "tracks": 20
+    },
+    {
+      "name": "fenrirSpike",
+      "dur": 0.9,
+      "tracks": 22
+    },
+    {
+      "name": "flurry",
+      "dur": 0.467,
+      "tracks": 22
+    },
+    {
+      "name": "getup",
+      "dur": 0.767,
+      "tracks": 20
+    },
+    {
+      "name": "groundPound",
+      "dur": 0.9,
+      "tracks": 20
+    },
+    {
+      "name": "hangGrab",
+      "dur": 0.267,
+      "tracks": 20
+    },
+    {
+      "name": "heavy",
+      "dur": 1,
+      "tracks": 20
+    },
+    {
+      "name": "hitFlinch",
+      "dur": 0.333,
+      "tracks": 20
+    },
+    {
+      "name": "intro",
+      "dur": 2.3,
+      "tracks": 20
+    },
+    {
+      "name": "knockdown",
+      "dur": 0.4,
+      "tracks": 18
+    },
+    {
+      "name": "land",
+      "dur": 0.633,
+      "tracks": 20
+    },
+    {
+      "name": "landReach",
+      "dur": 0.233,
+      "tracks": 20
+    },
+    {
+      "name": "launched",
+      "dur": 0.7,
+      "tracks": 20
+    },
+    {
+      "name": "light1",
+      "dur": 0.533,
+      "tracks": 18
+    },
+    {
+      "name": "light2",
+      "dur": 0.567,
+      "tracks": 14
+    },
+    {
+      "name": "light3",
+      "dur": 0.633,
+      "tracks": 20
+    },
+    {
+      "name": "lunge",
+      "dur": 0.6,
+      "tracks": 20
+    },
+    {
+      "name": "shoot",
+      "dur": 0.5,
+      "tracks": 19
+    },
+    {
+      "name": "taunt",
+      "dur": 2,
+      "tracks": 13
+    },
+    {
+      "name": "victory",
+      "dur": 2.6,
+      "tracks": 14
+    },
+    {
+      "name": "walk",
+      "dur": 0.767,
+      "tracks": 22
+    },
+    {
+      "name": "run",
+      "dur": 0.467,
+      "tracks": 20
+    }
+  ],
+  "failed": []
+}

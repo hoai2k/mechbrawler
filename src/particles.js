@@ -12,8 +12,19 @@ import { rand, clamp } from "./utils.js";
  *    grow      per-frame size factor; >1 grows (smoke), default 0.985 shrinks
  *    wobbleAmp / wobbleFreq  sinusoidal lateral drift (feathers, petals)
  *    forkPts   the fork's own polyline, [[dx,dy],...], built at spawn */
+// One ceiling for every emitter in this file. It used to be written out at
+// three of the six call sites, which meant the other three — the spark lines,
+// rings, popups and banners a dense multi-hit sequence fires by the dozen —
+// could push the arrays past a limit the code looked like it was enforcing.
+const MAX_PARTICLES = 700;
+// Text is far cheaper to draw than a particle, and dropping a damage number is
+// dropping information rather than a sparkle — so these get their own, much
+// smaller ceilings rather than sharing the one above.
+const MAX_POPUPS = 60;
+const MAX_BANNERS = 8;
+
 export function emit(props) {
-  if (state.particles.length > 700) return;
+  if (state.particles.length >= MAX_PARTICLES) return;
   state.particles.push({
     x: 0, y: 0, vx: 0, vy: 0, gravity: 0,
     size: 4, life: 0.4, maxLife: 0.4, color: "#ffffff",
@@ -22,7 +33,7 @@ export function emit(props) {
 }
 
 export function burst(x, y, color, count = 20, force = 1) {
-  if (state.particles.length > 700) return;
+  if (state.particles.length >= MAX_PARTICLES) return;
   for (let i = 0; i < count; i++) {
     const angle = rand(0, Math.PI * 2);
     const speed = (120 + rand(0, 420)) * force;
@@ -40,7 +51,7 @@ export function burst(x, y, color, count = 20, force = 1) {
 }
 
 export function dust(x, y, count = 10) {
-  if (state.particles.length > 700) return;
+  if (state.particles.length >= MAX_PARTICLES) return;
   for (let i = 0; i < count; i++) {
     state.particles.push({
       x: x + rand(-18, 18), y,
@@ -56,6 +67,7 @@ export function dust(x, y, count = 10) {
 }
 
 export function sparkLine(x, y, dirX, color, count = 12) {
+  if (state.particles.length >= MAX_PARTICLES) return;
   for (let i = 0; i < count; i++) {
     state.particles.push({
       x, y: y + rand(-14, 14),
@@ -71,14 +83,17 @@ export function sparkLine(x, y, dirX, color, count = 12) {
 }
 
 export function ring(x, y, color, radius = 60) {
+  if (state.particles.length >= MAX_PARTICLES) return;
   state.particles.push({ ringR: 8, ringMax: radius, x, y, life: 0.32, maxLife: 0.32, color, size: 0, vx: 0, vy: 0, gravity: 0 });
 }
 
 export function popup(x, y, text, color = "#ffffff", size = 26) {
+  if (state.popups.length >= MAX_POPUPS) return;
   state.popups.push({ x: clamp(x, 60, 1220), y: clamp(y, 60, 660), vy: -46, text, color, size, life: 0.7, maxLife: 0.7 });
 }
 
 export function banner(text, color = "#ffffff", opts = {}) {
+  if (state.banners.length >= MAX_BANNERS) return;
   state.banners.push({
     x: opts.x ?? 640, y: opts.y ?? 200,
     vy: opts.vy ?? -12,

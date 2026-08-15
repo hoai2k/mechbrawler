@@ -16,13 +16,20 @@ import { dirname, join, normalize, relative } from "path";
 import { fileURLToPath } from "url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DIRS = ["src", "workbench"];
+const DIRS = ["src", "src/camera3d", "render3d/src"];
 
 const files = DIRS.flatMap((dir) =>
   readdirSync(join(ROOT, dir))
     .filter((f) => f.endsWith(".js") || f.endsWith(".mjs"))
     .map((f) => `${dir}/${f}`)
 );
+
+// Third-party code, deliberately unscanned (vendor/VENDOR.md): it is not ours
+// to lint, and its exports are guaranteed by the upstream package rather than
+// by this repo. Imports that cross into it are accepted without resolving —
+// named rather than silently tolerated, so "it resolved" and "we did not look"
+// stay distinguishable.
+const UNSCANNED = ["vendor/"];
 
 /** Named exports of a module. Covers the two forms this codebase uses:
  *  `export const X` / `export function X` and `export { X, Y as Z }`. */
@@ -46,6 +53,7 @@ const problems = [];
 for (const [file, source] of sources) {
   for (const m of source.matchAll(/import\s*\{([^}]*)\}\s*from\s*["'](\.[^"']+)["']/g)) {
     const target = normalize(join(dirname(file), m[2])).split("\\").join("/");
+    if (UNSCANNED.some((prefix) => target.startsWith(prefix))) continue;
     const exp = exported.get(target);
     if (!exp) {
       problems.push(`${file}: cannot resolve "${m[2]}" (${target})`);

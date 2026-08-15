@@ -1,10 +1,16 @@
 // ---------------------------------------------------------------------------
 // Music configuration — which track plays where.
 //
-// Menu screens play one fixed track at a reduced volume. A match plays the
-// track named after its stage if one has been delivered, and otherwise falls
-// back to a random pick from the originals. The Music setting can override that
-// with Random — any board track or original, drawn per match — or Off.
+// The soundtrack is Mech Mayhem's, imported whole from robotworld: each arena
+// plays its own theme (take 1 of the upstream per-arena set), and the general
+// battle loops serve as the fallback pool. Menu screens play the upstream menu
+// suite at a reduced volume.
+//
+// THE TITLE SCREEN IS SILENT ON PURPOSE. Mech Mayhem's title has no music —
+// its audio signature is the neon sign buzzing (assets/sfx/neon_buzz.mp3,
+// played by the tube-flicker watcher in ui.js), and a track under it would
+// bury the one sound the screen is about. TITLE_TRACK is null and audio.js
+// treats that as "menu track, but let the buzz through".
 //
 // BOARD_TRACKS is the manifest of what actually exists in assets/music/boards/:
 // a browser cannot list a directory, so the filenames are listed here. After
@@ -21,11 +27,14 @@ export const MUSIC_EXT = ".mp3";
 // Menu, stage select, move list, settings and the results screen.
 export const MENU_TRACK = {
   label: "Menu",
-  file: "JJK Brawler Menu",
+  file: "Bohemian Cello Flame Hybrid Suite",
   // Menu music sits under the battle music: the master volume slider still
   // applies, this is the extra scaling on top of it.
-  volumeScale: 0.55,
+  volumeScale: 0.5,
 };
+
+// The title screen: no track — see the header. The neon buzz is the signature.
+export const TITLE_TRACK = null;
 
 // The Music setting, in the order it cycles. `default` plays each stage's own
 // track, `random` draws from every board track and original alike, `off` mutes
@@ -36,36 +45,31 @@ export const MUSIC_MODES = [
   { key: "off", label: "Off" },
 ];
 
-// Used for any stage with no track of its own, picked at random per match, and
-// part of the pool the Random mode draws from.
+// Used for any stage with no track of its own (Ironworks Foundry, upstream's
+// own gap), picked at random per match, and part of the Random pool.
 export const FALLBACK_TRACKS = [
-  { label: "Final Match", file: "The_Final_Match_Point" },
-  { label: "Iron vs Bone", file: "Iron_Versus_Bone" },
+  { label: "Steel Titans", file: "Steel Titans Loop 1" },
+  { label: "Steel Titans II", file: "Steel Titans Loop 2" },
+  { label: "Titan Clash", file: "Titan Clash Suite 1" },
+  { label: "Titan Clash II", file: "Titan Clash Suite 2" },
+  { label: "Titan Forge", file: "Titan Forge Loop 1" },
+  { label: "Titan Forge II", file: "Titan Forge Loop 2" },
 ];
 
 // Stage-specific battle tracks. Each entry is a filename (without extension) in
 // assets/music/boards/ that must equal a stage name.
 export const BOARD_TRACKS = [
-  "Academy Hall",
-  "Billboard Roof",
-  "Bone Sanctum",
-  "Bridge Duel",
-  "Crosswalk Rush",
-  "Curse Maw",
-  "Cursed Teeth",
-  "Domain Core",
-  "Empty City",
-  "Flooded Gate",
-  "Garden Steps",
-  "Lantern Corridor",
-  "Mist Pier",
-  "Neon Split",
-  "Quiet Hall",
-  "River Gate",
-  "School Wing",
-  "Shibuya Night",
-  "Sunken Crossing",
-  "Training Bridge",
+  "Crystal Quarry",
+  "Desert Ruins",
+  "Frozen Outpost",
+  "Harbor Docks",
+  "Jungle Temple",
+  "Neon District",
+  "Orbital Platform",
+  "Scrapyard 7",
+  "Sky Terrace",
+  "Uptown Plaza",
+  "Volcanic Forge",
 ];
 
 // Files present in assets/music/boards/ that are deliberately not in use — they

@@ -1,13 +1,15 @@
 import { state } from "./state.js";
 import { getImage } from "./assets.js";
+import { sharedAdjust, AURA_H, AURA_PULSE, AURA_FOOT_DY } from "./shared_sprites.js";
 import { getStage } from "./stages.js";
-import { drawCharFrame, currentFrame } from "./sprites.js";
+import { drawCharFrame, currentFrame } from "./render_backend.js";
 import { getActor } from "./characters.js";
 import { fighterTransform, trailStrength } from "./motion.js";
 import { TRAIL_ALPHA, STRIKE_ARC } from "./config_tuning.js";
 import { drawParticles, drawPopupsWorld, drawBannersScreen } from "./particles.js";
-import { hitboxRect, hurtbox } from "./combat.js";
+import { hitboxRect, hurtbox, summonBox } from "./combat.js";
 import { applyCamera, releaseCamera } from "./camera.js";
+import { cameraMode, camera3d } from "./camera_mode.js";
 import {
   WORLD, SHIELD_MAX, PARRY_WINDOW, SAKURAI, SAKURAI_POP,
   RESPAWN_WAIT, RESPAWN_PLATFORM_Y, RESPAWN_PLATFORM_HALF_W, RESPAWN_PLATFORM_TIME,
@@ -17,9 +19,15 @@ import { PROJ_TRAIL } from "./config_fx.js";
 import { headHeightTarget } from "./heights.js";
 import { strikeArcs, visibleArtReach, swingExtent } from "./moves.js";
 import { bodyWidth } from "./silhouette.js";
+import { strikePoint, STRIKE_STATES } from "./strike_points.js";
 import { respawnX } from "./fighter.js";
+import { isFoe } from "./teams.js";
 
 export function draw(ctx) {
+  if (cameraMode === "3d" && camera3d) {
+    draw3d(ctx);
+    return;
+  }
   ctx.clearRect(0, 0, WORLD.w, WORLD.h);
   applyCamera(ctx);
 
@@ -50,6 +58,47 @@ export function draw(ctx) {
   drawScreenFlash(ctx);
 }
 
+// The 2.5D frame (docs/2.5d-camera-plan.md §6). The WebGL canvas underneath
+// takes the scene — backdrop, domain planes, platforms, fighter and projectile
+// billboards — posed by the camera rig; this canvas keeps everything else,
+// exactly as the flat path draws it, positioned by the rig's projection of the
+// gameplay plane. Because every world-space overlay draw sits on z = 0 and the
+// rig's yaw/pitch are clamped tiny, one affine transform lands them all on the
+// fighters with zero per-effect changes.
+function draw3d(ctx) {
+  camera3d.draw(state);
+
+  ctx.clearRect(0, 0, WORLD.w, WORLD.h);
+  const t = camera3d.overlayTransform();
+  ctx.save();
+  ctx.transform(t.a, t.b, t.c, t.d, t.e, t.f);
+
+  // `e.draw` is NOT here — it is a quad in the scene, behind the fighters
+  // (src/camera3d/effects.js). This canvas sits above the whole WebGL layer,
+  // so drawing an entity on it can only ever put it in FRONT of every
+  // fighter, and these are the biggest pictures in the game: an ultimate wave
+  // painted here erased the fighter it was cast at and the one across the
+  // stage with it. `e.drawTop` still runs below, because effects that mean to
+  // cover the fighters are exactly what that hook is for.
+  //
+  // Projectile bodies are billboards in the scene; their comet trails are
+  // additive strokes and stay here, over the scene like every other glow.
+  for (const p of state.projectiles) drawProjectileTrail(ctx, p);
+  drawFighters(ctx, { bodies: false });
+  drawStrikeArcs(ctx);
+  if (state.debugHitboxes) drawDebug(ctx);
+  drawParticles(ctx);
+  drawPopupsWorld(ctx);
+  for (const e of state.entities) if (e.drawTop) e.drawTop(ctx);
+
+  releaseCamera(ctx);
+
+  drawDomainOverlay(ctx);
+  drawBannersScreen(ctx);
+  drawVignette(ctx);
+  drawScreenFlash(ctx);
+}
+
 function drawBackdrop(ctx) {
   const stage = getStage(state.stageKey);
   const img = getImage(`bg:${stage.key}`);
@@ -59,10 +108,12 @@ function drawBackdrop(ctx) {
     const h = img.height * scale;
     ctx.drawImage(img, (WORLD.w - w) / 2, (WORLD.h - h) / 2, w, h);
   } else {
-    const grad = ctx.createLinearGradient(0, 0, 0, WORLD.h);
-    grad.addColorStop(0, "#141b33");
-    grad.addColorStop(1, "#05070f");
-    ctx.fillStyle = grad;
+    ctx.fillStyle = cachedGradient("backdrop", () => {
+      const grad = ctx.createLinearGradient(0, 0, 0, WORLD.h);
+      grad.addColorStop(0, "#141b33");
+      grad.addColorStop(1, "#05070f");
+      return grad;
+    });
     ctx.fillRect(0, 0, WORLD.w, WORLD.h);
   }
   ctx.fillStyle = "rgba(3, 5, 12, 0.30)";
@@ -79,6 +130,49 @@ function drawPlatforms(ctx) {
 // against, rather than an approximation that could drift from the game.
 // Active Boards may tag a platform: `ghost` (phased out — skeletal outline,
 // no collision), `shakeMag` (crumble tremor), `accent` (edge-light override).
+// Canvas gradients are objects the context builds on demand, and several of the
+// ones below were being rebuilt every frame out of values that never change: a
+// stage with forty platforms allocated forty gradients a frame for six fixed
+// colours, and the two full-screen vignettes rebuilt theirs on every frame they
+// were visible. They are memoised here instead, keyed by everything that shapes
+// them.
+//
+// Gradient coordinates are resolved against the transform in force when the
+// gradient is USED, not when it is built — which is what lets a platform's
+// gradient be built once in its own 0..w space and then be moved to wherever
+// that platform currently is (see below). That is the whole trick, and it is
+// why moving platforms do not defeat this.
+const gradientCache = new Map();
+
+function cachedGradient(key, build) {
+  let grad = gradientCache.get(key);
+  if (!grad) {
+    // Nothing here has an unbounded key space — platform widths, character
+    // themes — but a cache that can only grow is a leak waiting for a stage
+    // that does something unexpected, so it resets rather than climbing.
+    if (gradientCache.size > 200) gradientCache.clear();
+    grad = build();
+    gradientCache.set(key, grad);
+  }
+  return grad;
+}
+
+function platformGradient(ctx, kind, w) {
+  return cachedGradient(`plat:${kind}:${Math.round(w)}`, () => {
+    const grad = ctx.createLinearGradient(0, 0, w, 0);
+    if (kind === "main") {
+      grad.addColorStop(0, "#263044");
+      grad.addColorStop(0.5, "#111827");
+      grad.addColorStop(1, "#4d3a19");
+    } else {
+      grad.addColorStop(0, "#1d2739");
+      grad.addColorStop(0.5, "#111827");
+      grad.addColorStop(1, "#2a2f3f");
+    }
+    return grad;
+  });
+}
+
 export function drawPlatformShape(ctx, p) {
   ctx.save();
   if (p.shakeMag) ctx.translate((Math.random() - 0.5) * p.shakeMag, (Math.random() - 0.5) * p.shakeMag * 0.5);
@@ -96,19 +190,14 @@ export function drawPlatformShape(ctx, p) {
   roundRect(ctx, p.x + 8, p.y + 12, p.w, p.h, 8);
   ctx.fill();
 
-  const grad = ctx.createLinearGradient(p.x, p.y, p.x + p.w, p.y);
-  if (p.kind === "main") {
-    grad.addColorStop(0, "#263044");
-    grad.addColorStop(0.5, "#111827");
-    grad.addColorStop(1, "#4d3a19");
-  } else {
-    grad.addColorStop(0, "#1d2739");
-    grad.addColorStop(0.5, "#111827");
-    grad.addColorStop(1, "#2a2f3f");
-  }
-  ctx.fillStyle = grad;
-  roundRect(ctx, p.x, p.y, p.w, p.h, 8);
+  // Moved to the platform rather than rebuilt at it: the cached gradient spans
+  // 0..w in local space and the translate places it.
+  ctx.save();
+  ctx.translate(p.x, 0);
+  ctx.fillStyle = platformGradient(ctx, p.kind, p.w);
+  roundRect(ctx, 0, p.y, p.w, p.h, 8);
   ctx.fill();
+  ctx.restore();
 
   ctx.strokeStyle = p.accent || (p.kind === "main" ? "rgba(255, 211, 92, 0.55)" : "rgba(97, 216, 255, 0.45)");
   ctx.lineWidth = 2;
@@ -156,6 +245,11 @@ function drawProjectiles(ctx) {
     drawProjectileTrail(ctx, p);
     const sprite = p.sprite ? getImage(p.sprite) : null;
     if (sprite) {
+      // The drawing's own adjustment (src/shared_sprites.js). `spriteH` has the
+      // scale folded in already — it is a kit number — so only the nudge is
+      // read here, and it moves the PICTURE, never `p.x`/`p.y`, which are what
+      // the projectile collides on.
+      const adj = sharedAdjust(p.sprite);
       const h = p.spriteH || p.r * 3;
       const w = sprite.width * h / sprite.height;
       ctx.save();
@@ -168,9 +262,12 @@ function drawProjectiles(ctx) {
       const flip = p.vx > 0 ? -1 : 1;
       if (p.vy) ctx.rotate(Math.atan2(-flip * p.vy, -flip * p.vx));
       ctx.scale(flip, 1);
+      if (adj.rot) ctx.rotate(adj.rot);
       ctx.shadowColor = p.color;
       ctx.shadowBlur = 12;
-      ctx.drawImage(sprite, -w / 2, -h / 2, w, h);
+      // Inside the mirrored frame, so a nudge follows the drawing rather than
+      // reversing when the shot travels the other way.
+      ctx.drawImage(sprite, -w / 2 + adj.dx, -h / 2 + adj.dy, w, h);
       ctx.restore();
       continue;
     }
@@ -401,7 +498,11 @@ function drawAngleTick(ctx, hx, hy, hb, fade, power, color) {
   }
 }
 
-function drawFighters(ctx) {
+// `bodies: false` is the 2.5D overlay pass: the body art, its shadow and its
+// afterimages are billboards in the WebGL scene, so this canvas draws only the
+// adornments around them — markers, revival platforms, auras, bubbles, meters,
+// status effects. Everything positions in the same sim coordinates either way.
+function drawFighters(ctx, { bodies = true } = {}) {
   const sorted = [...state.fighters].sort((a, b) => a.y - b.y);
   for (const f of sorted) {
     if (f.dead) continue;
@@ -414,8 +515,13 @@ function drawFighters(ctx) {
     // Back, standing on their revival platform — and drawn normally, because
     // they are playing. The platform goes UNDER them.
     if (f.respawnPlat) drawRevivalPlatform(ctx, f);
-    drawShadow(ctx, f);
-    drawInstallAura(ctx, f);
+    if (bodies) drawShadow(ctx, f);
+    // The aura goes UNDER the body, which this canvas can only manage while
+    // the body is also on it. In the 2.5D pass the body is in the WebGL layer
+    // and this canvas is strictly above it, so drawing here painted the aura
+    // over the fighter it belongs to — billboards.js draws it in the scene
+    // instead, between the shadow and the body, exactly as here.
+    if (bodies) drawInstallAura(ctx, f);
 
     // A transformed fighter (Megumi as Mahoraga) draws from another actor's
     // sprite set for the duration of the install; everything else about them —
@@ -427,7 +533,7 @@ function drawFighters(ctx) {
     const shakeX = f.shakeMag > 0 ? (Math.random() - 0.5) * f.shakeMag : 0;
     const glowing = ["specialNeutral", "specialSide", "specialDown", "ult", "charge"].includes(f.animKey) || f.installs;
 
-    const transformed = f.installs?.sprite ? getImage(f.installs.sprite) : null;
+    const transformed = bodies && f.installs?.sprite ? getImage(f.installs.sprite) : null;
     if (transformed) {
       const h = 210;
       const w = transformed.width * h / transformed.height;
@@ -439,12 +545,26 @@ function drawFighters(ctx) {
       ctx.shadowBlur = 24;
       ctx.drawImage(transformed, -w / 2, -h, w, h);
       ctx.restore();
-    } else {
+    } else if (bodies) {
       drawTrail(ctx, f);
       const m = fighterTransform(f);
       const drew = drawCharFrame(ctx, spriteKey, frameKey, f.x + shakeX, f.y, {
         scale: spriteActor.scale,
         facing: f.facingVis,
+        // Strike aiming, for backends that pose per draw (billboards): an
+        // explicit controller point when input has set one on the fighter,
+        // otherwise the nearest live opponent. The sprite backend ignores it —
+        // a drawing cannot re-aim.
+        aim: f.aimPoint || nearestOpponentPoint(f),
+        // The attack's own hitbox delay, for backends that pose per draw: the
+        // clip's contact frame snaps to it, so the visual hit and the live
+        // hitbox agree per move and per character (moves are speed-scaled;
+        // the state table's beat is one global number). animTime and the
+        // action run on the same clock — beginAction rewinds both.
+        beat: actionBeat(f),
+        // Where the current state was cut from (fighter.js setAnim), for
+        // backends that cross-fade a state change instead of snapping.
+        prevAnim: f.prevAnim,
         alpha: flicker ? 0.6 : 1,
         rotation: m.rotation,
         scaleX: m.scaleX,
@@ -472,8 +592,34 @@ function drawFighters(ctx) {
     if (f.simpleDomain) drawSimpleDomain(ctx, f);
     if (f.statuses.nailMarks > 0) drawNailMarks(ctx, f);
     if (f.statuses.blind > 0) drawBlindSplatter(ctx, f);
+    if (f.grabbedBy) drawGrabStruggle(ctx, f);
     drawShieldMeter(ctx, f);
   }
+}
+
+// The instant this fighter's current attack turns its hitbox on, in seconds
+// from action start, or undefined outside an attack (or when the anim has
+// already moved on — a landed jab cut into hitstun must not carry its beat).
+function actionBeat(f) {
+  const d = f.action?.move?.delay;
+  return typeof d === "number" && f.action.anim === f.animKey ? d : undefined;
+}
+
+// Auto-aim target: the nearest live opponent's chest, or null alone on stage.
+// Only consumed by pose-per-draw backends; computed here because "who is the
+// nearest opponent" is game state the renderer should not go digging for.
+function nearestOpponentPoint(f) {
+  let best = null;
+  let bestD = Infinity;
+  for (const o of state.fighters) {
+    if (o.dead || o.respawnTimer > 0 || !isFoe(f, o)) continue;
+    const d = Math.abs(o.x - f.x) + Math.abs(o.y - f.y);
+    if (d < bestD) {
+      bestD = d;
+      best = o;
+    }
+  }
+  return best ? { x: best.x, y: best.y - 80 } : null;
 }
 
 // Afterimages behind a dash, roll, air dodge or tumble. The cheapest possible
@@ -521,42 +667,67 @@ function drawInstallAura(ctx, f) {
   const art = f.installs.aura ? getImage(f.installs.aura) : null;
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
-  const pulse = 0.88 + 0.06 * Math.sin(state.matchTime * 8);
+  const pulse = AURA_PULSE.base + AURA_PULSE.amp * Math.sin(state.matchTime * AURA_PULSE.rate);
   if (art) {
-    const h = 220 * pulse;
+    // An aura's height is a constant here rather than a kit number, so the
+    // drawing's own scale has to be read at the draw — the kit-side folding in
+    // shared_sprites.js never reaches it.
+    const adj = sharedAdjust(f.installs.aura);
+    const h = AURA_H * pulse * adj.scale;
     const w = art.width * h / art.height;
     ctx.globalAlpha = 0.72;
     ctx.shadowColor = f.installs.color;
     ctx.shadowBlur = 18;
-    ctx.drawImage(art, f.x - w / 2, f.y + 10 - h, w, h);
+    if (adj.rot) {
+      // About the point it is painted on — the fighter's feet — so a tilt
+      // leans the aura rather than sliding it.
+      ctx.translate(f.x, f.y + AURA_FOOT_DY);
+      ctx.rotate(adj.rot);
+      ctx.translate(-f.x, -(f.y + AURA_FOOT_DY));
+    }
+    ctx.drawImage(art, f.x - w / 2 + adj.dx, f.y + AURA_FOOT_DY - h + adj.dy, w, h);
     ctx.restore();
     return;
   }
+  paintProceduralAura(ctx, f, f.x, f.y + AURA_ELLIPSE.dy);
+  ctx.restore();
+}
+
+/** The procedural aura's geometry, so a caller that has to size a surface for
+ *  it (the 2.5D scene bakes it into a texture) does not have to guess. `dy` is
+ *  the ellipse centre's offset from the fighter's feet; the radii are the
+ *  furthest the drawing reaches, which is the ring, not the ellipse. */
+export const AURA_ELLIPSE = { dy: -60, rx: 84, ry: 84 * 1.45 };
+
+/** The aura an install falls back to when its kit names no art, painted about
+ *  (cx, cy) — the ellipse's own centre. Exported because `?camera=3d` draws
+ *  the aura as a quad in the WebGL scene (so it lands BEHIND the fighter) and
+ *  bakes this same drawing into that quad's texture: one implementation, so
+ *  the two layers cannot drift apart. The caller owns the composite mode. */
+export function paintProceduralAura(ctx, f, cx, cy) {
   ctx.globalAlpha = 0.24 + 0.1 * Math.sin(state.matchTime * 8);
   ctx.fillStyle = f.installs.color;
   ctx.beginPath();
-  ctx.ellipse(f.x, f.y - 60, 56, 96, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy, 56, 96, 0, 0, Math.PI * 2);
   ctx.fill();
   // Distortion Solo: the aura's edge clips like an overdriven signal — a
   // square-wave ring stepping between two radii, not a smooth ellipse.
-  if (f.installs.ampUp) {
-    ctx.globalAlpha = 0.5;
-    ctx.strokeStyle = f.installs.color;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    const steps = 22;
-    const spin = state.matchTime * 1.7;
-    for (let i = 0; i <= steps; i++) {
-      const a = spin + (i / steps) * Math.PI * 2;
-      const r = i % 2 === 0 ? 66 : 84;
-      const px = f.x + Math.cos(a) * r;
-      const py = f.y - 60 + Math.sin(a) * r * 1.45;
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.stroke();
+  if (!f.installs.ampUp) return;
+  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = f.installs.color;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  const steps = 22;
+  const spin = state.matchTime * 1.7;
+  for (let i = 0; i <= steps; i++) {
+    const a = spin + (i / steps) * Math.PI * 2;
+    const r = i % 2 === 0 ? 66 : 84;
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r * 1.45;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
   }
-  ctx.restore();
+  ctx.closePath();
+  ctx.stroke();
 }
 
 /** Stand-in for a fighter whose art failed to load. Their hurtbox is the honest
@@ -605,6 +776,40 @@ function drawShieldMeter(ctx, f) {
   ctx.fillRect(f.x - 35, f.y - 148, 70, 7);
   ctx.fillStyle = pct > 0.35 ? f.char.theme : "#ff5a5a";
   ctx.fillRect(f.x - 34, f.y - 147, 68 * pct, 5);
+  ctx.restore();
+}
+
+// A fighter in someone's grip (?throw=true — src/grab.js): the shrinking bar
+// is the hold itself, drawn over the VICTIM because escaping is their job —
+// it drains on its own and every mash visibly bites a piece out of it. The
+// grip ring pulses at the pair's join so a hold reads as a hold from across
+// the stage, in every camera mode (this pass draws over the scene in 2.5D/3D
+// exactly as it does flat).
+function drawGrabStruggle(ctx, f) {
+  const g = f.grabbedBy?.grab;
+  if (!g) return;
+  const pct = clamp(g.holdT / g.holdMax, 0, 1);
+  ctx.save();
+  // grip ring between the two bodies
+  const gx = (f.x + f.grabbedBy.x) / 2;
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = 0.45 + 0.25 * Math.sin(state.matchTime * 18);
+  ctx.strokeStyle = f.grabbedBy.char.theme;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(gx, f.y - 78, 30 + 4 * Math.sin(state.matchTime * 12), 0, Math.PI * 2);
+  ctx.stroke();
+  // the escape bar: amber draining to red, over the victim's head
+  ctx.globalCompositeOperation = "source-over";
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "rgba(6, 10, 20, 0.7)";
+  ctx.fillRect(f.x - 35, f.y - 168, 70, 8);
+  ctx.fillStyle = pct > 0.4 ? "#ffd35a" : "#ff5a5a";
+  ctx.fillRect(f.x - 34, f.y - 167, 68 * pct, 6);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 10px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("MASH!", f.x, f.y - 173);
   ctx.restore();
 }
 
@@ -783,6 +988,53 @@ function drawDebug(ctx) {
       }
     }
   }
+  // Summons carry the same two shapes a fighter does, and for the same reason:
+  // white is what it can be hit ON (the whole drawing), red is what it hits
+  // WITH (summons.js — the front of the creature by default, or wherever the
+  // sprite workbench put it). They used to be one box, which is how a dog's
+  // tail came to bite.
+  for (const e of state.entities) {
+    if (e.kind !== "summon" || e.dead || e.intangible) continue;
+    const b = summonBox(e);
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(b.x, b.y, b.w, b.h);
+    const a = e.attackRect?.();
+    if (a) {
+      ctx.fillStyle = "rgba(255, 80, 80, 0.22)";
+      ctx.fillRect(a.x, a.y, a.w, a.h);
+      ctx.strokeStyle = "rgba(255, 120, 120, 0.85)";
+      ctx.strokeRect(a.x, a.y, a.w, a.h);
+    }
+  }
+  // Projectiles: the circle the flight test actually uses (combat.js).
+  ctx.strokeStyle = "rgba(255, 120, 120, 0.85)";
+  ctx.lineWidth = 1;
+  for (const p of state.projectiles) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // Ad-hoc shapes the special/ultimate scripts registered (combat.js
+  // debugShape): the inline rects and circles their scripts test hurtboxes
+  // against, which this overlay was blind to. They decay here so a one-frame
+  // detonation still shows for a beat.
+  for (let i = state.debugShapes.length - 1; i >= 0; i--) {
+    const s = state.debugShapes[i];
+    s.ttl -= 1 / 60;
+    if (s.ttl <= 0) { state.debugShapes.splice(i, 1); continue; }
+    ctx.fillStyle = "rgba(255, 80, 80, 0.18)";
+    ctx.strokeStyle = "rgba(255, 120, 120, 0.8)";
+    if (s.r != null) {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeRect(s.x, s.y, s.w, s.h);
+    }
+  }
   for (const f of state.fighters) {
     if (f.dead) continue;
     const r = hurtbox(f);
@@ -792,6 +1044,26 @@ function drawDebug(ctx) {
     // Where this character's artwork actually reaches, measured from their own
     // frames (silhouette.js). A hitbox extending far past this is a hit that
     // will land out of thin air.
+    // Where the blow itself is (strike_points.js): the fist, foot or blade,
+    // as opposed to the box it threatens with. Ringed rather than filled, and
+    // colour-coded by how well it is known — cyan where a person checked it,
+    // amber where it is the model's measurement, faint where it is derived
+    // from the body. Only while this fighter is actually swinging.
+    if (STRIKE_STATES.has(f.animKey)) {
+      const sp = strikePoint(f.spriteChar || f.charKey, f.animKey);
+      const px = f.x + f.facing * sp.x;
+      const py = f.y + sp.y;
+      ctx.strokeStyle = sp.source === "human" ? "rgba(120, 240, 255, 0.95)"
+        : sp.source === "model" ? "rgba(255, 190, 90, 0.9)" : "rgba(160,170,190,0.5)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(px, py, 7, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px - 10, py); ctx.lineTo(px + 10, py);
+      ctx.moveTo(px, py - 10); ctx.lineTo(px, py + 10);
+      ctx.stroke();
+    }
     const reach = visibleArtReach(f.char);
     if (reach) {
       const x = f.x + f.facing * reach;
@@ -842,10 +1114,12 @@ function drawDomainOverlay(ctx) {
   const a = clamp(d.life / d.maxLife, 0, 1);
   ctx.save();
   ctx.globalAlpha = Math.min(0.26, a * 0.3);
-  const grad = ctx.createRadialGradient(640, 360, 420, 640, 360, 900);
-  grad.addColorStop(0, "rgba(0,0,0,0)");
-  grad.addColorStop(1, d.color);
-  ctx.fillStyle = grad;
+  ctx.fillStyle = cachedGradient(`domain:${d.color}`, () => {
+    const grad = ctx.createRadialGradient(640, 360, 420, 640, 360, 900);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(1, d.color);
+    return grad;
+  });
   ctx.fillRect(0, 0, WORLD.w, WORLD.h);
   ctx.restore();
 }
@@ -867,13 +1141,15 @@ function drawVignette(ctx) {
   if (!v) return;
   ctx.save();
   ctx.globalAlpha = clamp(v.life / v.maxLife, 0, 1) * v.alpha;
-  const g = ctx.createRadialGradient(
-    WORLD.w / 2, WORLD.h / 2, WORLD.h * 0.32,
-    WORLD.w / 2, WORLD.h / 2, WORLD.w * 0.62,
-  );
-  g.addColorStop(0, colorAlpha(v.color, 0));
-  g.addColorStop(1, v.color);
-  ctx.fillStyle = g;
+  ctx.fillStyle = cachedGradient(`vignette:${v.color}`, () => {
+    const g = ctx.createRadialGradient(
+      WORLD.w / 2, WORLD.h / 2, WORLD.h * 0.32,
+      WORLD.w / 2, WORLD.h / 2, WORLD.w * 0.62,
+    );
+    g.addColorStop(0, colorAlpha(v.color, 0));
+    g.addColorStop(1, v.color);
+    return g;
+  });
   ctx.fillRect(0, 0, WORLD.w, WORLD.h);
   ctx.restore();
 }

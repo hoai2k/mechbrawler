@@ -18,7 +18,7 @@
 //                 tweakable, but these change what the game IS, and code
 //                 depends on their relationships.
 //
-// Background for the motion values is in docs/sprite-motion.md; for the
+// Background for the motion values is in sprites/docs/sprite-motion.md; for the
 // defence values, docs/combat-feel.md.
 
 // ------------------------------------------------------------ character size
@@ -29,7 +29,7 @@
 // the single global height control per character.
 
 // Whose height counts as 1.0. Every other fighter is measured against this one.
-export const HEIGHT_REFERENCE = "gojo";
+export const HEIGHT_REFERENCE = "titanus";
 
 // How much of the real height difference to keep. 0 makes everyone identical,
 // 1 renders the roster at true relative scale.
@@ -48,10 +48,17 @@ export const HEIGHT_COMPRESSION = 1.0;
 export const HEIGHT_MIN_RATIO = 0.84;
 export const HEIGHT_MAX_RATIO = 1.14;
 
-// Rendered head height in game pixels for a fighter at ratio 1.0. Chosen so the
-// roster's average drawn height is unchanged from before heights were canon —
-// the fighters redistribute around it, the game does not globally resize.
-export const HEIGHT_BASE_PX = 175.3;
+// Rendered head height in game pixels for a fighter at ratio 1.0.
+//
+// Was 175.3 (chosen to keep the roster's average drawn height unchanged when
+// heights became canon). The level-design review (docs/level-design-review.md,
+// G1) found that at that size no fighter could jump their own height and every
+// main platform was only ~4–5 body-heights long — the boards had no room for
+// Smash-style spacing or vertical play. 149 shrinks the roster ~15%: mains
+// read ~5.3–6.5 body-heights, tier steps land near body height, and the
+// dynamic camera (camera.js) zooms in to keep fighters visually large when
+// the fight is close.
+export const HEIGHT_BASE_PX = 149;
 
 // A fighter with no published height and nothing to infer from. 1.0 means "as
 // tall as the reference", which is a neutral default rather than a claim.
@@ -180,6 +187,16 @@ export const MOTION = {
   dizzyWobble: 0.075,
   airDodgeTilt: 0.4,
   ledgeLean: 0.12,
+  ledgeLeanIn: 0.12,      // s for the hang lean to arrive, instead of snapping
+  // Teetering on a lip (fighter.js updateTeeter). The lean is OUTWARD, over
+  // the drop, because that is what makes it read as a near-miss rather than as
+  // standing; the sway is the recovery, slow and never quite settling. Both
+  // are amplitudes on the idle pose, so they are what carries the state until
+  // the round-22 drawing lands and they become its garnish.
+  teeterLean: 0.075,      // rad, out over the edge
+  teeterSway: 0.055,      // rad of counter-sway on top
+  teeterRate: 3.1,        // rad/s of that sway
+  teeterShift: 2.6,       // px of drift with it
   summonSway: 0.045,      // hovering summons
   summonLunge: 0.12,      // and their lean into an attack
 };

@@ -14,7 +14,7 @@
 
 import { state } from "./state.js";
 import { clamp } from "./utils.js";
-import { cyclePhase } from "./sprites.js";
+import { cyclePhase } from "./render_backend.js";
 import { DASH_FX } from "./config_fx.js";
 import { headHeightTarget } from "./heights.js";
 import { SHIELD_MAX, MAX_FALL } from "./constants.js";
@@ -61,7 +61,8 @@ function actionPhase(f) {
 // branch that reads `f.animKey` or a new action kind belongs here too.
 export const PIVOTED_STATES = new Set([
   "idle", "crouch",              // breathing sway
-  "run",                         // stride sway and bob
+  "teeter",                      // the lean out over a lip, and the sway back
+  "run", "walk",                 // stride sway and bob
   "dash",                        // lean into the sprint
   "jump", "fall",                // air lean, and the stretch into a fast fall
   "land",                        // landing squash
@@ -71,7 +72,7 @@ export const PIVOTED_STATES = new Set([
   "dodge", "dodge_roll", "dodge_air",   // the roll actually rolls
   "charge",                      // charge shake
   // every `kind: "attack"` move — swingRotation carries all of them
-  "light", "airLight", "sideHeavy", "upHeavy", "downHeavy", "crouchAttack",
+  "light", "dashAttack", "dashAttackHeavy", "airLight", "sideHeavy", "upHeavy", "downHeavy", "crouchAttack",
 ]);
 
 /** A swing arc for attacks that are one held pose: wind back through startup,
@@ -116,7 +117,9 @@ export function fighterTransform(f) {
     rot += Math.sin(t * 7 + phase(f)) * A.dizzyWobble;
     dy += Math.sin(t * 3.5 + phase(f)) * 1.2;
   } else if (f.ledge) {
-    rot += f.facing * A.ledgeLean;
+    // Eased in over the same window the catch takes, so arriving on the hang
+    // is a settle rather than a posture appearing.
+    rot += f.facing * A.ledgeLean * clamp(f.ledgeTimer / A.ledgeLeanIn, 0, 1);
   } else if (f.hitstun > 0) {
     // low-knockback hits don't tumble; they flinch away from the blow
     if (Math.abs(f.spin) < 0.1) rot += clamp(f.vx / 900, -1, 1) * A.hurtLean;
@@ -150,15 +153,25 @@ export function fighterTransform(f) {
   } else if (f.turnLock > 0) {
     // caught mid-pivot: lean against the direction being abandoned
     rot += -f.facing * A.turnLean * clamp(f.turnLock / 0.08, 0, 1);
-  } else if (f.animKey === "run") {
+  } else if (f.animKey === "run" || f.animKey === "walk") {
     // Sway once per stride cycle, bob once per footfall — twice per cycle —
-    // measured against however many frames the run resolved to, so the timing
-    // holds for both the four-frame cycle and the two-frame fallback. The
-    // cycle art draws its own rise and fall (reach low, pass high), so the
-    // procedural bob backs off to half on it rather than doubling the bounce.
+    // measured against however many frames the cycle resolved to, so the timing
+    // holds for the four-frame run, the two-frame fallback and the two-frame
+    // walk alike. Cycle art draws its own rise and fall (reach low, pass high),
+    // so the procedural bob backs off to half on it rather than doubling the
+    // bounce — which is why this counts FRAMES rather than naming a state.
     const { phase: c, frames } = cyclePhase(f.charKey, f.animKey, f.animTime);
     rot += Math.sin(c * TAU) * A.runSway * f.facing;
     dy -= Math.abs(Math.sin(c * TAU)) * A.runBob * (frames > 2 ? 0.5 : 1);
+  } else if (f.animKey === "teeter") {
+    // Out over the drop, and swaying back from it. Eased in over the same
+    // window the ledge lean uses, so arriving at the lip is a settle rather
+    // than a snap into a different posture.
+    const k = clamp(f.teeterT / A.ledgeLeanIn, 0, 1);
+    const w = Math.sin(t * A.teeterRate + phase(f));
+    rot += (f.teeterDir * A.teeterLean + w * A.teeterSway) * k;
+    dx += f.teeterDir * w * A.teeterShift * k;
+    dy -= (Math.sin(t * A.breathRate + phase(f)) * 0.5 + 0.5) * A.idleBob;
   } else if (f.animKey === "idle" || f.animKey === "crouch") {
     const b = t * A.breathRate + phase(f);
     rot += Math.sin(b) * A.idleSway * f.facing;

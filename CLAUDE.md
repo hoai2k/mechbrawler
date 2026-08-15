@@ -1,4 +1,8 @@
-# Project policy for Claude
+# Mech Brawler
+
+A neon mech platform fighter. Plain HTML/CSS/JS — no build step, no dependencies.
+Served from `index.html`; game code lives in `src/`, tooling in `tools/`.
+The live conversion plan and progress tracker: `docs/mech-conversion-plan.md`.
 
 ## Merge completed work to `main`
 
@@ -30,3 +34,6 @@ Two things this policy does not override:
 - Never force-push `main`, and never push to a branch the user did not authorize.
 - If a pull request is required by branch protection, use the PR path — merging
   through the PR is still "merging to `main`" for the purposes of this policy.
+
+If a change should *not* be merged (experiment, spike, request for review only),
+the prompt will say so explicitly.

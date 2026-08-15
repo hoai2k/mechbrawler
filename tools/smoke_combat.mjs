@@ -11,6 +11,7 @@
 // CHROMIUM_PATH if yours is elsewhere. Start the game first (node server.mjs),
 // then: node tools/smoke_combat.mjs [baseUrl]
 import { chromium } from "playwright";
+import { pressStart } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 const SECONDS = 40;
@@ -35,6 +36,11 @@ const OPTIONAL_ART = [
   "/assets/sprites/summons/",
   "/assets/sprites/effects/",
   "/assets/backgrounds/domains/",
+  // Sound behaves the same way: a cue with no file plays nothing, and the
+  // moment still works. Audio round 10 (the domain cues) is open, so opening a
+  // domain currently asks for four .mp3s nobody has recorded — undelivered
+  // audio, reported like undelivered art rather than failed like a broken game.
+  "/assets/sfx/",
 ];
 const undelivered = new Set();
 const isResource404 = (t) => /Failed to load resource/.test(t);
@@ -44,12 +50,13 @@ page.on("response", (r) => {
   }
 });
 
-await page.goto(BASE, { waitUntil: "load" });
+await page.goto(`${BASE}/index.html?camera=flat`, { waitUntil: "load" });
+await pressStart(page);
 
 // Through the menus the way a player would — the match entry is not exported,
 // and going round it would smoke-test something the game does not do.
-await page.waitForSelector('[data-character="gojo"]', { timeout: 60000 });
-await page.click('[data-character="gojo"]');
+await page.waitForSelector('[data-character="titanus"]', { timeout: 60000 });
+await page.click('[data-character="titanus"]');
 await page.waitForTimeout(400);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 5000 });
@@ -80,7 +87,7 @@ for (let i = 0; i < SECONDS * 10; i++) {
       hitboxes: state.hitboxes.length,
       projectiles: state.projectiles.length,
       fighters: state.fighters.map((f) => ({
-        charKey: f.charKey, dmg: f.damage, grounded: f.grounded,
+        charKey: f.charKey, dmg: f.damage, stocks: f.stocks, grounded: f.grounded,
         hitstun: f.hitstun, vy: f.vy, box: hurtbox(f),
         // The actor being DRAWN, not the fighter underneath: Megumi wearing
         // Mahoraga is a 222 px shikigami on screen and is a 222 px shikigami to
@@ -166,8 +173,32 @@ check("match ran", samples.at(-1).t > SECONDS * 0.5 || ended,
 // Across every sample, not the last one: percent resets to zero on a KO, so a
 // match that went well enough to take a stock would read as a match where
 // nothing ever connected.
-const dealt = Math.max(...samples.flatMap((s) => s.fighters.map((f) => f.dmg)));
-check("hits are landing", dealt > 20, `peak damage ${dealt.toFixed(1)}%`);
+//
+// And the PEAK is not the measurement any more, the TOTAL is. Peak percent is
+// hostage to the KO that resets it, and ledge intangibility now decays with
+// every regrab (Smash's anti-camping rule, constants.js), so CPU matches take
+// stocks sooner and reset percent more often. Summing each fighter's percent
+// INCREASES asks the question this check is actually for — did anything
+// connect — directly: it survives any number of KOs, and unlike counting
+// stocks it cannot be satisfied by a CPU walking off the stage.
+//
+// THE BAR IS LOW ON PURPOSE. This is noise-dominated: the matchup is random and
+// two CPUs can spend a minute missing each other. Measured totals across runs
+// span 20% to 148% on identical code, so anything tuned near the middle of that
+// is a coin flip, not a test. What it has to separate is a game where combat
+// happens from one where it does not, and the AI stubbed out scores 0.0%.
+let dealt = 0;
+let peak = 0;
+for (let i = 1; i < samples.length; i++) {
+  for (let j = 0; j < samples[i].fighters.length; j++) {
+    const now = samples[i].fighters[j];
+    const was = samples[i - 1].fighters[j];
+    peak = Math.max(peak, now.dmg);
+    if (was && now.charKey === was.charKey && now.dmg > was.dmg) dealt += now.dmg - was.dmg;
+  }
+}
+check("hits are landing", dealt > 12,
+  `${dealt.toFixed(1)}% dealt in total, peak ${peak.toFixed(1)}%`);
 
 // Melee and projectiles both count. A zoner drawn as the CPU's opponent will
 // spend most of a match throwing things, and that is a legitimate match rather
@@ -190,6 +221,13 @@ for (const s of samples) {
   for (const f of s.fighters) {
     const wr = f.box.w / f.want.width;
     const hr = f.box.h / f.want.height;
+    // A body drawn FLAT — prone on the floor, or spun horizontal in a tumble
+    // (combat.js hurtbox) — is legitimately body-LENGTH wide and knee-high:
+    // its width is a fraction of the fighter's HEIGHT, not their standing
+    // width. Admit exactly that shape (low, and no longer than the body) so
+    // the bound still catches a box that is simply wrong-sized.
+    const flat = hr <= 0.30 && f.box.w <= f.want.height * 0.70 && wr >= 0.55;
+    if (flat) continue;
     if (wr < 0.55 || wr > 1.25 || hr > 0.95) {
       offenders.push(`${f.charKey} as ${f.drawn} `
         + `${Math.round(f.box.w)}x${Math.round(f.box.h)} `

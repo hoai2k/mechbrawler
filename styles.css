@@ -1,16 +1,78 @@
+/* ---------- Display face ----------
+   Barlow Condensed (OFL, bundled in assets/fonts — no network fetch): the
+   game's shouting voice. Italic 800/900 for names, damage, titles and VS;
+   upright 600/800 for chips, labels and buttons, which sit inside surfaces
+   that are already skewed and would double-lean with an italic. Reading text
+   (blurbs, hints, descriptions) stays on the quiet system stack. */
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 600;
+  src: url("assets/fonts/barlow-condensed-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-weight: 800;
+  src: url("assets/fonts/barlow-condensed-800.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: italic;
+  font-weight: 600;
+  src: url("assets/fonts/barlow-condensed-italic-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: italic;
+  font-weight: 800;
+  src: url("assets/fonts/barlow-condensed-italic-800.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: italic;
+  font-weight: 900;
+  src: url("assets/fonts/barlow-condensed-italic-900.woff2") format("woff2");
+}
+
+/* The arcade face: Press Start 2P (OFL, bundled), used for exactly one string
+   in the whole game — PRESS START on the title splash. It is a period-correct
+   bitmap face and unreadable at length, so it never carries anything else. */
+@font-face {
+  font-family: "Press Start 2P";
+  font-style: normal;
+  font-weight: 400;
+  src: url("assets/fonts/press-start-2p.woff2") format("woff2");
+}
+
 :root {
-  --bg: #05060d;
-  --panel: rgba(10, 14, 26, 0.92);
-  --panel-soft: rgba(16, 22, 40, 0.85);
-  --line: rgba(120, 140, 200, 0.22);
-  --text: #e8ecf8;
-  --text-dim: #9aa4c0;
-  --accent: #62dcff;
-  --accent-2: #ff4c55;
-  --p1-theme: #62dcff;
-  --p2-theme: #ff4c55;
-  --p3-theme: #8cff65;
-  --p4-theme: #ffd35a;
+  /* The Mech Mayhem palette: five neon HUD hues on deep blue-black. Cyan is
+     SELECTION — the thing your cursor is on lights the cyan tube. Magenta is
+     the accent for state you cannot move: the second neon tube, the hot end
+     of a stat bar, the bounce light under a heading. */
+  --bg: #05070c;
+  /* The slash: the ONE angle the whole interface leans on. Buttons, plates,
+     ribbons, HUD panels and entrance motion all use it — a second angle
+     anywhere would read as a mistake, so it lives here and nowhere else.
+     --skew is the composable transform (hover states append to it). */
+  --slash: -10deg;
+  --skew: skewX(var(--slash));
+  --unskew: skewX(calc(-1 * var(--slash)));
+  --font-display: "Barlow Condensed", "Arial Narrow", "Inter", sans-serif;
+  /* Victory gold: the results screen and the full-energy flare only. */
+  --gold: #ffd23c;
+  --panel: rgba(8, 14, 24, 0.88);
+  --panel-soft: rgba(12, 20, 34, 0.82);
+  --line: rgba(96, 200, 255, 0.3);
+  --text: #e8f4ff;
+  --text-dim: #8fb4cc;
+  --accent: #38e8ff;
+  --accent-2: #ff4d5e;
+  --accent-3: #ff4dd8;
+  --p1-theme: #38e8ff;
+  --p2-theme: #ff4d5e;
+  --p3-theme: #62ff9a;
+  --p4-theme: #ffb43c;
   font-size: 16px;
 
   /* Scrollbars, wherever one turns up — the move list, the controls screen,
@@ -56,6 +118,12 @@ html, body {
   display: grid;
   place-items: center;
   padding: 12px;
+  /* A game, not a document. Dragging across the arena during a fight used to
+     select the HUD's text and leave it highlighted for the rest of the match,
+     and a double-click on a menu label did the same. Nothing on this screen is
+     meant to be copied. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .arena-wrap {
@@ -68,7 +136,8 @@ html, body {
   background: #05070f;
 }
 
-#gameCanvas {
+#gameCanvas,
+#glCanvas {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -141,25 +210,35 @@ html, body {
   display: flex;
   gap: 10px;
   align-items: center;
-  background: linear-gradient(180deg, rgba(8, 12, 24, 0.88), rgba(8, 12, 24, 0.55));
+  background:
+    repeating-linear-gradient(100deg, transparent 0 14px, rgba(255, 255, 255, 0.018) 14px 20px),
+    linear-gradient(180deg, rgba(8, 12, 24, 0.9), rgba(8, 12, 24, 0.6));
   border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 8px 12px;
+  border-radius: 4px;
+  padding: 8px 14px;
   min-width: 250px;
+  /* The whole plate leans into the arena on the slash; each direct child
+     counter-skews so the portrait and readouts stand upright inside it. */
+  transform: var(--skew);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  /* The combo readout hangs off the bottom edge of this panel. */
+  position: relative;
 }
+
+.fighter-status > * { transform: var(--unskew); }
 
 /* Each panel publishes its fighter's colour as --panel-theme (ui.js), so one
    pair of rules dresses every seat from two fighters up to eight. */
-.fighter-status { border-left: 3px solid var(--panel-theme, var(--line)); }
+.fighter-status { border-left: 4px solid var(--panel-theme, var(--line)); }
 .fighter-status--mirror {
   border-left: 1px solid var(--line);
-  border-right: 3px solid var(--panel-theme, var(--line));
+  border-right: 4px solid var(--panel-theme, var(--line));
 }
 
 .hud-portrait {
   width: 52px;
   height: 52px;
-  border-radius: 10px;
+  border-radius: 3px;
   object-fit: cover;
   object-position: top;
   border: 1px solid var(--line);
@@ -175,18 +254,24 @@ html, body {
 }
 
 .fighter-name {
+  font-family: var(--font-display);
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-size: 0.82rem;
+  font-size: 0.92rem;
   color: var(--text-dim);
 }
 
 .fighter-status .fighter-name { color: var(--panel-theme, var(--text-dim)); }
 
+/* Damage is the HUD's loudest reading: the display italic at 900, the same
+   voice as the VS splash and the results poster. */
 .damage {
-  font-size: 1.5rem;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.7rem;
   font-weight: 900;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
@@ -275,6 +360,65 @@ html, body {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* The match clock, above the arena sign. Tabular figures so the digits do not
+   jitter the whole readout sideways as the seconds tick over. */
+.match-clock {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.7rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #f2f5ff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+  line-height: 1;
+}
+
+/* Inside ten seconds the clock stops being a limit in the corner and starts
+   being the thing deciding the match. */
+.match-clock--urgent {
+  color: #ff9a7a;
+  animation: clockPulse 1s ease-in-out infinite;
+}
+
+@keyframes clockPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.09); }
+}
+
+/* The live combo count on a fighter's panel. Absolutely positioned so it can
+   never reflow the panel it sits on — the numbers appear and vanish constantly
+   and a HUD that resized on every third hit would be unreadable. */
+.combo-count {
+  position: absolute;
+  right: 8px;
+  bottom: -7px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  color: var(--panel-theme, #fff);
+  text-shadow: 0 1px 4px #000, 0 0 10px var(--panel-theme, transparent);
+  pointer-events: none;
+}
+
+.fighter-status--mirror .combo-count { right: auto; left: 8px; }
+
+/* Restarted by updateHud on every hit, so a growing combo kicks each time. */
+.combo-count.is-hit { animation: comboKick 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+@keyframes comboKick {
+  from { transform: scale(1.5); opacity: 0.55; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .match-clock--urgent { animation: none; }
+  .combo-count.is-hit { animation: none; }
 }
 
 .hud--multiplayer { gap: 7px; padding-inline: 10px; }
@@ -290,7 +434,7 @@ html, body {
    what a player actually reads mid-match. */
 .hud--crowd { gap: 4px; padding-inline: 8px; }
 .hud--crowd .hud-portrait { display: none; }
-.hud--crowd .fighter-status { padding: 5px 7px; border-radius: 10px; }
+.hud--crowd .fighter-status { padding: 5px 7px; border-radius: 3px; }
 .hud--crowd .damage { font-size: 0.95rem; }
 .hud--crowd .fighter-name { font-size: 0.58rem; letter-spacing: 0.02em; }
 .hud--crowd .stock-dot { width: 8px; height: 8px; }
@@ -341,6 +485,7 @@ html, body {
   gap: 14px;
   padding: 22px;
   background:
+    repeating-linear-gradient(100deg, transparent 0 110px, rgba(130, 170, 255, 0.03) 110px 190px),
     radial-gradient(90% 70% at 50% 10%, rgba(35, 52, 105, 0.5) 0%, transparent 60%),
     rgba(4, 6, 13, 0.93);
   /* Last-resort guard so a very short window can still reach the buttons
@@ -348,12 +493,84 @@ html, body {
   overflow-y: auto;
 }
 
-.overlay--compact { background: rgba(4, 6, 13, 0.82); backdrop-filter: blur(6px); }
+.overlay--compact {
+  background:
+    repeating-linear-gradient(100deg, transparent 0 110px, rgba(130, 170, 255, 0.035) 110px 190px),
+    rgba(4, 6, 13, 0.82);
+  backdrop-filter: blur(6px);
+}
+
+/* Screens arrive instead of appearing.
+
+   `.hidden` is display:none, which no CSS transition can animate across, so the
+   overlay that has just become visible is given a one-shot entrance animation
+   by setPhase() rather than a transition. The panel lifts slightly further than
+   the backdrop, which is what stops a plain cross-fade reading as a flicker.
+
+   Deliberately short. This is between the player and the thing they asked for,
+   every single time, and a menu that is pleasant on the first pass is tiresome
+   on the fiftieth. */
+.overlay.is-entering { animation: overlayIn 180ms ease-out both; }
+.overlay.is-entering > * { animation: overlayContentIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Content arrives along the slash axis — a shallow diagonal, not a plain
+   drop — so even a screen change restates the game's one angle. */
+@keyframes overlayContentIn {
+  from { opacity: 0; transform: translate(14px, 5px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Some people get motion sick, and a fighting game is already a lot of motion.
+   The screens still change; they just stop moving to do it. */
+@media (prefers-reduced-motion: reduce) {
+  .overlay.is-entering,
+  .overlay.is-entering > * { animation-duration: 1ms; }
+}
 
 #roundOverlay {
   background:
     linear-gradient(rgba(3, 5, 13, 0.38), rgba(3, 5, 13, 0.76)),
     url("assets/backgrounds/victory.jpg") center / cover no-repeat;
+}
+
+/* The select spotlight: the fighter the active picker is browsing, blown up
+   behind the whole screen and answering every cursor move. Two stacked images
+   crossfade (ui.js alternates them); everything else on the overlay rides one
+   z-layer above. Dim and bottom-masked so the roster and its name bands keep
+   their contrast. */
+.select-spotlight {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#menuOverlay > :not(.select-spotlight) { position: relative; z-index: 1; }
+
+.select-spotlight img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 124%;
+  width: auto;
+  transform: translate(-50%, -47%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  filter: saturate(1.1) brightness(0.9);
+  mask-image: linear-gradient(185deg, rgba(0, 0, 0, 0.9) 40%, transparent 88%);
+  -webkit-mask-image: linear-gradient(185deg, rgba(0, 0, 0, 0.9) 40%, transparent 88%);
+}
+
+.select-spotlight img.is-on { opacity: 0.3; }
+
+@media (prefers-reduced-motion: reduce) {
+  .select-spotlight img { transition-duration: 1ms; }
 }
 
 #menuOverlay {
@@ -382,21 +599,31 @@ html, body {
   filter: drop-shadow(0 0 20px rgba(98, 220, 255, 0.32));
 }
 
+/* The kicker over every screen title: a slash-cut chip rather than a floating
+   whisper, so each screen opens with the same piece of broadcast furniture. */
 .eyebrow {
-  display: block;
+  display: inline-block;
   text-transform: uppercase;
-  letter-spacing: 0.34em;
-  font-size: 0.66rem;
-  font-weight: 700;
-  color: var(--text-dim);
-  margin-bottom: 6px;
+  letter-spacing: 0.26em;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(98, 220, 255, 0.1);
+  border: 1px solid rgba(98, 220, 255, 0.38);
+  padding: 4px 16px 3px;
+  transform: var(--skew);
+  margin-bottom: 8px;
 }
 
 .title-lockup h1 {
   margin: 0;
-  font-size: clamp(1.8rem, 4.6vw, 3rem);
+  font-family: var(--font-display);
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: clamp(2rem, 5vw, 3.4rem);
   font-weight: 900;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-shadow: 0 0 34px rgba(98, 220, 255, 0.45);
 }
 
@@ -404,9 +631,213 @@ html, body {
 
 .title-lockup h2 {
   margin: 0;
-  font-size: clamp(1.4rem, 3.2vw, 2.1rem);
+  font-family: var(--font-display);
+  font-style: italic;
+  text-transform: uppercase;
+  font-size: clamp(1.7rem, 3.8vw, 2.6rem);
   font-weight: 900;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.045em;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.7), 0 0 30px rgba(98, 220, 255, 0.22);
+}
+
+/* ---------- Title splash ---------- */
+/*
+   The first screen: the logo, one instruction, and the credit. It is a <button>
+   (index.html) so a click, Enter and a pad's A all reach it through paths that
+   already exist — leaveTitle() in ui.js is what they all end up calling.
+
+   Deliberately emptier than every other screen. No corner chrome (setPhase
+   hides it), no panels, no slash-cut furniture competing with the logo: the
+   only geometry is the ambient streak on the ground, so the artwork is the
+   whole composition.
+*/
+.title-screen {
+  /* a button, dressed back down to a screen */
+  appearance: none;
+  border: 0;
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  text-align: center;
+  cursor: pointer;
+  gap: 0;
+  background:
+    linear-gradient(rgba(3, 5, 13, 0.38), rgba(3, 5, 13, 0.66)),
+    url("assets/backgrounds/menu.jpg") center / cover no-repeat;
+  background-color: #05070c;
+}
+
+/* The wordmark is a NEON SIGN, built from type — the Mech Mayhem treatment.
+   Each word is a tube: hollow letters (stroke, no fill) so the backdrop reads
+   through them, three glow layers (a tight 18px halo at 0.9, then 60px and
+   120px washes at 0.42), and a hard-cut flicker. The two words run on
+   co-prime clocks (7.3s vs 9.1s, one offset -2.4s) so they never sync — a
+   real pair of tubes fails independently. Dips go to 0.2-0.45, NEVER to 0:
+   a neon tube starving reads as a stutter, not a blackout. */
+.neon-title {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: clamp(56px, 11vw, 150px);
+  line-height: 0.95;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: transparent;
+}
+
+.neon-title .tube {
+  display: inline-block;
+  -webkit-text-stroke: 3px var(--tube);
+  text-shadow:
+    0 0 18px var(--tube-glow),
+    0 0 60px var(--tube-halo),
+    0 0 120px var(--tube-halo);
+  animation: tubeA 7.3s steps(1, end) infinite;
+}
+
+.neon-title .tube-0 {
+  --tube: #38e8ff;
+  --tube-glow: rgba(56, 232, 255, 0.9);
+  --tube-halo: rgba(56, 232, 255, 0.42);
+}
+
+.neon-title .tube-1 {
+  --tube: #ff4dd8;
+  --tube-glow: rgba(255, 77, 216, 0.9);
+  --tube-halo: rgba(255, 77, 216, 0.42);
+  animation: tubeB 9.1s steps(1, end) infinite;
+  animation-delay: -2.4s;
+}
+
+/* Drop-outs come in stutter pairs — a dip, a blink back, a second dip — with
+   one shallow "nearly holds" dip per cycle and long steady burns between. */
+@keyframes tubeA {
+  0%, 7.9% { opacity: 1; }
+  8%, 8.9% { opacity: 0.22; }
+  9%, 9.7% { opacity: 1; }
+  9.8%, 10.6% { opacity: 0.32; }
+  10.7%, 51.9% { opacity: 1; }
+  52%, 52.9% { opacity: 0.25; }
+  53%, 72.9% { opacity: 1; }
+  73%, 73.7% { opacity: 0.45; }
+  73.8%, 100% { opacity: 1; }
+}
+
+@keyframes tubeB {
+  0%, 21.9% { opacity: 1; }
+  22%, 22.8% { opacity: 0.28; }
+  22.9%, 35.9% { opacity: 1; }
+  36%, 37% { opacity: 0.2; }
+  37.1%, 37.8% { opacity: 1; }
+  37.9%, 38.7% { opacity: 0.35; }
+  38.8%, 88.9% { opacity: 1; }
+  89%, 89.9% { opacity: 0.3; }
+  90%, 100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .neon-title .tube { animation: none; }
+}
+
+.neon-sub {
+  display: block;
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-size: clamp(13px, 1.6vw, 22px);
+  font-weight: 600;
+  letter-spacing: 0.55em;
+  text-indent: 0.55em;
+  text-transform: uppercase;
+  color: #9fd8ef;
+}
+
+/* The generic overlay entrance (`.overlay.is-entering > *`) outranks a plain
+   class selector AND is-entering is never taken off again, so a looping
+   animation declared on the child alone silently never runs. These two rules
+   outrank it and re-declare the entrance themselves, with the loop second in
+   the list so it takes over the moment the arrival finishes. */
+.overlay.title-screen .neon-title {
+  animation: overlayContentIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The arcade blink: a hard on/off on a steps() timing function, not a fade —
+   a cross-fade here would read as a modern web animation rather than as the
+   attract mode this is quoting. */
+.press-start {
+  margin-top: clamp(10px, 2.4vh, 26px);
+  font-family: "Press Start 2P", var(--font-display), monospace;
+  font-size: clamp(0.72rem, 1.5vw, 1.15rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow:
+    0 0 12px rgba(98, 220, 255, 0.9),
+    0 0 30px rgba(98, 220, 255, 0.5),
+    0 3px 0 #0b1a3a;
+}
+
+.overlay.title-screen .press-start {
+  animation:
+    overlayContentIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both,
+    pressStartBlink 1.06s steps(1, end) 380ms infinite;
+}
+
+@keyframes pressStartBlink {
+  0%, 55% { opacity: 1; }
+  56%, 100% { opacity: 0; }
+}
+
+.title-credit {
+  margin-top: clamp(18px, 3.6vh, 40px);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(0.78rem, 1.5vw, 1.05rem);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.9);
+}
+
+.title-hint {
+  margin-top: 8px;
+  font-size: clamp(0.6rem, 1vw, 0.72rem);
+  letter-spacing: 0.06em;
+  color: rgba(150, 161, 192, 0.75);
+}
+
+/* The cabinet coming on (wakeTitle in ui.js): the logo takes a hit of light
+   and the whole splash lifts a shade, once. It reads as the machine waking
+   rather than as a screen change, which is the point — the player has not
+   started the game yet, they have switched the sound on. Specificity high
+   enough to beat the looping `.overlay.title-screen` rules above. */
+.overlay.title-screen.is-waking .neon-title {
+  animation: titleWake 620ms cubic-bezier(0.2, 1.2, 0.3, 1) both;
+}
+
+@keyframes titleWake {
+  0% { transform: scale(1); filter: brightness(1); }
+  22% {
+    transform: scale(1.045);
+    filter: brightness(1.9) drop-shadow(0 0 60px rgba(98, 220, 255, 0.85));
+  }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* And the blink quickens for a beat, so the instruction itself acknowledges
+   the press it just absorbed. */
+.overlay.title-screen.is-waking .press-start {
+  animation: pressStartBlink 0.12s steps(1, end) 5;
+}
+
+/* A blinking word is the one thing on this screen that must be able to stop:
+   it holds steady rather than pulsing, and the logo stops breathing with it. */
+@media (prefers-reduced-motion: reduce) {
+  .overlay.title-screen .press-start,
+  .overlay.title-screen.is-waking .press-start { animation: none; opacity: 1; }
+  .overlay.title-screen .neon-title,
+  .overlay.title-screen.is-waking .neon-title { animation: none; }
 }
 
 /* ---------- Loading ---------- */
@@ -414,17 +845,17 @@ html, body {
 .load-bar {
   position: relative;
   width: min(80%, 420px);
-  height: 12px;
-  border-radius: 8px;
+  height: 13px;
+  border-radius: 2px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.07);
   overflow: hidden;
+  transform: var(--skew);
 }
 
 .load-bar-fill {
   height: 100%;
   width: 0%;
-  border-radius: 8px;
   background: linear-gradient(90deg, #1d5fd8, #62dcff);
   box-shadow: 0 0 18px rgba(98, 220, 255, 0.55);
   transition: width 0.18s ease-out;
@@ -469,14 +900,19 @@ html, body {
   margin: 0;
   display: flex;
   align-items: end;
-  font-size: clamp(0.5rem, 0.7vw, 0.72rem);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: clamp(0.56rem, 0.8vw, 0.8rem);
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   line-height: 1.25;
   color: var(--text-dim);
-  border-bottom: 1px solid var(--line);
-  padding-bottom: 4px;
+  /* The underline runs out on the slash: solid under the words, fading to
+     nothing before the next category's begins. */
+  border-bottom: 0;
+  background: linear-gradient(100deg, var(--accent) 0, rgba(98, 220, 255, 0.45) 40%, transparent 96%) bottom / 100% 2px no-repeat;
+  padding-bottom: 5px;
   overflow-wrap: anywhere;
 }
 
@@ -488,7 +924,7 @@ html, body {
      count instead of being clipped to "GAKUGA". */
   container-type: inline-size;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 4px;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
@@ -519,29 +955,31 @@ html, body {
    below. It still has to be right, because those are the two places the
    paintings are shown at size. */
 .char-card img,
-.matchup-side img {
+.matchup-side img,
+.victory-card--winner img,
+.intro-panel img {
   filter: brightness(var(--card-lift, 1.18)) saturate(1.04);
 }
 
 /* Dim art: a stronger lift to bring it level with the rest of the roster. */
-:is(.char-card, .matchup-side) img[src$="nanami_card.jpg"],
-:is(.char-card, .matchup-side) img[src$="toji_card.jpg"],
-:is(.char-card, .matchup-side) img[src$="geto_card.jpg"],
-:is(.char-card, .matchup-side) img[src$="reggie_card.jpg"],
-:is(.char-card, .matchup-side) img[src$="meimei_card.jpg"],
-:is(.char-card, .matchup-side) img[src$="gakuganji_card.jpg"] {
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="nanami_card.jpg"],
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="toji_card.jpg"],
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="geto_card.jpg"],
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="reggie_card.jpg"],
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="meimei_card.jpg"],
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="gakuganji_card.jpg"] {
   --card-lift: 1.38;
 }
 
 /* Darkest art: near-black backgrounds that stay murky at anything less. */
-:is(.char-card, .matchup-side) img[src$="mahito_card.jpg"],
-:is(.char-card, .matchup-side) img[src$="sukuna_card.jpg"],
-:is(.char-card, .matchup-side) img[src$="choso_card.jpg"] {
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="mahito_card.jpg"],
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="sukuna_card.jpg"],
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="choso_card.jpg"] {
   --card-lift: 1.58;
 }
 
 /* Panda is already bright enough; only the saturation applies. */
-:is(.char-card, .matchup-side) img[src$="panda_card.jpg"] {
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="panda_card.jpg"] {
   --card-lift: 1;
 }
 
@@ -558,40 +996,44 @@ html, body {
 }
 
 /* Uro and Hakari are bright enough as drawn — no filter at all. */
-:is(.char-card, .matchup-side) img[src$="uro_card.jpg"],
-:is(.char-card, .matchup-side) img[src$="hakari_card.jpg"] {
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="uro_card.jpg"],
+:is(.char-card, .matchup-side, .victory-card--winner, .intro-panel) img[src$="hakari_card.jpg"] {
   filter: none;
 }
 
+/* The name band: a slash-cut plate rising along the card's bottom edge, the
+   same grammar as every other plate in the game. The gradient runs on the
+   slash angle instead of straight up, which is what tips the band's top edge. */
 .char-card span {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 10px 2px 4px;
+  font-family: var(--font-display);
+  padding: 12px 2px 4px;
   /* Scales with the portrait rather than sitting at a fixed size, because the
      longest single-word name on the roster (GAKUGANJI, 9 characters) has to
      fit the tile at every responsive card size — at a fixed 0.62rem it ran
      past the edge and `overflow: hidden` clipped it to "GAKUGA". Multi-word
      names (REGGIE STAR) still wrap to two lines, which is why this scales the
      text instead of forcing `nowrap`. */
-  font-size: clamp(0.36rem, 11cqw, 0.62rem);
+  font-size: clamp(0.4rem, 12cqw, 0.72rem);
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.05em;
   text-align: center;
   color: #fff;
-  background: linear-gradient(180deg, transparent, rgba(2, 4, 10, 0.92));
+  background: linear-gradient(190deg, transparent 18%, rgba(2, 4, 10, 0.55) 42%, rgba(2, 4, 10, 0.94) 78%);
   text-shadow: 0 1px 3px #000;
 }
 
 .char-card:hover { transform: translateY(-3px); border-color: rgba(160, 190, 255, 0.6); }
 
-/* The wildcard is one card spanning every card row at the far right, so it
-   takes its height from the rows it covers rather than from the card aspect. */
+/* The wildcard is a card like any other — same size, same aspect — sitting in
+   the first spare cell the roster leaves (placeRosterBlocks). It is the tile
+   every player's cursor starts on, so making it the odd shape at the far end
+   was exactly backwards. */
 .char-card--random {
-  aspect-ratio: auto;
-  height: 100%;
   background:
     radial-gradient(120% 100% at 50% 0%, rgba(98, 220, 255, 0.24), transparent 65%),
     linear-gradient(160deg, #1b2545, #0a0f1f);
@@ -605,27 +1047,36 @@ html, body {
   display: grid;
   place-items: center;
   padding-bottom: 12px;
-  font-size: 2.1rem;
+  font-size: clamp(1.3rem, 38cqw, 2.4rem);
   font-weight: 900;
   color: var(--accent);
   text-shadow: 0 0 18px rgba(98, 220, 255, 0.7);
 }
 
-.char-card.is-p1 { border-color: var(--p1-theme); box-shadow: 0 0 0 2px var(--p1-theme), 0 0 18px rgba(98, 220, 255, 0.4); }
-.char-card.is-p2 { border-color: var(--p2-theme); box-shadow: 0 0 0 2px var(--p2-theme), 0 0 18px rgba(255, 76, 85, 0.4); }
-.char-card.is-p3 { border-color: var(--p3-theme); box-shadow: 0 0 0 2px var(--p3-theme), 0 0 18px rgba(140, 255, 101, 0.4); }
-.char-card.is-p4 { border-color: var(--p4-theme); box-shadow: 0 0 0 2px var(--p4-theme), 0 0 18px rgba(255, 211, 90, 0.4); }
-.char-card.is-p1.is-p2 {
-  box-shadow: 0 0 0 2px var(--p1-theme), 0 0 0 4px var(--p2-theme), 0 0 20px rgba(180, 140, 255, 0.5);
+/* A player's marker — the card they are considering, or the one they locked
+   in. Both states look the same on purpose: what a marker says is "this is
+   where I am", and a player is only ever in one place.
+
+   The ring stack is written by ui.js (renderRosterMarkers) because several
+   players share a card constantly — everyone's cursor starts on Random — and
+   one ring per player, drawn concentrically, is the only way that reads as
+   "three of us are here" instead of whichever seat repainted last. */
+.char-card.is-marked {
+  border-color: var(--mark-color, var(--line));
+  box-shadow: var(--mark-rings, none);
+  z-index: 2;
 }
 
 .char-card .pick-tag {
   position: absolute;
   top: 5px;
-  font-size: 0.56rem;
-  font-weight: 900;
-  padding: 2px 7px;
-  border-radius: 20px;
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: 0.62rem;
+  font-weight: 800;
+  padding: 2px 8px 1px;
+  border-radius: 2px;
+  transform: var(--skew);
   color: #04060d;
 }
 
@@ -650,9 +1101,12 @@ html, body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  background: var(--panel-soft);
+  background:
+    repeating-linear-gradient(100deg, transparent 0 26px, rgba(255, 255, 255, 0.015) 26px 38px),
+    var(--panel-soft);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-top: 3px solid var(--seat, var(--line));
+  border-radius: 5px;
   padding: 10px 14px 9px;
   cursor: pointer;
   color: var(--text);
@@ -664,19 +1118,26 @@ html, body {
      which clips to its own line budget. */
   --hero-art-h: clamp(84px, 14vh, 118px);
   --hero-art-w: calc(var(--hero-art-h) * 1.42);
-  --hero-furniture: 190px; /* name + 3 description lines + stats + ultimate */
+  --hero-furniture: 208px; /* seat chip + name + 3 description lines + stats + ultimate */
   height: calc(var(--hero-art-h) + var(--hero-furniture));
   justify-content: flex-start;
   overflow: hidden;
   transition: border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
-.matchup-side span {
-  font-size: 0.62rem;
+/* The seat chip: WHO this card belongs to, as a slash-cut plate in the seat's
+   own color — the same chip grammar as the kickers and pick tags. */
+.matchup-side .hero-slot-label {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
+  letter-spacing: 0.16em;
   font-weight: 800;
-  color: var(--text-dim);
+  color: var(--seat, var(--text-dim));
+  background: color-mix(in srgb, var(--seat, #8ea4d6) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--seat, #8ea4d6) 45%, transparent);
+  padding: 2px 12px 1px;
+  transform: var(--skew);
 }
 
 .matchup-side img {
@@ -684,7 +1145,7 @@ html, body {
   height: var(--hero-art-h);
   object-fit: cover;
   object-position: top;
-  border-radius: 10px;
+  border-radius: 3px;
 }
 
 /* The hero card carries the character's FULL name (roster tiles stay short), so
@@ -693,8 +1154,12 @@ html, body {
    scales with the viewport instead of wrapping — the ellipsis is a guard for a
    future name longer than anything on the roster, not an expected state. */
 .matchup-side strong {
-  font-size: clamp(0.72rem, 0.9vw + 0.25rem, 1.05rem);
-  letter-spacing: 0.04em;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: clamp(0.82rem, 1vw + 0.3rem, 1.2rem);
+  letter-spacing: 0.05em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -777,16 +1242,20 @@ html, body {
 .hero-ready {
   position: absolute;
   top: 34px;
-  right: 16px;
+  right: 12px;
   z-index: 2;
-  font: 900 0.58rem/1 inherit;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.66rem;
+  line-height: 1;
   font-style: normal;
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: #04170b;
   background: #72e596;
-  border-radius: 20px;
-  padding: 4px 9px;
+  border-radius: 2px;
+  padding: 4px 10px 3px;
+  transform: var(--skew);
   box-shadow: 0 2px 10px rgba(114, 229, 150, 0.5);
 }
 
@@ -944,9 +1413,10 @@ html, body {
 .vs-mode:hover { border-color: rgba(160, 190, 255, 0.45); color: var(--text); }
 
 .vs-mode-label {
-  font-size: 0.6rem;
+  font-family: var(--font-display);
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -972,12 +1442,13 @@ html, body {
   padding: 10px;
   background: var(--panel);
   border: 1px solid rgba(160, 190, 255, 0.4);
-  border-radius: 14px;
+  border-radius: 5px;
   box-shadow: 0 22px 50px rgba(0, 0, 0, 0.6);
 }
 
 .mode-menu-title {
-  font-size: 0.58rem;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
   font-weight: 800;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1017,30 +1488,53 @@ html, body {
   justify-content: center;
 }
 
+/* Every menu button is a parallelogram on the slash. The (upright, heavy)
+   condensed type inherits the container's lean, so letterform and frame agree
+   — an italic here would double-skew. Hover appends to --skew rather than
+   replacing it, so the lift never straightens the button. */
 .menu-actions button,
 .settings-panel button {
-  background: var(--panel-soft);
+  background: linear-gradient(180deg, rgba(24, 32, 58, 0.9), rgba(12, 17, 34, 0.9));
   color: var(--text);
-  border: 1px solid var(--line);
-  border-radius: 11px;
-  padding: 9px 16px;
-  font-weight: 700;
-  font-size: 0.8rem;
+  border: 1px solid rgba(120, 140, 200, 0.34);
+  border-radius: 3px;
+  padding: 9px 20px;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
   cursor: pointer;
-  transition: border-color 0.12s ease, transform 0.12s ease;
+  transform: var(--skew);
+  transition: border-color 0.12s ease, transform 0.12s ease, background 0.12s ease;
 }
 
 .menu-actions button:hover,
-.settings-panel button:hover { border-color: rgba(160, 190, 255, 0.55); transform: translateY(-1px); }
+.settings-panel button:hover {
+  border-color: rgba(160, 190, 255, 0.65);
+  transform: var(--skew) translateY(-1px);
+}
 
+/* Self-sufficient rather than leaning on .menu-actions: the start button sits
+   in the matchup bar's centre column, outside any actions row. */
 .primary-action {
-  background: linear-gradient(135deg, #1d5fd8, #62dcff) !important;
+  background: linear-gradient(115deg, #1d5fd8, #62dcff) !important;
   border: none !important;
   color: #03101f !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.04em;
-  box-shadow: 0 6px 20px rgba(52, 130, 240, 0.4);
+  font-family: var(--font-display);
+  font-weight: 800 !important;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 10px 22px;
+  border-radius: 3px;
+  cursor: pointer;
+  transform: var(--skew);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  box-shadow: 0 6px 20px rgba(52, 130, 240, 0.4), 0 0 0 1px rgba(160, 220, 255, 0.35) inset;
 }
+
+.primary-action:hover:not(:disabled) { transform: var(--skew) translateY(-1px); }
 
 .controller-status { color: var(--text-dim); font-size: 0.72rem; margin: 0; }
 
@@ -1049,6 +1543,42 @@ html, body {
 .load-hint { opacity: 0.7; font-variant-numeric: tabular-nums; }
 
 /* ---------- Stage select ---------- */
+
+/* The action row sits ABOVE the grid (index.html): twenty arenas push anything
+   below them toward the fold, and the screen's best offer should not live
+   there. Bigger targets than the standard menu row, because this row IS the
+   screen's controls rather than its footer. */
+.menu-actions--stage { gap: 14px; }
+
+.menu-actions--stage button {
+  font-size: 0.95rem;
+  padding: 13px 26px;
+  border-radius: 14px;
+}
+
+/* Random styled as the draw it is (runStageRoulette) — but quietly. The first
+   pass was a rolling five-colour gradient, which did read as the fun option and
+   also as the only thing on the screen: twenty painted arenas underneath it,
+   and the eye went to the button every time. This keeps the warmth and drops
+   the shouting — one soft two-stop wash in the roulette's own colours, no
+   animation at rest, and the lift saved for hover, where it is an answer to the
+   player rather than a demand for them. Scoped under .menu-actions to outweigh
+   the `.menu-actions button` defaults. */
+.menu-actions .random-stage {
+  background: linear-gradient(120deg, rgba(255, 160, 90, 0.22), rgba(181, 108, 255, 0.22));
+  border: 1px solid rgba(255, 178, 120, 0.55);
+  color: var(--text);
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.menu-actions .random-stage:hover,
+.menu-actions .random-stage:focus-visible {
+  border-color: rgba(255, 190, 130, 0.9);
+  background: linear-gradient(120deg, rgba(255, 160, 90, 0.34), rgba(181, 108, 255, 0.34));
+  transform: translateY(-2px);
+}
+
 
 .stage-grid {
   display: grid;
@@ -1060,7 +1590,7 @@ html, body {
 .stage-card {
   position: relative;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 4px;
   overflow: hidden;
   cursor: pointer;
   aspect-ratio: 16 / 9;
@@ -1082,12 +1612,15 @@ html, body {
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 12px 6px 5px;
-  font-size: 0.66rem;
+  padding: 13px 6px 5px;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
   font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   text-align: center;
   color: #fff;
-  background: linear-gradient(180deg, transparent, rgba(2, 4, 10, 0.95));
+  background: linear-gradient(190deg, transparent 12%, rgba(2, 4, 10, 0.6) 45%, rgba(2, 4, 10, 0.95) 82%);
   text-shadow: 0 1px 3px #000;
 }
 
@@ -1116,7 +1649,7 @@ html, body {
   width: min(96%, 960px);
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 6px;
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
@@ -1127,7 +1660,8 @@ html, body {
 
 .moves-blurb { color: var(--text-dim); font-size: 0.82rem; line-height: 1.5; margin: 0; }
 
-.controller-guide { display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); gap: 18px; align-items: center; }
+.controller-guide { display: grid; grid-template-columns: minmax(0, 2fr) minmax(180px, 1fr); gap: 18px; align-items: start; }
+.moves-panel:not(.moves-panel--split) .controller-tips { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .xbox-controller { width: 100%; max-height: 265px; overflow: visible; }
 .controller-shell { fill: #151b2d; stroke: #526080; stroke-width: 4; }
 .controller-bumper { fill: #27314b; stroke: #7181a6; stroke-width: 2; }
@@ -1196,15 +1730,17 @@ html, body {
 
 .moves-player-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .moves-player-badge {
-  font-weight: 900;
-  font-size: 0.7rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.78rem;
   letter-spacing: 0.1em;
   color: #05060d;
   background: var(--seat);
-  border-radius: 5px;
-  padding: 2px 7px;
+  border-radius: 2px;
+  padding: 2px 9px 1px;
+  transform: var(--skew);
 }
-.moves-player-name { font-weight: 800; font-size: 1rem; }
+.moves-player-name { font-family: var(--font-display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 1.1rem; letter-spacing: 0.04em; }
 .moves-player-epithet { color: var(--text-dim); font-size: 0.78rem; font-style: italic; }
 .moves-player-keys { color: var(--text-dim); font-size: 0.7rem; line-height: 1.45; margin: 8px 0 0; }
 
@@ -1251,7 +1787,8 @@ html, body {
 .moves-section {
   border-top: 1px solid var(--line);
   padding-top: 10px;
-  font-size: 0.68rem;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
   font-weight: 900;
   letter-spacing: 0.28em;
   text-transform: uppercase;
@@ -1267,7 +1804,7 @@ html, body {
   width: min(90%, 380px);
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 6px;
   padding: 18px 20px;
 }
 
@@ -1284,10 +1821,9 @@ html, body {
   position: relative;
 }
 
-.pad-focus-p1 { outline: 3px solid var(--p1-theme); outline-offset: 2px; z-index: 3; }
-.pad-focus-p2 { outline: 3px solid var(--p2-theme); outline-offset: 2px; z-index: 3; }
-.pad-focus-p3 { outline: 3px solid var(--p3-theme); outline-offset: 2px; z-index: 3; }
-.pad-focus-p4 { outline: 3px solid var(--p4-theme); outline-offset: 2px; z-index: 3; }
+/* (The per-seat cursor rings that used to live here are gone: a cursor and a
+   commit are the same marker now, and .char-card.is-marked draws it — stacking
+   one ring per player instead of four rules that overwrote each other.) */
 
 /* Short windows: crop the portraits to their upper bodies and let the columns
    get narrower, rather than pushing the matchup bar off the bottom. */
@@ -1301,7 +1837,7 @@ html, body {
   #menuOverlay .game-logo { max-height: 52px; }
   /* The hero cards give ground too, so the roster doesn't carry the whole cut:
      two description lines instead of three, and a shorter portrait. */
-  .matchup-side { width: 172px; padding: 7px 10px 6px; --hero-furniture: 156px; }
+  .matchup-side { width: 172px; padding: 7px 10px 6px; --hero-furniture: 172px; }
   .hero-epithet { height: calc(2 * 1.32em); -webkit-line-clamp: 2; }
   .hero-ult { height: calc(2 * 1.3em); -webkit-line-clamp: 2; }
 }
@@ -1312,4 +1848,674 @@ html, body {
   .matchup-side { width: 160px; padding: 7px; }
   .controller-guide { grid-template-columns: 1fr; }
   .controller-tips { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ---------- Match result: the scoreboard ---------- */
+/*
+   Seven columns on a fixed grid rather than a <table>, so every row lines up
+   without the table's own layout getting a say — with eight fighters this is
+   the difference between a scoreboard and a paragraph.
+
+   The name column is the only flexible one; the numbers are all short and
+   knowing their width in advance is what keeps the columns from shifting as
+   damage totals grow a digit.
+*/
+.match-stats {
+  width: min(680px, 92%);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.76rem;
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 3.6rem 3.6rem 2.9rem 2.9rem 5.4rem;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(8, 12, 24, 0.6);
+  border-left: 3px solid var(--row-theme, transparent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Numbers right-aligned, the name left: the two read as different kinds of
+   thing and mixing their alignment is what makes a table hard to scan. */
+.stat-row > span { text-align: right; }
+.stat-row .stat-name { text-align: left; font-weight: 700; }
+
+.stat-row { border-radius: 3px; }
+
+.stat-row--head {
+  background: none;
+  border-left-color: transparent;
+  font-family: var(--font-display);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* The winner's row answers the podium in the podium's color. */
+.stat-row--winner {
+  background: rgba(255, 217, 122, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 217, 122, 0.35);
+}
+
+.stat-footer {
+  margin: 4px 0 0;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 0.66rem;
+}
+
+/* Under four or so fighters the table is mostly whitespace, and on a short
+   window it is the first thing that can afford to shrink. */
+@media (max-height: 640px) {
+  .match-stats { font-size: 0.68rem; }
+  .stat-row { padding: 3px 10px; }
+}
+
+/* ---------- Victory podium ---------- */
+
+/* Smash's results screen in miniature: the headline is a shout, the winner's
+   card is the picture, everyone else stands small and grey beneath their
+   placement. The overlay already scrolls on short windows, so the sizes clamp
+   on viewport height rather than shrinking the whole screen to fit. */
+.title-lockup--victory h2 {
+  font-size: clamp(2.6rem, 8vw, 4.8rem);
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 46px rgba(255, 217, 122, 0.42), 0 4px 20px rgba(0, 0, 0, 0.85);
+}
+
+/* Gold's ONE home: the results kicker chip goes gold with the rest of the
+   podium, instead of staying on the system cyan every other screen uses. */
+.title-lockup--victory .eyebrow {
+  font-size: 0.82rem;
+  color: var(--gold);
+  background: rgba(255, 217, 122, 0.1);
+  border-color: rgba(255, 217, 122, 0.42);
+}
+
+.victory-podium {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+.victory-podium:empty { display: none; }   /* a draw renders no podium */
+
+.victory-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.victory-card img {
+  width: clamp(120px, 24vh, 190px);
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 4px;
+  border: 2px solid var(--card-theme, var(--line));
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55), 0 0 30px var(--card-theme, transparent);
+}
+
+.victory-card figcaption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.25;
+  gap: 4px;
+}
+
+.victory-card i {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.victory-card b {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* The winner takes the screen the way the VS splash took it: a wide angled
+   panel with the painted card as its backdrop, the full-body victory pose
+   standing in front, the gold plate, the poster name — and the fighter's own
+   line, spoken once more. Same geometry as .intro-panel: the frame leans on
+   the slash, everything inside counter-skews upright. */
+.victory-hero-row {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  width: min(94%, 980px);
+}
+
+.victory-hero {
+  position: relative;
+  margin: 0;
+  flex: 1;
+  max-width: 640px;
+  height: clamp(230px, 36vh, 330px);
+  transform: var(--skew);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  border-inline: 3px solid var(--gold);
+  background: color-mix(in srgb, var(--card-theme, #62dcff) 18%, #070a16);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* The painted card, full-bleed and pushed back: dim enough that the sprite
+   and the plate read over it, alive enough to keep the fighter's world. */
+.victory-hero-art {
+  position: absolute;
+  top: 0;
+  left: -12%;
+  width: 124%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transform: var(--unskew);
+  opacity: 0.52;
+  filter: saturate(1.05) brightness(0.8);
+}
+
+/* Readability scrim: ink rising from the plate's corner, on the slash. */
+.victory-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, rgba(4, 6, 14, 0.88) 8%, rgba(4, 6, 14, 0.35) 48%, transparent 78%);
+}
+
+.victory-hero-sprite {
+  position: absolute;
+  right: 7%;
+  bottom: 0;
+  z-index: 2;
+  height: 94%;
+  width: auto;
+  transform: var(--unskew);
+  filter:
+    drop-shadow(0 14px 22px rgba(0, 0, 0, 0.65))
+    drop-shadow(0 0 20px color-mix(in srgb, var(--card-theme, #62dcff) 55%, transparent));
+}
+
+.victory-hero-plate {
+  position: absolute;
+  left: 8%;
+  bottom: 11%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  transform: var(--unskew);
+  text-align: left;
+  max-width: 58%;
+}
+
+.victory-hero-plate i {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 800;
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #241a04;
+  background: linear-gradient(100deg, #ffe9ad, var(--gold) 60%, #eab54e);
+  padding: 4px 16px 3px;
+  transform: var(--skew);
+  box-shadow: 0 3px 14px rgba(255, 217, 122, 0.45);
+}
+
+.victory-hero-plate b {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  font-size: clamp(1.8rem, 4.2vw, 3rem);
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.9), 0 0 30px color-mix(in srgb, var(--card-theme, #62dcff) 55%, transparent);
+}
+
+.victory-hero-plate em {
+  font-style: italic;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: rgba(238, 241, 251, 0.88);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+}
+
+/* Team wins stand two to four heroes side by side; the plates tighten so the
+   narrower panels still hold a name and a line. */
+.victory-hero-row[data-count="2"] .victory-hero-plate b { font-size: clamp(1.3rem, 2.8vw, 2rem); }
+.victory-hero-row[data-count="2"] .victory-hero-plate em { font-size: 0.72rem; }
+.victory-hero-row:not([data-count="1"]) .victory-hero-sprite { right: 3%; }
+
+.victory-losers {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.victory-card--loser {
+  position: relative;
+  overflow: hidden;
+  transform: var(--skew);
+  width: clamp(120px, 15vw, 172px);
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--card-theme, var(--line));
+  background: #0a0f1e;
+}
+
+.victory-card--loser img {
+  position: absolute;
+  top: 0;
+  left: -12%;
+  width: 124%;
+  height: 100%;
+  aspect-ratio: auto;
+  object-fit: cover;
+  object-position: top;
+  border: none;
+  border-radius: 0;
+  transform: var(--unskew);
+  filter: grayscale(0.85) brightness(0.55);
+  box-shadow: none;
+}
+
+.victory-card--loser figcaption {
+  position: absolute;
+  left: 10px;
+  bottom: 7px;
+  align-items: flex-start;
+  transform: var(--unskew);
+  gap: 1px;
+}
+
+.victory-card--loser i { color: var(--text-dim); letter-spacing: 0.12em; }
+
+.victory-card--loser b { font-size: 0.8rem; color: var(--text-dim); }
+
+/* The winner arrives like a stinger — pops past full size and settles — while
+   the beaten file in a beat later. Both die to 1ms under the reduced-motion
+   rule that already covers overlay entrances, because they run on the same
+   .is-entering pass. */
+.overlay.is-entering .victory-hero-row {
+  animation: winnerPop 460ms cubic-bezier(0.2, 1.45, 0.35, 1) both;
+}
+
+.overlay.is-entering .victory-losers {
+  animation: overlayContentIn 260ms ease-out 140ms both;
+}
+
+@keyframes winnerPop {
+  from { opacity: 0; transform: scale(0.6); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay.is-entering .victory-hero-row,
+  .overlay.is-entering .victory-losers { animation-duration: 1ms; animation-delay: 0ms; }
+}
+
+/* ---------- Battle intro: the VS splash ---------- */
+/*
+   Every entrant's painted hero card, huge, in angled panels that slam in from
+   the sides before READY…GO!. Built by showBattleIntro (ui.js); a cut-scene
+   beat, not a menu — no input, self-dismissing on main.js's countdown budget.
+
+   The geometry: each panel is skewed on the slash and its art counter-skewed
+   and oversized, so the frame leans while the painting stays upright. The
+   whole splash bleeds past the screen edges so the outermost slanted edges
+   never expose a background corner.
+*/
+.intro-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40; /* over the HUD and utility corner; the error toast stays above */
+  overflow: hidden;
+  background: #04060e;
+}
+
+.intro-splash {
+  position: absolute;
+  inset: -8% -6%;
+  display: flex;
+  gap: clamp(6px, 1vw, 14px);
+}
+
+.intro-panel {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  transform: var(--skew);
+  /* Name sizes read the panel's own width (cqw), so the same rules carry a
+     1v1's half-screens and a Battle Royal's eight slats. */
+  container-type: inline-size;
+  border-inline: 3px solid var(--seat, var(--line));
+  background: color-mix(in srgb, var(--seat, #62dcff) 16%, #070a16);
+  box-shadow: 0 0 44px rgba(0, 0, 0, 0.65);
+}
+
+.intro-panel img {
+  position: absolute;
+  top: 0;
+  left: -17%;
+  width: 134%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transform: var(--unskew);
+}
+
+.intro-plate {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16%;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  transform: var(--unskew);
+}
+
+.intro-seat {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 800;
+  font-size: clamp(0.6rem, 5cqw, 0.85rem);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #04060d;
+  background: var(--seat, var(--accent));
+  padding: 3px 14px 2px;
+  transform: var(--skew);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--seat, #62dcff) 60%, transparent);
+}
+
+.intro-name {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 0.95;
+  font-size: clamp(1.4rem, 17cqw, 4.2rem);
+  letter-spacing: 0.02em;
+  color: #fff;
+  text-shadow:
+    0 4px 18px rgba(0, 0, 0, 0.9),
+    0 0 34px color-mix(in srgb, var(--seat, #62dcff) 65%, transparent);
+}
+
+/* The fighter's line, spoken as their panel lands. Sized off the panel's own
+   width like the name; on Battle-Royal slats too narrow to speak, it yields
+   rather than wrapping into a paragraph. */
+.intro-quote {
+  font-style: italic;
+  font-size: clamp(0.66rem, 3.4cqw, 1rem);
+  line-height: 1.4;
+  max-width: 78%;
+  color: rgba(238, 241, 251, 0.9);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95);
+  text-align: center;
+  text-wrap: balance;
+}
+
+@container (max-width: 190px) {
+  .intro-quote { display: none; }
+}
+
+/* The outermost panels bleed past the screen edge (that is what hides their
+   slanted corners), which drags their centred plates off-centre with them.
+   Padding on the clipped side hands the plate back the visible middle. */
+.intro-panel:first-child .intro-plate { padding-left: 9%; }
+.intro-panel:last-child .intro-plate { padding-right: 9%; }
+
+.intro-vs {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  transform: translate(-50%, -54%) skewX(var(--slash));
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(5rem, 17vw, 11rem);
+  line-height: 1;
+  background: linear-gradient(180deg, #ffb199 8%, #ff4c55 52%, #a01d26 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter:
+    drop-shadow(0 6px 22px rgba(0, 0, 0, 0.8))
+    drop-shadow(0 0 30px rgba(255, 76, 85, 0.55));
+}
+
+.intro-stage {
+  position: absolute;
+  bottom: 4.5%;
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%) skewX(var(--slash));
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #f2f5ff;
+  background: rgba(4, 6, 14, 0.8);
+  border: 1px solid rgba(160, 190, 255, 0.4);
+  border-left: 4px solid var(--accent);
+  padding: 8px 26px 7px;
+}
+
+/* The bar along the bottom of the splash, shown only when a match's art is
+   still streaming as it goes up. Deliberately thin and unlabelled: the screen
+   is the VS screen, and this is a footnote on it rather than a loading screen
+   wearing the splash as a background. */
+.intro-load {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  height: 5px;
+  background: rgba(4, 6, 14, 0.75);
+}
+
+.intro-load-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #1d5fd8, var(--accent));
+  box-shadow: 0 0 14px rgba(98, 220, 255, 0.6);
+  transition: width 0.18s ease-out;
+}
+
+/* The slam: odd panels arrive from the left, even from the right, each a beat
+   after the one before; the VS mark stamps down over them; the plates and
+   stage plaque settle last. All of it dies to 1ms under reduced motion. */
+.intro-overlay.is-entering .intro-panel {
+  animation: introPanelIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+.intro-overlay.is-entering .intro-panel:nth-child(even) { animation-name: introPanelInRight; }
+
+@keyframes introPanelIn {
+  from { transform: var(--skew) translateX(-80vw); }
+  to { transform: var(--skew); }
+}
+
+@keyframes introPanelInRight {
+  from { transform: var(--skew) translateX(80vw); }
+  to { transform: var(--skew); }
+}
+
+.intro-overlay.is-entering .intro-vs {
+  animation: introVsIn 0.46s cubic-bezier(0.2, 1.3, 0.3, 1) 0.2s both;
+}
+
+@keyframes introVsIn {
+  from { opacity: 0; transform: translate(-50%, -54%) skewX(var(--slash)) scale(2.4); }
+  to { opacity: 1; transform: translate(-50%, -54%) skewX(var(--slash)) scale(1); }
+}
+
+.intro-overlay.is-entering .intro-plate { animation: overlayContentIn 0.3s ease-out 0.3s both; }
+.intro-overlay.is-entering .intro-stage { animation: overlayContentIn 0.3s ease-out 0.36s both; }
+
+/* Leaving. WHEN this starts is not decided here or by a timer: main.js fades
+   and then drops the splash off the match countdown itself (INTRO_FADE /
+   INTRO_READY), so the splash and the READY… it hands over to are driven by
+   one clock. They used to be separate setTimeouts, and a match start is
+   exactly when the main thread is busiest — on a real load the fade-start and
+   the hide landed 9ms apart, collapsing the fade into a cut. */
+.intro-overlay.is-leaving { animation: introOut 0.28s ease-in both; }
+
+@keyframes introOut {
+  from { opacity: 1; }
+  to { opacity: 0; transform: scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-overlay.is-entering .intro-panel,
+  .intro-overlay.is-entering .intro-vs,
+  .intro-overlay.is-entering .intro-plate,
+  .intro-overlay.is-entering .intro-stage,
+  .intro-overlay.is-leaving { animation-duration: 1ms; animation-delay: 0ms; }
+}
+
+/* ---------- Pause standings ---------- */
+
+/* The match as it stands, one plate per fighter (renderPauseStandings):
+   portrait, damage, stocks, ordered by who is winning. The same leaning-plate
+   grammar as the in-match HUD, so the pause screen reads as the match held
+   still rather than as a different place. */
+.pause-standings {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 92%;
+}
+
+.pause-standings:empty { display: none; }
+
+.pause-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px 8px 10px;
+  min-width: 172px;
+  transform: var(--skew);
+  background:
+    repeating-linear-gradient(100deg, transparent 0 14px, rgba(255, 255, 255, 0.018) 14px 20px),
+    linear-gradient(180deg, rgba(10, 15, 30, 0.94), rgba(10, 15, 30, 0.72));
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--seat, var(--line));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+
+.pause-chip > * { transform: var(--unskew); }
+
+.pause-chip img {
+  width: 44px;
+  height: 44px;
+  border-radius: 3px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--line);
+}
+
+.pause-chip-info { display: flex; flex-direction: column; gap: 3px; }
+
+.pause-chip-info strong {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.85rem;
+  color: var(--seat, var(--text));
+}
+
+.pause-chip-row { display: flex; align-items: center; gap: 9px; }
+
+.pause-chip-row i {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.15rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+.pause-chip-stocks { display: flex; gap: 4px; }
+
+.pause-chip-stocks b {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--seat, var(--text-dim));
+  box-shadow: 0 0 6px var(--seat, transparent);
+}
+
+.pause-chip-stocks b.is-lost {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.25);
+}
+
+/* ---------- Interruptions ---------- */
+
+/* Why the match stopped, when it was not the player who stopped it. */
+.pause-notice {
+  margin: 0;
+  max-width: 46ch;
+  text-align: center;
+  color: #ffd0a8;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+/* Failure the player can see. Bottom left, clear of the utility buttons in the
+   opposite corner, and above everything — an error that appeared behind an
+   overlay would be no better than the console it came from. */
+.error-toast {
+  position: fixed;
+  left: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 100;
+  max-width: min(48ch, calc(100vw - 32px));
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(52, 12, 16, 0.95);
+  border: 1px solid rgba(255, 138, 138, 0.5);
+  color: #ffd8d8;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
 }

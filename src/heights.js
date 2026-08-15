@@ -13,22 +13,33 @@
 //     -> headHeightTarget()           rendered head height in game px
 //     -> CHARACTERS[key].scale        what drawCharFrame is handed
 //
-// `headHeights` in the sprite manifest overrides the computed target for a
-// character. That is what the sprite workbench edits: it is a single number
-// that rescales every one of that fighter's frames at once, which is why the
-// workbench treats it as the global height control rather than a guide line.
+// `headHeightPx` on the character definition overrides the computed target,
+// for a mech whose canon height is not the size it should FIGHT at.
+//
+// ---------------------------------------------------------------------------
+// WHAT USED TO BE HERE, AND WHY IT IS NOT
+//
+// Half this file solved a scale. Sprite art arrives at whatever pixel size the
+// artist drew it, so the game measured the topmost opaque row of a character's
+// idle frame, divided the height target by that span, and wrote the quotient
+// onto `CHARACTERS[key].scale` for drawCharFrame to multiply by. There was a
+// pinning mechanism on top of it (`heightSpans`) so that nudging the idle's
+// ground contact did not silently resize every other pose in the set.
+//
+// A rig has none of that problem. The model's real height in metres is declared
+// in the render3d manifest, and blit.js scales by it directly — so there is no
+// span to measure, no scale to solve, and no pin to maintain. The whole
+// mechanism went with the sprite sheets, and `CHARACTERS[key].scale` with it.
+//
+// What remains is the part that was always about the FIGHTER rather than the
+// artwork: how tall this mech is relative to the rest of the roster.
 
 import { getActor, CHARACTERS } from "./characters.js";
-import { spriteManifest } from "./assets.js";
 import { clamp } from "./utils.js";
-import { frameFootY } from "./sprites.js";
 import {
   HEIGHT_REFERENCE, HEIGHT_COMPRESSION, HEIGHT_MIN_RATIO, HEIGHT_MAX_RATIO,
-  HEIGHT_BASE_PX, HEIGHT_UNKNOWN_RATIO, HEAD_ABOVE_BODY,
+  HEIGHT_BASE_PX, HEIGHT_UNKNOWN_RATIO,
 } from "./config_tuning.js";
-
-/** The frame a character's height is measured from — their standing idle. */
-const HEIGHT_FRAME = ["idle_a", "r0c0"];
 
 function referenceCm() {
   return CHARACTERS[HEIGHT_REFERENCE]?.heightCm || 190;
@@ -63,87 +74,16 @@ export function heightRatio(charKey) {
   return clamp(compressed, HEIGHT_MIN_RATIO, HEIGHT_MAX_RATIO);
 }
 
-/** Rendered head height in game pixels: the manifest override if one exists,
- *  otherwise the value derived from canon. */
+/** Rendered height in game pixels: the character's own `headHeightPx` if it
+ *  declares one, otherwise the value derived from canon height. */
 export function headHeightTarget(charKey) {
-  const override = spriteManifest?.headHeights?.[charKey];
+  const override = getActor(charKey)?.headHeightPx;
   if (Number.isFinite(override) && override > 0) return override;
   return heightRatio(charKey) * HEIGHT_BASE_PX;
 }
 
-/** True when the target came from a hand edit rather than from canon. */
+/** True when the target was set by hand rather than derived from canon. */
 export function hasHeightOverride(charKey) {
-  const override = spriteManifest?.headHeights?.[charKey];
+  const override = getActor(charKey)?.headHeightPx;
   return Number.isFinite(override) && override > 0;
-}
-
-/**
- * How tall the character's idle stands at scale 1, from the foot line to the
- * very top of the art — the point the head-height target names.
- *
- * `bodyTop` is the topmost opaque row, measured offline by
- * tools/bake_anchors.py, so this is the real top of the head rather than an
- * estimate of it. `bodyBottom` is in the span too, which is what makes the head
- * hold its place when a pose's ground contact moves: shifting the foot line
- * changes the span, the solved scale absorbs it, and the top does not move.
- *
- * Frames the bake has not reached fall back to `bodyH` scaled by the empirical
- * offset between the detected body box and the hair above it.
- */
-function idleSpan(charKey) {
-  const frames = spriteManifest?.characters?.[charKey];
-  if (!frames) return 0;
-  for (const key of HEIGHT_FRAME) {
-    const meta = frames[key];
-    if (!meta) continue;
-    const renderScale = meta.renderScale || 1;
-    if (Number.isFinite(meta.bodyTop)) {
-      const span = (frameFootY(meta) - (meta.oy ?? 0) - meta.bodyTop) * renderScale;
-      if (span > 0) return span;
-    }
-    if (meta.bodyH) return meta.bodyH * HEAD_ABOVE_BODY;
-  }
-  return 0;
-}
-
-/**
- * The span a character's scale is solved against.
- *
- * Normally the idle's own, measured above — but a value pinned in
- * `heightSpans` wins. That pin is what lets the idle be adjusted like any other
- * pose: without it, nudging the idle's size or ground contact moves the span,
- * which re-solves the scale, which resizes every OTHER pose in the set. Once
- * the reference is pinned, the character's size is the height target's job
- * alone, which is where it belongs.
- */
-export function referenceSpan(charKey) {
-  const pinned = spriteManifest?.heightSpans?.[charKey];
-  if (Number.isFinite(pinned) && pinned > 0) return pinned;
-  return idleSpan(charKey);
-}
-
-/** The span as measured from the art right now, for whoever pins it. */
-export function measuredIdleSpan(charKey) {
-  return idleSpan(charKey);
-}
-
-/**
- * Solve a character's draw scale so the top of their idle lands exactly on the
- * head-height target, and write it onto the character. Returns the scale, or
- * null when the manifest cannot answer (leaving the authored fallback alone).
- */
-export function applyHeightScale(charKey) {
-  const char = getActor(charKey);
-  const span = referenceSpan(charKey);
-  if (!char || !span) return null;
-  char.scale = headHeightTarget(charKey) / span;
-  return char.scale;
-}
-
-/** Every character with art. Called once the manifest is loaded, and again by
- *  the workbench whenever a height is edited. */
-export function applyAllHeightScales() {
-  for (const charKey of Object.keys(spriteManifest?.characters || {})) {
-    applyHeightScale(charKey);
-  }
 }

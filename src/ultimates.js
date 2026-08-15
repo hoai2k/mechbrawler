@@ -6,13 +6,13 @@
 
 import { state } from "./state.js";
 import { clamp, sign, rand } from "./utils.js";
-import { spawnMelee, spawnProjectile, opponentOf, applyHit, hurtbox, ownerStick } from "./combat.js";
+// Scaled spawns: kit literals are authored for the reference body and sized
+// to the caster here — see combat.js spawnMeleeScaled.
+import { spawnMeleeScaled as spawnMelee, spawnProjectileScaled as spawnProjectile, opponentOf, applyHit, hurtbox, ownerStick, debugShape } from "./combat.js";
 import { burst, dust, ring, popup, banner } from "./particles.js";
-import { applyInstall } from "./specials.js";
+import { applyInstall, spokenCast } from "./specials.js";
 import { spawnSummon } from "./summons.js";
-import { TRANSFORM_POSES, TRANSFORM_POSE_ALTERNATIVES } from "./config_transform.js";
-import { frameMeta } from "./assets.js";
-import { playSfx, playGrunt } from "./audio.js";
+import { playSfx, playGrunt, moveCallFor, spokenLead } from "./audio.js";
 import { critFinisherFx, dismantleLatticeFx, steelInstallFx } from "./fx.js";
 import { CHAR_FX } from "./config_fx.js";
 import { rumbleEvent } from "./rumble.js";
@@ -21,12 +21,21 @@ import { ULT_METER_COST, METER_MAX } from "./constants.js";
 import { getImage } from "./assets.js";
 import { isFoe } from "./teams.js";
 
-function cinematic(f, name, color) {
+// The two halves of an ultimate's opening. They fire on the same frame for the
+// 26 fighters with nothing to say, and a spoken line pushes them apart: the
+// announcement is what the fighter is DOING, the impact is what it DOES.
+//
+// `name` is the ultimate's own name, which is also how MOVE_CALL keys a spoken
+// line — so a fighter with one says it here instead of grunting.
+function announce(f, name, color) {
+  banner(name, color, { y: 210, size: 46, life: 1.5 });
+  return playGrunt(f.charKey, name);   // the handle, so the line can be cut
+}
+
+function impact(f, color) {
   state.slowMo = Math.max(state.slowMo, 0.45);
   state.screenFlash = { color, life: 0.32, maxLife: 0.32 };
-  banner(name, color, { y: 210, size: 46, life: 1.5 });
   playSfx("ult", 1);
-  playGrunt(f.charKey);
   state.camera.shake = Math.max(state.camera.shake, 9);
   ring(f.x, f.y - 90, color, 190);
   rumbleEvent(f, "ult"); // a low swell under the slow-mo
@@ -39,14 +48,13 @@ function beginUltAction(f, dur, opts = {}) {
   f.invuln = Math.max(f.invuln, Math.min(dur + 0.1, 1.2));
 }
 
-/** Does this actor own every pose anything animating it could ask for? A
- *  half-delivered set would pop holes mid-fight — a missing frame draws
- *  NOTHING — so both callers below use this to fall back to something whole
- *  rather than to a hole. */
+/** Does this actor own every pose anything animating it could ask for?
+ *  Always yes now: an actor is a mech rig, and every rig carries the full
+ *  universal clip set — the sprite-era "half-delivered sheet" failure this
+ *  guarded against cannot happen. Kept as the seam (both callers still ask)
+ *  so a future actor type with real gaps has somewhere to say so. */
 export function actorPosesReady(actorKey) {
-  const has = (pose) => !!frameMeta(actorKey, pose);
-  return TRANSFORM_POSES.every((pose) =>
-    has(pose) || (TRANSFORM_POSE_ALTERNATIVES[pose]?.every(has) ?? false));
+  return true;
 }
 
 // A transform only runs when it is switched on AND its actor's art is complete.
@@ -55,13 +63,42 @@ export function transformReady(cfg) {
   return actorPosesReady(cfg.actor);
 }
 
+// Matches the special path: the hold outlives its event by a few frames so the
+// action cannot expire on the frame the move is due.
+const SPOKEN_HOLD_TAIL = 0.1;
+
 export function performUltimate(f) {
   const ult = f.char.ultimate;
   if (!ult) return;
   // The whole bar. Firing this is choosing it over a domain, not a step on the
   // way to one.
+  const color = ult.p.color || f.char.theme;
+  const lineEl = announce(f, ult.name, color);
+
+  // An ultimate with a spoken line is introduced by it, the same way a domain
+  // is: the fighter holds the ult pose for the call and the move goes off near
+  // the end of it. Also like a domain, the wind-up is interruptible and grants
+  // no invulnerability, and **the bar is not spent until the move fires** — an
+  // ultimate shouted down mid-sentence can be shouted again.
+  const call = moveCallFor(f.charKey, ult.name);
+  const lead = spokenLead(call);
+  if (lead > 0) {
+    f.action = {
+      kind: "ult", t: 0, dur: lead + SPOKEN_HOLD_TAIL, anim: "ult",
+      lockMovement: true, events: [], ...spokenCast(f, lineEl, call),
+    };
+    f.animTime = 0;
+    f.animKey = "ult";
+    f.action.events.push({ at: lead, fn: () => {
+      if (f.dead || f.respawnTimer > 0 || state.phase !== "playing") return;
+      f.meter = Math.max(0, f.meter - ULT_METER_COST);
+      impact(f, color);
+      DIRECTORS[ult.type](f, ult.p, ult);
+    } });
+    return;
+  }
   f.meter = Math.max(0, f.meter - ULT_METER_COST);
-  cinematic(f, ult.name, ult.p.color || f.char.theme);
+  impact(f, color);
   DIRECTORS[ult.type](f, ult.p, ult);
 }
 
@@ -161,6 +198,7 @@ const DIRECTORS = {
           const groundY = state.platforms[0]?.y ?? 568;
           burst(tx, groundY - 40, "#ff7a2f", 70, 2.2);
           ring(tx, groundY - 40, "#ffd35a", 260);
+          debugShape({ x: tx, y: groundY - 40, r: p.r });
           for (const t of state.fighters) {
             if (!isFoe(f, t) || t.dead || t.respawnTimer > 0) continue;
             if (circleRectOverlap(tx, groundY - 40, p.r, hurtbox(t))) {
@@ -257,6 +295,7 @@ const DIRECTORS = {
         this.x += f.facing * p.speed * dt;
         if (this.t >= p.dur || this.x < -100 || this.x > 1380) {
           this.dead = true;
+          debugShape({ x: this.x, y: this.y, r: p.r * 1.3 });
           for (const t of state.fighters) {
             if (!isFoe(f, t) || t.dead || t.respawnTimer > 0) continue;
             if (circleRectOverlap(this.x, this.y, p.r * 1.3, hurtbox(t))) {
@@ -281,6 +320,7 @@ const DIRECTORS = {
         this.tick -= dt;
         if (this.tick <= 0) {
           this.tick = p.tickRate;
+          debugShape({ x: this.x, y: this.y, r: p.r });
           for (const t of state.fighters) {
             if (!isFoe(f, t) || t.dead || t.respawnTimer > 0 || t.invuln > 0) continue;
             if (circleRectOverlap(this.x, this.y, p.r, hurtbox(t))) {
@@ -989,6 +1029,7 @@ const DIRECTORS = {
           state.screenFlash = { color: p.color, life: 0.25, maxLife: 0.25 };
           burst(tx, groundY - 50, p.color, 60, 2.0);
           ring(tx, groundY - 50, p.color, 240);
+          debugShape({ x: tx, y: groundY - 50, r: p.r });
           for (const t of state.fighters) {
             if (!isFoe(f, t) || t.dead || t.respawnTimer > 0) continue;
             if (circleRectOverlap(tx, groundY - 50, p.r, hurtbox(t))) {
@@ -1193,7 +1234,7 @@ const DIRECTORS = {
           // Pigeon Viola: five orbs that follow until they meet something.
           for (let i = 0; i < p.orbs; i++) {
             spawnProjectile(f, {
-              speed: 460, ox: 54, oy: -150 + i * 34, r: 22, dur: 1.9,
+              speed: 460, ox: 54, oy: -150 + i * 34, r: p.orbR ?? 22, dur: 1.9,
               dmg: p.orbDmg, base: p.orbBase, growth: p.orbGrowth, angle: 0.4,
               color: p.color, homing: 190, fxElement: "machine",
               label: "Pigeon Viola", sprite: p.orbSprite, spriteH: p.orbSpriteH || 64,
@@ -1265,6 +1306,8 @@ const DIRECTORS = {
         state.screenFlash = { color: p.color, life: 0.3, maxLife: 0.3 };
         burst(ix, iy, p.color, 60, 2.2);
         ring(ix, iy, "#ffffff", p.radius);
+        debugShape({ x: ix, y: iy, r: p.radius });
+        debugShape({ x: f.x, y: f.y - 90, r: p.shockwave });
         for (const t of state.fighters) {
           if (!isFoe(f, t) || t.dead || t.respawnTimer > 0) continue;
           const inCore = circleRectOverlap(ix, iy, p.radius, hurtbox(t));

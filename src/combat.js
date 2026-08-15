@@ -14,15 +14,19 @@ import {
   METER_ON_DEAL, METER_ON_TAKE, HURTBOX,
   GROUND_RELEASE, GROUND_SLIDE_BOOST, GROUND_SPIKE_BOUNCE,
   SAKURAI, SAKURAI_AIR, SAKURAI_LOW, SAKURAI_POP, SAKURAI_KB,
+  COMBO_GRACE,
 } from "./constants.js";
 import { bodyMetrics } from "./silhouette.js";
+import { comFrac, muzzlePoint, hurtboxFit } from "./body_points.js";
 import { swingExtent } from "./moves.js";
+import { breakGrabsOn } from "./grab.js";
 import {
   TUMBLE_KB_MIN, TUMBLE_SPIN_PER_KB, TUMBLE_SPIN_MAX,
   DI_MAX_TURN, DI_SPEED, STALE_QUEUE, STALE_DMG_STEP, STALE_KB_STEP,
+  HEIGHT_BASE_PX,
 } from "./config_tuning.js";
 
-// The right stick belonging to a fighter, or a centred stick when they have no
+// The aim pad (the d-pad) belonging to a fighter, or a centred one when they have no
 // live input this step. CPU fighters always read as centred: aiming and steering
 // are player affordances, and their kits behave exactly as they did before.
 //
@@ -50,33 +54,60 @@ export function ownerStick(f) {
  * silhouette is hair, and hair is not a target.
  */
 export function hurtbox(f) {
-  const b = bodyMetrics(f.spriteChar || f.charKey);
+  const key = f.spriteChar || f.charKey;
+  const b = bodyMetrics(key);
   const H = b.height, W = b.width;
+  // A box grown or shrunk about its own bottom edge by a human-verified fit
+  // (body_points.js, the "hurtbox-fit" review). 1x1 for anyone nobody has
+  // checked, so this is a no-op until a decision lands.
+  const fit = (box, caseKey) => {
+    const m = hurtboxFit(key, caseKey);
+    if (m.w === 1 && m.h === 1) return box;
+    const w = box.w * m.w, h = box.h * m.h;
+    return { x: box.x + (box.w - w) / 2, y: box.y + box.h - h, w, h };
+  };
   if (f.ledge) {
-    return { x: f.x - W * HURTBOX.ledgeW / 2, y: f.y - H * HURTBOX.ledgeTop,
-             w: W * HURTBOX.ledgeW, h: H * HURTBOX.ledgeH };
+    return fit({ x: f.x - W * HURTBOX.ledgeW / 2, y: f.y - H * HURTBOX.ledgeTop,
+                 w: W * HURTBOX.ledgeW, h: H * HURTBOX.ledgeH }, "ledge");
+  }
+  // Tumbling near horizontal (motion.js draws the body spun by spinAngle): an
+  // upright standing box on a body drawn sideways was the biggest remaining
+  // silhouette/box divergence in the air. Long and low like prone, but hung
+  // about the centre of mass — the point the spin pivots on.
+  if (!f.grounded && Math.abs(Math.sin(f.spinAngle || 0)) > 0.7) {
+    const bh = H * HURTBOX.proneH;
+    const cy = f.y - H * comFrac(key);
+    return fit({ x: f.x - H * HURTBOX.proneW / 2, y: cy - bh / 2,
+                 w: H * HURTBOX.proneW, h: bh }, "prone");
   }
   // Lying flat: long and low, matching what is drawn. High pokes whiff over a
   // downed fighter, which is most of what makes a knockdown mean anything.
   if (f.prone > 0 && f.hitstun <= 0 && f.grounded) {
-    return { x: f.x - H * HURTBOX.proneW / 2, y: f.y - H * HURTBOX.proneH,
-             w: H * HURTBOX.proneW, h: H * HURTBOX.proneH };
+    return fit({ x: f.x - H * HURTBOX.proneW / 2, y: f.y - H * HURTBOX.proneH,
+                 w: H * HURTBOX.proneW, h: H * HURTBOX.proneH }, "prone");
   }
   if (f.crouching) {
     // `b.crouch` is measured from this fighter's own crouch pose, not assumed:
     // most of the roster's crouch art does not actually duck yet, and a box
     // that ducked anyway would have them dodging attacks while standing up.
     const ch = H * b.crouch;
-    return { x: f.x - W * HURTBOX.crouchW / 2, y: f.y - ch,
-             w: W * HURTBOX.crouchW, h: ch };
+    return fit({ x: f.x - W * HURTBOX.crouchW / 2, y: f.y - ch,
+                 w: W * HURTBOX.crouchW, h: ch }, "crouch");
   }
   // Doubled over by a hit: lower and wider than standing, which is what the
   // hurt pose is actually drawn as.
   if (f.hitstun > 0) {
-    return { x: f.x - W * HURTBOX.hurtW / 2, y: f.y - H * HURTBOX.hurtH,
-             w: W * HURTBOX.hurtW, h: H * HURTBOX.hurtH };
+    return fit({ x: f.x - W * HURTBOX.hurtW / 2, y: f.y - H * HURTBOX.hurtH,
+                 w: W * HURTBOX.hurtW, h: H * HURTBOX.hurtH }, "hurt");
   }
-  return { x: f.x - W / 2, y: f.y - H * HURTBOX.standH, w: W, h: H * HURTBOX.standH };
+  // Airborne: jump and fall poses tuck, so the box is the measured air height
+  // (`b.air`, from this fighter's own jump/fall art) rather than full standing.
+  if (!f.grounded) {
+    const ah = H * b.air;
+    return fit({ x: f.x - W / 2, y: f.y - ah, w: W, h: ah }, "air");
+  }
+  return fit({ x: f.x - W / 2, y: f.y - H * HURTBOX.standH,
+               w: W, h: H * HURTBOX.standH }, "stand");
 }
 
 export function opponentOf(f) {
@@ -119,6 +150,43 @@ export function spawnMelee(owner, cfg) {
     swung: false,
     hits: new Map(), // fighter -> {count, nextAt}
   });
+}
+
+/** Height scale for hand-authored offsets: kit blocks write oy/h for the
+ *  reference body (HEIGHT_BASE_PX), so a fighter drawn taller carries them
+ *  proportionally. Normals already scale in moves.js (`g.vy`); the wrappers
+ *  below do the same for the hand-authored half of the kit — specials and
+ *  ultimates import them under the plain names, so every kit call site scales
+ *  without being edited (docs/hitbox-audit.md item: "attack vertical offsets
+ *  are absolute, not scaled" — fixed for normals, now fixed here too). */
+function heightScaleOf(f) {
+  return bodyMetrics(f.spriteChar || f.charKey).height / HEIGHT_BASE_PX;
+}
+
+/** Register an ad-hoc hit test's shape for the debug overlay (backquote
+ *  toggles it — render.js drawDebug). The special/ultimate scripts test
+ *  hurtboxes against inline rects and circles that the overlay could not see;
+ *  each such site calls this beside its test. Rects are {x,y,w,h}, circles
+ *  {x,y,r}. No-op with the overlay off. Shapes decay in the overlay itself,
+ *  so a test that runs once (a detonation) still shows for a beat. */
+export function debugShape(shape) {
+  if (!state.debugHitboxes) return;
+  state.debugShapes.push({ ...shape, ttl: 0.12 });
+}
+
+export function spawnMeleeScaled(owner, cfg) {
+  const k = heightScaleOf(owner);
+  return spawnMelee(owner, { ...cfg, oy: (cfg.oy ?? -96) * k, h: (cfg.h ?? 100) * k });
+}
+
+export function spawnProjectileScaled(owner, cfg) {
+  // Spawn offsets only: the shot leaves the caster's hand, wherever that is on
+  // this body — the shot's own size and flight are the move's, not the body's.
+  // A verified muzzle (body_points.js, the "muzzle-points" review) wins; with
+  // none, this is the reference offsets scaled by height, exactly as before.
+  const key = owner.spriteChar || owner.charKey;
+  const m = muzzlePoint(key, bodyMetrics(key).height, cfg.ox ?? 70, cfg.oy ?? -86);
+  return spawnProjectile(owner, { ...cfg, ox: m.x, oy: m.y });
 }
 
 // ------------------------------------------------------------ hitting summons
@@ -260,7 +328,7 @@ export function spawnProjectile(owner, cfg) {
     unblockable: !!cfg.unblockable,
     shieldMul: cfg.shieldMul || 1,
     // Creature projectiles (Nue, Geto's cursed spirits) can be flown with the
-    // right stick. `steerRate` is how fast the flight path can be turned, in
+    // d-pad. `steerRate` is how fast the flight path can be turned, in
     // radians per second.
     steerable: !!cfg.steerable,
     steerRate: cfg.steerRate ?? 5.2,
@@ -285,6 +353,11 @@ export function updateProjectiles(dt) {
   const groundY = state.platforms.length ? state.platforms[0].y : 568;
   for (let i = state.projectiles.length - 1; i >= 0; i--) {
     const p = state.projectiles[i];
+    // Hitboxes freeze with their owner through hitlag (updateHitboxes above);
+    // projectiles did not, so the frame a shot connected, everything froze for
+    // the impact EXCEPT the shot that caused it, which slid visibly onward
+    // through its own freeze frames.
+    if (p.owner && p.owner.hitPause > 0) continue;
     p.age += dt;
     p.dur -= dt;
     // Comet tail: sample where the shot has actually been, so an arcing or
@@ -375,8 +448,11 @@ export function updateProjectiles(dt) {
 
     if (!remove && target && target.respawnTimer <= 0 && !p.hit.has(target)) {
       const box = hurtbox(target);
-      // crouching under a high projectile dodges it
-      const ducked = target.crouching && p.y < target.y - 70;
+      // Crouching under a high projectile dodges it. The threshold is this
+      // fighter's own measured crouch top — a flat 70 px was over half of one
+      // body and a third of another.
+      const tb = bodyMetrics(target.spriteChar || target.charKey);
+      const ducked = target.crouching && p.y < target.y - tb.height * tb.crouch;
       // Sky Fold (Uro): projectiles entering the folded sky are bent straight
       // back at their owner instead of landing
       if (!ducked && target.reflect && target.reflect.t > 0 &&
@@ -653,6 +729,37 @@ function pushStale(owner, id) {
   if (owner.recentMoves.length > STALE_QUEUE) owner.recentMoves.shift();
 }
 
+/**
+ * Where a hit visibly lands, for the impact FX.
+ *
+ * Melee: the seam between the swing's live rect and the victim's hurtbox —
+ * x at the middle of their overlap, y at the ATTACKER's arm height clamped
+ * into it (the swing rect is deliberately generous downward so it catches a
+ * croucher, and the overlap's own midpoint would put every spark at the
+ * waist). Projectiles: the shot's centre clamped into the box. Script hits
+ * (ultimate set pieces) keep the old victim-centre offsets — their shapes
+ * are ad hoc and their FX are usually the set piece itself.
+ */
+function contactPoint(owner, target, hit, source, dir) {
+  const box = hurtbox(target);
+  if (source === "projectile" && hit.x != null && hit.r != null) {
+    return {
+      x: clamp(hit.x, box.x, box.x + box.w),
+      y: clamp(hit.y, box.y, box.y + box.h),
+    };
+  }
+  if (source === "melee" && hit.owner === owner && hit.ox != null && hit.dur != null) {
+    const r = hitboxRect(hit);
+    const x0 = Math.max(r.x, box.x), x1 = Math.min(r.x + r.w, box.x + box.w);
+    const y0 = Math.max(r.y, box.y), y1 = Math.min(r.y + r.h, box.y + box.h);
+    if (x1 > x0 && y1 > y0) {
+      const armY = owner.y - bodyMetrics(owner.spriteChar || owner.charKey).height * 0.55;
+      return { x: (x0 + x1) / 2, y: clamp(armY, y0, y1) };
+    }
+  }
+  return { x: target.x + dir * -14, y: target.y - 96 };
+}
+
 export function applyHit(owner, target, hit, source) {
   // The one gate every damage path funnels through, so friendly fire is off in
   // a team match no matter which kit spawned the hit (teams.js).
@@ -667,6 +774,11 @@ export function applyHit(owner, target, hit, source) {
     triggerCounter(target, owner);
     return "countered";
   }
+
+  // A landed hit shakes any grab apart (?throw=true): striking the grabber
+  // frees their victim, and a third party striking the victim knocks them out
+  // of the hands holding them. The holder's own pummel is exempt (grab.js).
+  breakGrabsOn(target, owner);
 
   let dmg = hit.dmg;
   let baseKb = hit.baseKb;
@@ -729,7 +841,18 @@ export function applyHit(owner, target, hit, source) {
   const band = hit.critBand;
   let zone = null;
   if (band) {
-    zone = Math.abs(dx - band.center) <= band.tolerance ? "sweet"
+    // A derived tipper (moves.js tipBand) is measured from the swinger's
+    // centre, while `dx` is centre-to-centre — the band sits outside the tip
+    // by the VICTIM's half-width. The baked `center` stood that in with a
+    // fixed 30 px because the victim is unknown at build time; the victim is
+    // known here, so use their real half-width (a tipper on a narrow target
+    // sat outside anything the swing could touch, and inside a broad one).
+    // An authored band (no `ring`) is a character decision and keeps its own
+    // centre.
+    const center = band.ring != null
+      ? band.ring + bodyMetrics(target.spriteChar || target.charKey).width / 2
+      : band.center;
+    zone = Math.abs(dx - center) <= band.tolerance ? "sweet"
       : band.sourDmg || band.sourKb ? "sour" : null;
   }
   if (hit.critChance && Math.random() < hit.critChance) zone = "sweet";
@@ -902,9 +1025,13 @@ export function applyHit(owner, target, hit, source) {
   rumbleFighter(owner, rStrong * RUMBLE.attackerEcho, rStrong * 0.4, RUMBLE.hitTime);
 
   // presentation — element-aware: a magma hit burns, a blade hit glints, and
-  // a kit with no fxElement tags draws exactly the old theme burst.
-  const hx = target.x + dir * -14;
-  const hy = target.y - 96;
+  // a kit with no fxElement tags draws exactly the old theme burst. Placed at
+  // the CONTACT POINT — where what hit overlaps what was hit — rather than a
+  // fixed offset from the victim's centre, which parked every spark at the
+  // same spot on the body regardless of where the fist visibly was.
+  const cp = contactPoint(owner, target, hit, source, dir);
+  const hx = cp.x;
+  const hy = cp.y;
   const fxEl = elementOf(hit, owner);
   hitFx(fxEl, hx, hy, dir, dmg, owner.char.theme);
   // The element's own sound, layered quietly under the hit sound, louder with
@@ -937,11 +1064,82 @@ export function applyHit(owner, target, hit, source) {
     burst(owner.x, owner.y - 80, "#ff7a2f", 10, 0.7);
   }
 
+  recordHit(owner, target, dmg, armored);
   return "hit";
 }
 
+// How long a hit stands as KO credit. A fighter launched off the top of the
+// stage is often nowhere near whoever hit them by the time they cross the blast
+// line, so the credit has to outlive the contact — but not so far that a stray
+// poke thirty seconds ago claims a self-destruct.
+const KO_CREDIT_TIME = 4;
+
+/** The bookkeeping every landed hit does for the SCREEN rather than for the
+ *  simulation: the result-screen tally, the combo chain, and who to credit if
+ *  this hit turns out to have been the one that ended a stock.
+ *
+ *  Deliberately at the very end of applyHit, where a hit is known to have
+ *  actually landed and `dmg` is final — every multiplier, the shield and armor
+ *  branches, and Rika's echo have all had their say by here. Nothing in this
+ *  function is read back by the simulation, so it cannot desync anything. */
+function recordHit(owner, target, dmg, armored) {
+  owner.tally.dealt += dmg;
+  target.tally.taken += dmg;
+  owner.tally.biggestHit = Math.max(owner.tally.biggestHit, dmg);
+  target.lastHitBy = owner;
+  target.lastHitT = KO_CREDIT_TIME;
+
+  // A combo is counted against ONE victim: hits spread across a Battle Royal
+  // are not a combo, they are a busy afternoon. The chain continues only while
+  // the previous hit's window is still open on the same target.
+  const continuing = owner.comboT > 0 && owner.comboTarget === target;
+  owner.combo = continuing ? owner.combo + 1 : 1;
+  owner.comboTarget = target;
+  // Open for as long as the victim cannot act, plus a little. An armored hit
+  // grants no hitstun, so it gets the grace alone.
+  owner.comboT = (armored ? 0 : target.hitstun) + COMBO_GRACE;
+  owner.tally.bestCombo = Math.max(owner.tally.bestCombo, owner.combo);
+
+  // Taking a hit ends whatever you were building. Otherwise two fighters
+  // trading blows both read as being on a ten-hit run.
+  target.combo = 0;
+  target.comboT = 0;
+  target.comboTarget = null;
+}
+
+/** Steps the two timers recordHit sets. Called once per sim step per fighter
+ *  from the main loop — outside updateFighter, which returns early during
+ *  hitlag and would freeze the combo window along with the fighter. */
+export function stepHitCredit(f, dt) {
+  if (f.comboT > 0) {
+    f.comboT -= dt;
+    if (f.comboT <= 0) { f.combo = 0; f.comboTarget = null; }
+  }
+  if (f.lastHitT > 0) {
+    f.lastHitT -= dt;
+    if (f.lastHitT <= 0) f.lastHitBy = null;
+  }
+}
+
+/**
+ * Can this action still be knocked out of the fighter doing it?
+ *
+ * `uninterruptible` is the flat answer most actions give. `commitAt` is the
+ * softer one a spoken cast gives: interruptible up to that point in the
+ * wind-up, committed after it. A Domain Expansion can be shouted down while it
+ * is being announced, but once the sentence is most of the way out the move is
+ * already happening and taking it back would read as the game reneging.
+ */
+function interruptible(a) {
+  if (!a || a.uninterruptible) return false;
+  return a.commitAt === undefined || a.t < a.commitAt;
+}
+
 function interruptActions(target) {
-  if (target.action && !target.action.uninterruptible) {
+  if (interruptible(target.action)) {
+    // Actions that need to say something when they are cut off — refunds,
+    // cutting a spoken line short — hook it here. Nothing else sets this.
+    target.action.onInterrupt?.(target);
     target.action = null;
   }
   target.charging = null;

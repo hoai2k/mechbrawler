@@ -10,7 +10,7 @@
 // Each entry is gated on `enabled` AND on its art actually being present, so a
 // transform whose sprites have not been delivered silently keeps the old
 // behaviour instead of drawing nothing. Flip `enabled` once the poses are in
-// assets/sprites/<actor>/ and registered in manifest.json — see
+// sprites/assets/<actor>/ and registered in manifest.json — see
 // transformReady() in ultimates.js for the check.
 // ---------------------------------------------------------------------------
 

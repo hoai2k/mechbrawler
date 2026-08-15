@@ -1,0 +1,2348 @@
+{
+  "note": "ROBOTWORLD roster. Damage/knock/range are in game units; the models in this directory are in the same units, so a `range: 3.4` reaches 3.4 of them. `cardStats` are the 0-10 bars the mech-select screen shows, not the real numbers.",
+  "shared": {
+    "stamina": {
+      "sprintSeconds": 12,
+      "blockSeconds": 7,
+      "dashCost": 0.09,
+      "dashCostBlockMult": 2.2,
+      "refillSeconds": 5.3
+    },
+    "movement": {
+      "walkMult": 1.2,
+      "speedBase": 2.4,
+      "sprintMult": 1.6,
+      "blockMoveMult": 0.5,
+      "backMult": 0.7,
+      "jumpMult": 1.18
+    },
+    "melee": {
+      "punchHoldCap": 1.8,
+      "heavyHoldCap": 2.4,
+      "chargeMinWindup": 0.15,
+      "hitstunHeavy": 0.42,
+      "hitstunLight": 0.24,
+      "softFlinchChance": 0.35,
+      "weightKnockResist": 0.45
+    }
+  },
+  "characters": [
+    {
+      "id": "titanus",
+      "name": "TITANUS",
+      "title": "The Iron Avalanche",
+      "emoji": "👊",
+      "personality": {
+        "blurb": "A decommissioned siege engine that refused to power down. Slow as a glacier, hits like the end of the world. Speaks rarely — mostly in earthquakes.",
+        "quotes": {
+          "win": "\"Demolition complete. Anything else need... flattening?\"",
+          "intro": "\"I am the wall. I am the wrecking ball.\""
+        }
+      },
+      "look": {
+        "primary": "#bd9226",
+        "accent": "#3e4148",
+        "glow": "#ffa832",
+        "stripes": true
+      },
+      "build": {
+        "scale": 1.28,
+        "torsoW": 1.25,
+        "torsoH": 1.05,
+        "headSize": 0.9,
+        "armLen": 1.15,
+        "legLen": 1,
+        "hipW": 1.15,
+        "bulk": 1.1
+      },
+      "stats": {
+        "hp": 1250,
+        "speed": 7.2,
+        "jump": 12,
+        "weight": 1,
+        "armor": 0.22,
+        "blockMult": 0.09
+      },
+      "cardStats": {
+        "power": 10,
+        "speed": 3,
+        "defense": 9
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            46,
+            50,
+            68
+          ],
+          "knock": [
+            16,
+            18,
+            30
+          ],
+          "range": 3.4
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 105,
+          "knock": 38,
+          "range": 3.8,
+          "launch": 9
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Rocket Fist",
+          "type": "fist",
+          "dmg": 55,
+          "speed": 46,
+          "cooldown": 2.4,
+          "range": 42,
+          "knock": 14
+        },
+        "special": {
+          "kind": "special",
+          "id": "grabThrow",
+          "name": "Skyline Slam",
+          "cooldown": 8,
+          "dmg": 88,
+          "range": 4.2,
+          "throw": 32,
+          "radius": 5
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "meteorBreaker",
+          "name": "METEOR BREAKER",
+          "dmg": 62,
+          "count": 14,
+          "radius": 16,
+          "knock": 18
+        }
+      },
+      "clips": {
+        "light": [
+          "bigPunch1",
+          "bigPunch2",
+          "light3"
+        ],
+        "heavy": "poundHold",
+        "heavyRelease": "poundSlam",
+        "ranged": "fistLaunch",
+        "rangedAlt": "fistLaunchL",
+        "channel": null
+      },
+      "gait": "standard",
+      "capabilities": [
+        {
+          "key": "punchHold",
+          "title": "Chargeable light attack",
+          "means": "The light chain is replaced by a hold/release pair: the arm stays wound while the button is held and strikes with banked power on release.",
+          "value": "true"
+        },
+        {
+          "key": "heavyHold",
+          "title": "Chargeable heavy attack",
+          "means": "The heavy is held at its raised keyframe and released, rather than played straight through.",
+          "value": "true"
+        },
+        {
+          "key": "chargeGlow",
+          "title": "Charge tell",
+          "means": "The named body region flickers brighter as power banks — the readable warning that a charged blow is coming.",
+          "value": "arms"
+        }
+      ],
+      "art": {
+        "canonical": "art/titanus/canonical.png",
+        "badge": "art/titanus/badge.png",
+        "poster": "art/titanus/poster.png",
+        "thumbnail": "art/titanus/thumb.png",
+        "turnaround": "art/titanus/turnaround-*.png"
+      }
+    },
+    {
+      "id": "vulcan",
+      "name": "VULCAN",
+      "title": "The Lead Storm",
+      "emoji": "🔫",
+      "personality": {
+        "blurb": "Ex-military fire-support platform with a laugh setting stuck on maniacal. Believes every problem is just insufficient ammunition.",
+        "quotes": {
+          "win": "\"HAHAHA! Reload and repeat! WHO'S NEXT?!\"",
+          "intro": "\"Say hello to my six little friends!\""
+        }
+      },
+      "look": {
+        "primary": "#cfc9bd",
+        "accent": "#9c2f28",
+        "glow": "#ff8c30",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.16,
+        "torsoW": 1.28,
+        "torsoH": 1,
+        "headSize": 0.85,
+        "armLen": 0.95,
+        "legLen": 1,
+        "hipW": 1.1,
+        "bulk": 1.12
+      },
+      "stats": {
+        "hp": 950,
+        "speed": 9.5,
+        "jump": 13,
+        "weight": 0.62,
+        "armor": 0.1,
+        "blockMult": 0.12
+      },
+      "cardStats": {
+        "power": 7,
+        "speed": 5,
+        "defense": 5
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            30,
+            32,
+            44
+          ],
+          "knock": [
+            4,
+            5,
+            11
+          ],
+          "range": 2.9
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 78,
+          "knock": 18,
+          "range": 3.2,
+          "launch": 7
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Gatling Burst",
+          "type": "gatling",
+          "dmg": 9,
+          "speed": 90,
+          "cooldown": 0.085,
+          "spread": 0.05,
+          "ammo": 160
+        },
+        "special": {
+          "kind": "special",
+          "id": "missileVolley",
+          "name": "Micro-Missile Volley",
+          "cooldown": 6.5,
+          "dmg": 22,
+          "count": 6
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "bulletHurricane",
+          "name": "BULLET HURRICANE",
+          "dmg": 2.6,
+          "count": 100,
+          "duration": 9
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": null,
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": "gatlingLoop"
+      },
+      "gait": "standard",
+      "capabilities": [],
+      "art": {
+        "canonical": "art/vulcan/canonical.png",
+        "badge": "art/vulcan/badge.png",
+        "poster": "art/vulcan/poster.png",
+        "thumbnail": "art/vulcan/thumb.png",
+        "turnaround": "art/vulcan/turnaround-*.png"
+      }
+    },
+    {
+      "id": "viper",
+      "name": "VIPER",
+      "title": "The Whispering Fang",
+      "emoji": "🗡️",
+      "personality": {
+        "blurb": "A prototype infiltration unit that developed a taste for theatrics. Strikes from angles geometry teachers refuse to acknowledge.",
+        "quotes": {
+          "win": "\"Ssso predictable. You never even sssaw me.\"",
+          "intro": "\"Shall we dance? You won't hear the music.\""
+        }
+      },
+      "look": {
+        "primary": "#4a3566",
+        "accent": "#1a1522",
+        "glow": "#5aff2e",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1,
+        "torsoW": 0.85,
+        "torsoH": 0.95,
+        "headSize": 0.85,
+        "armLen": 1.05,
+        "legLen": 1.12,
+        "hipW": 0.85,
+        "bulk": 0.85
+      },
+      "stats": {
+        "hp": 780,
+        "speed": 13.5,
+        "jump": 15.5,
+        "weight": 0.3,
+        "armor": 0,
+        "blockMult": 0.2
+      },
+      "cardStats": {
+        "power": 6,
+        "speed": 10,
+        "defense": 2
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            30,
+            32,
+            44
+          ],
+          "knock": [
+            3,
+            4,
+            9
+          ],
+          "range": 3.2
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 70,
+          "knock": 15,
+          "range": 3.6,
+          "launch": 8
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Fang Throw",
+          "type": "blade",
+          "dmg": 32,
+          "speed": 55,
+          "cooldown": 0.8
+        },
+        "special": {
+          "kind": "special",
+          "id": "bladeCyclone",
+          "name": "Blade Cyclone",
+          "cooldown": 6,
+          "dmg": 20
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "serpentStorm",
+          "name": "SERPENT STORM",
+          "dmg": 5,
+          "count": 60,
+          "paralyze": 2.4,
+          "poison": 8,
+          "poisonT": 3
+        }
+      },
+      "clips": {
+        "light": [
+          "viperSlash1",
+          "viperSlash2",
+          "viperStab"
+        ],
+        "heavy": "viperDrill",
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "sprint",
+      "capabilities": [
+        {
+          "key": "gait",
+          "title": "Gait table",
+          "means": "Which walk/run cycle this body runs. Bodies SHARE gaits, so tuning one moves every mech that names it.",
+          "value": "sprint"
+        }
+      ],
+      "art": {
+        "canonical": "art/viper/canonical.png",
+        "badge": "art/viper/badge.png",
+        "poster": "art/viper/poster.png",
+        "thumbnail": "art/viper/thumb.png",
+        "turnaround": "art/viper/turnaround-*.png"
+      }
+    },
+    {
+      "id": "rhino",
+      "name": "RHINO",
+      "title": "The Unstoppable Object",
+      "emoji": "🐂",
+      "personality": {
+        "blurb": "One horn. One direction. Zero brakes. RHINO once charged through four buildings to win an argument he was already winning.",
+        "quotes": {
+          "win": "\"HRRNGH! Next time — bring a wall that works!\"",
+          "intro": "\"You look like something worth flattening.\""
+        }
+      },
+      "look": {
+        "primary": "#5c6066",
+        "accent": "#8c3a32",
+        "glow": "#ff2a20",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.22,
+        "torsoW": 1.2,
+        "torsoH": 1,
+        "headSize": 0.95,
+        "armLen": 1.08,
+        "legLen": 0.98,
+        "hipW": 1.12,
+        "bulk": 1.1
+      },
+      "stats": {
+        "hp": 1150,
+        "speed": 8.2,
+        "jump": 12,
+        "weight": 0.9,
+        "armor": 0.18,
+        "blockMult": 0.05
+      },
+      "cardStats": {
+        "power": 9,
+        "speed": 4,
+        "defense": 7
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            40,
+            44,
+            60
+          ],
+          "knock": [
+            6,
+            6,
+            14
+          ],
+          "range": 3.4
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 95,
+          "knock": 24,
+          "range": 3.8,
+          "launch": 9
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Shoulder Cannon",
+          "type": "shell",
+          "dmg": 56,
+          "speed": 42,
+          "cooldown": 1.3,
+          "splash": 3,
+          "ammo": 14
+        },
+        "special": {
+          "kind": "special",
+          "id": "bullRush",
+          "name": "Bull Rush",
+          "cooldown": 6.5,
+          "dmg": 75,
+          "knock": 26,
+          "dashLen": 16
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "stampede",
+          "name": "STAMPEDE",
+          "dmg": 70,
+          "copies": 10,
+          "knock": 26,
+          "range": 46
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": null,
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "standard",
+      "capabilities": [],
+      "art": {
+        "canonical": "art/rhino/canonical.png",
+        "badge": "art/rhino/badge.png",
+        "poster": "art/rhino/poster.png",
+        "thumbnail": "art/rhino/thumb.png",
+        "turnaround": "art/rhino/turnaround-*.png"
+      }
+    },
+    {
+      "id": "tempest",
+      "name": "TEMPEST",
+      "title": "The Voltage Virtuoso",
+      "emoji": "⚡",
+      "personality": {
+        "blurb": "A weather-control unit that discovered showmanship. Every battle is a concert, every lightning bolt a chord. The crowd goes wild; the crowd is usually on fire.",
+        "quotes": {
+          "win": "\"⚡ ENCORE? No? Suit yourselves. I was ELECTRIC.\"",
+          "intro": "\"Lights up! The show starts NOW.\""
+        }
+      },
+      "look": {
+        "primary": "#2a3560",
+        "accent": "#1e2740",
+        "glow": "#3fd8ff",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.06,
+        "torsoW": 0.95,
+        "torsoH": 1,
+        "headSize": 0.85,
+        "armLen": 1.02,
+        "legLen": 1.08,
+        "hipW": 0.9,
+        "bulk": 0.9
+      },
+      "stats": {
+        "hp": 880,
+        "speed": 11.5,
+        "jump": 15,
+        "weight": 0.42,
+        "armor": 0.04,
+        "blockMult": 0.14
+      },
+      "cardStats": {
+        "power": 7,
+        "speed": 8,
+        "defense": 3
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            28,
+            30,
+            44
+          ],
+          "knock": [
+            4,
+            4,
+            10
+          ],
+          "range": 3.2
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 42,
+          "knock": 16,
+          "range": 3.6,
+          "launch": 9
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Arc Bolt",
+          "type": "lightning",
+          "dmg": 40,
+          "cooldown": 0.9,
+          "chainRange": 8,
+          "ammo": 20
+        },
+        "special": {
+          "kind": "special",
+          "id": "staticField",
+          "name": "Static Overload",
+          "cooldown": 7,
+          "dmg": 70,
+          "radius": 8
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "thunderfall",
+          "name": "THUNDERFALL",
+          "dmg": 13,
+          "radius": 26,
+          "duration": 3.4
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": "tempestTornado",
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "sprint",
+      "capabilities": [
+        {
+          "key": "stackFx",
+          "title": "Live burner / spark emitters",
+          "means": "The sculpted flames or sparks were DELETED from the model (see GEOMETRY.md) and are emitted at runtime from the named anchors. A chimney vents up in world space; a hand torch burns down its own barrel and swings with the arm.",
+          "value": {
+            "kind": "spark",
+            "anchors": [
+              "stackL",
+              "stackR"
+            ],
+            "joints": [
+              "shoulderL",
+              "shoulderR"
+            ],
+            "lift": 1.15,
+            "sparkGap": 0.09,
+            "color": 14219007,
+            "color2": 4184319,
+            "arc": 10476799
+          }
+        },
+        {
+          "key": "gait",
+          "title": "Gait table",
+          "means": "Which walk/run cycle this body runs. Bodies SHARE gaits, so tuning one moves every mech that names it.",
+          "value": "sprint"
+        },
+        {
+          "key": "arcTaunt",
+          "title": "Arc taunt",
+          "means": "Live electricity crawls between named hot points, bowed out along the facing so the show is not entirely on its own back.",
+          "value": {
+            "color": 10478847,
+            "nodes": [
+              {
+                "a": "stackL"
+              },
+              {
+                "a": "stackR"
+              },
+              {
+                "j": "head",
+                "up": 0.5
+              },
+              {
+                "j": "torso",
+                "up": -0.35
+              },
+              {
+                "j": "handL"
+              },
+              {
+                "j": "handR"
+              }
+            ]
+          }
+        }
+      ],
+      "art": {
+        "canonical": "art/tempest/canonical.png",
+        "badge": "art/tempest/badge.png",
+        "poster": "art/tempest/poster.png",
+        "thumbnail": "art/tempest/thumb.png",
+        "turnaround": "art/tempest/turnaround-*.png"
+      }
+    },
+    {
+      "id": "fenrir",
+      "name": "FENRIR",
+      "title": "The Last Wild Thing",
+      "emoji": "🐺",
+      "personality": {
+        "blurb": "An autonomous hunter-frame that slipped its leash decades ago. Runs with no pack, answers to no handler, howls at every full moon — and every explosion.",
+        "quotes": {
+          "win": "\"*low growl* ...The hunt was short. Run faster next time.\"",
+          "intro": "\"I smell fear-coolant. It's yours.\""
+        }
+      },
+      "look": {
+        "primary": "#b4b9c0",
+        "accent": "#3a3e44",
+        "glow": "#6cd8ff",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.05,
+        "torsoW": 1,
+        "torsoH": 0.95,
+        "headSize": 0.9,
+        "armLen": 1.08,
+        "legLen": 1.1,
+        "hipW": 0.9,
+        "bulk": 0.92
+      },
+      "stats": {
+        "hp": 900,
+        "speed": 12.5,
+        "jump": 15,
+        "weight": 0.45,
+        "armor": 0.05,
+        "blockMult": 0.13
+      },
+      "cardStats": {
+        "power": 7,
+        "speed": 9,
+        "defense": 3
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            30,
+            32,
+            46
+          ],
+          "knock": [
+            4,
+            5,
+            11
+          ],
+          "range": 3.3
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 76,
+          "knock": 18,
+          "range": 3.7,
+          "launch": 8
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Rend Wave",
+          "type": "wave",
+          "dmg": 36,
+          "speed": 34,
+          "cooldown": 1,
+          "ammo": 18
+        },
+        "special": {
+          "kind": "special",
+          "id": "pounce",
+          "name": "Lunar Pounce",
+          "cooldown": 5.5,
+          "dmg": 65,
+          "leap": 14
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "wildHunt",
+          "name": "WILD HUNT",
+          "dmg": 9,
+          "count": 20,
+          "radius": 20,
+          "duration": 4.5,
+          "huntMax": 10
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": "fenrirSpike",
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "quad",
+      "capabilities": [
+        {
+          "key": "gait",
+          "title": "Gait table",
+          "means": "Which walk/run cycle this body runs. Bodies SHARE gaits, so tuning one moves every mech that names it.",
+          "value": "quad"
+        }
+      ],
+      "art": {
+        "canonical": "art/fenrir/canonical.png",
+        "badge": "art/fenrir/badge.png",
+        "poster": "art/fenrir/poster.png",
+        "thumbnail": "art/fenrir/thumb.png",
+        "turnaround": "art/fenrir/turnaround-*.png"
+      }
+    },
+    {
+      "id": "colossus",
+      "name": "COLOSSUS",
+      "title": "The Patient Thunder",
+      "emoji": "💣",
+      "personality": {
+        "blurb": "A firebase that learned to walk, then learned chess. Plays the long game: every shell placed three moves ahead of where you plan to be.",
+        "quotes": {
+          "win": "\"Checkmate was eight shells ago. You just heard it now.\"",
+          "intro": "\"Range confirmed. This will be educational.\""
+        }
+      },
+      "look": {
+        "primary": "#a08a64",
+        "accent": "#4a4640",
+        "glow": "#ffc23c",
+        "stripes": true
+      },
+      "build": {
+        "scale": 1.3,
+        "torsoW": 1.3,
+        "torsoH": 1,
+        "headSize": 0.85,
+        "armLen": 1.05,
+        "legLen": 0.95,
+        "hipW": 1.2,
+        "bulk": 1.15
+      },
+      "stats": {
+        "hp": 1300,
+        "speed": 6.5,
+        "jump": 11,
+        "weight": 1,
+        "armor": 0.24,
+        "blockMult": 0.09
+      },
+      "cardStats": {
+        "power": 9,
+        "speed": 2,
+        "defense": 9
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            42,
+            46,
+            62
+          ],
+          "knock": [
+            15,
+            17,
+            28
+          ],
+          "range": 3.5
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 100,
+          "knock": 36,
+          "range": 3.9,
+          "launch": 9
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Mortar Lob",
+          "type": "mortar",
+          "dmg": 68,
+          "speed": 30,
+          "cooldown": 1.7,
+          "splash": 5.5,
+          "ammo": 10
+        },
+        "special": {
+          "kind": "special",
+          "id": "grabThrow",
+          "name": "Skyline Toss",
+          "cooldown": 8,
+          "dmg": 85,
+          "range": 4.5,
+          "throw": 36,
+          "radius": 5
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "colossalForm",
+          "name": "COLOSSAL FORM",
+          "dmg": 34,
+          "scale": 4,
+          "duration": 9
+        }
+      },
+      "clips": {
+        "light": [
+          "bigPunch1",
+          "bigPunch2",
+          "light3"
+        ],
+        "heavy": "poundHold",
+        "heavyRelease": "poundSlam",
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "standard",
+      "capabilities": [
+        {
+          "key": "punchHold",
+          "title": "Chargeable light attack",
+          "means": "The light chain is replaced by a hold/release pair: the arm stays wound while the button is held and strikes with banked power on release.",
+          "value": "true"
+        },
+        {
+          "key": "heavyHold",
+          "title": "Chargeable heavy attack",
+          "means": "The heavy is held at its raised keyframe and released, rather than played straight through.",
+          "value": "true"
+        },
+        {
+          "key": "chargeGlow",
+          "title": "Charge tell",
+          "means": "The named body region flickers brighter as power banks — the readable warning that a charged blow is coming.",
+          "value": "arms"
+        }
+      ],
+      "art": {
+        "canonical": "art/colossus/canonical.png",
+        "badge": "art/colossus/badge.png",
+        "poster": "art/colossus/poster.png",
+        "thumbnail": "art/colossus/thumb.png",
+        "turnaround": "art/colossus/turnaround-*.png"
+      }
+    },
+    {
+      "id": "wraith",
+      "name": "WRAITH",
+      "title": "The Hollow Echo",
+      "emoji": "🎯",
+      "personality": {
+        "blurb": "Officially, this unit was scrapped years ago. Officially, nobody is picking off mechs from 800 meters. Officially, you are perfectly safe.",
+        "quotes": {
+          "win": "\"...you were dead before the round began.\"",
+          "intro": "\"*static* ...target acquired.\""
+        }
+      },
+      "look": {
+        "primary": "#232228",
+        "accent": "#1a191e",
+        "glow": "#ff2030",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.02,
+        "torsoW": 0.85,
+        "torsoH": 1,
+        "headSize": 0.9,
+        "armLen": 1.05,
+        "legLen": 1.1,
+        "hipW": 0.85,
+        "bulk": 0.82
+      },
+      "stats": {
+        "hp": 800,
+        "speed": 11,
+        "jump": 14,
+        "weight": 0.35,
+        "armor": 0,
+        "blockMult": 0.2
+      },
+      "cardStats": {
+        "power": 8,
+        "speed": 7,
+        "defense": 2
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            30,
+            32,
+            44
+          ],
+          "knock": [
+            3,
+            4,
+            9
+          ],
+          "range": 3
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 68,
+          "knock": 15,
+          "range": 3.4,
+          "launch": 7
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Night Swarm",
+          "type": "bats",
+          "dmg": 26,
+          "count": 3,
+          "speed": 24,
+          "cooldown": 1.5,
+          "ammo": 12
+        },
+        "special": {
+          "kind": "special",
+          "id": "ghostWalk",
+          "name": "Ghost Protocol",
+          "cooldown": 9,
+          "dmg": 60,
+          "speed": 17,
+          "duration": 5
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "deathSwarm",
+          "name": "DEATH SWARM",
+          "dmg": 4,
+          "count": 150,
+          "duration": 7
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": "wraithLasers",
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "sprint",
+      "capabilities": [
+        {
+          "key": "gait",
+          "title": "Gait table",
+          "means": "Which walk/run cycle this body runs. Bodies SHARE gaits, so tuning one moves every mech that names it.",
+          "value": "sprint"
+        },
+        {
+          "key": "tauntGrow",
+          "title": "Growing taunt",
+          "means": "The taunt scales the body up and hands off to a frozen, still-growing shell that fades as the real body fades back in.",
+          "value": "1.6"
+        }
+      ],
+      "art": {
+        "canonical": "art/wraith/canonical.png",
+        "badge": "art/wraith/badge.png",
+        "poster": "art/wraith/poster.png",
+        "thumbnail": "art/wraith/thumb.png",
+        "turnaround": "art/wraith/turnaround-*.png"
+      }
+    },
+    {
+      "id": "inferno",
+      "name": "INFERNO",
+      "title": "The Joyful Furnace",
+      "emoji": "🔥",
+      "personality": {
+        "blurb": "A demolition unit whose safety governor \"fell off\" — twice. Finds fire genuinely hilarious. The laughter you hear over the flames? That's him having the best day ever.",
+        "quotes": {
+          "win": "\"AHAHA! TOASTY! Anyone else cold? ANYONE?\"",
+          "intro": "\"Who ordered the flame-grilled special?!\""
+        }
+      },
+      "look": {
+        "primary": "#8a3626",
+        "accent": "#2a2624",
+        "glow": "#ff8a1e",
+        "stripes": true
+      },
+      "build": {
+        "scale": 1.18,
+        "torsoW": 1.18,
+        "torsoH": 1,
+        "headSize": 0.9,
+        "armLen": 1.05,
+        "legLen": 0.98,
+        "hipW": 1.08,
+        "bulk": 1.05
+      },
+      "stats": {
+        "hp": 1050,
+        "speed": 8.8,
+        "jump": 12.5,
+        "weight": 0.75,
+        "armor": 0.14,
+        "blockMult": 0.11
+      },
+      "cardStats": {
+        "power": 8,
+        "speed": 4,
+        "defense": 6
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            36,
+            38,
+            54
+          ],
+          "knock": [
+            5,
+            5,
+            12
+          ],
+          "range": 3.3,
+          "comboStatus": {
+            "burn": 6,
+            "burnT": 3
+          }
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 86,
+          "knock": 20,
+          "range": 3.7,
+          "launch": 8
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Dragon's Breath",
+          "type": "flame",
+          "dmg": 6.5,
+          "cooldown": 0.09,
+          "range": 16,
+          "ammo": 130
+        },
+        "special": {
+          "kind": "special",
+          "id": "napalm",
+          "name": "Napalm Carpet",
+          "cooldown": 7.5,
+          "dmg": 14,
+          "patches": 5,
+          "duration": 5
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "fireTornado",
+          "name": "FIRE TORNADO",
+          "dmg": 130,
+          "radius": 4.5,
+          "duration": 7
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": null,
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": "shootLoop"
+      },
+      "gait": "standard",
+      "capabilities": [
+        {
+          "key": "stackFx",
+          "title": "Live burner / spark emitters",
+          "means": "The sculpted flames or sparks were DELETED from the model (see GEOMETRY.md) and are emitted at runtime from the named anchors. A chimney vents up in world space; a hand torch burns down its own barrel and swings with the arm.",
+          "value": {
+            "anchors": [
+              "stackL",
+              "stackR",
+              "muzzleR",
+              "muzzleL"
+            ],
+            "joints": [
+              "shoulderL",
+              "shoulderR",
+              "handR",
+              "handL"
+            ],
+            "lift": 0.9,
+            "torches": [
+              "muzzleR",
+              "muzzleL"
+            ],
+            "torchSize": 0.5,
+            "torchH": 0.25,
+            "flameH": 0.5,
+            "flameGap": 0.055,
+            "smokeGap": 0.14,
+            "smokeRun": 2.4
+          }
+        }
+      ],
+      "art": {
+        "canonical": "art/inferno/canonical.png",
+        "badge": "art/inferno/badge.png",
+        "poster": "art/inferno/poster.png",
+        "thumbnail": "art/inferno/thumb.png",
+        "turnaround": "art/inferno/turnaround-*.png"
+      }
+    },
+    {
+      "id": "glacier",
+      "name": "GLACIER",
+      "title": "The Cold Shoulder",
+      "emoji": "❄️",
+      "personality": {
+        "blurb": "Guardian of a polar research station, promoted to war machine by boredom. Devastating in combat, insufferable at parties — every joke is about ice, and he thinks they all land.",
+        "quotes": {
+          "win": "\"Ice to beat you. ...I'm contractually obligated to say that.\"",
+          "intro": "\"Chill out. No? Fine — I'll handle it.\""
+        }
+      },
+      "look": {
+        "primary": "#9fb2c2",
+        "accent": "#4c5560",
+        "glow": "#7ce0ff",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.24,
+        "torsoW": 1.22,
+        "torsoH": 1,
+        "headSize": 0.9,
+        "armLen": 1.08,
+        "legLen": 0.98,
+        "hipW": 1.1,
+        "bulk": 1.08
+      },
+      "stats": {
+        "hp": 1200,
+        "speed": 7.5,
+        "jump": 12,
+        "weight": 0.92,
+        "armor": 0.2,
+        "blockMult": 0.1
+      },
+      "cardStats": {
+        "power": 8,
+        "speed": 3,
+        "defense": 8
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            38,
+            42,
+            58
+          ],
+          "knock": [
+            5,
+            6,
+            13
+          ],
+          "range": 3.4
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 92,
+          "knock": 22,
+          "range": 3.8,
+          "launch": 9
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Icicle Barrage",
+          "type": "shard",
+          "dmg": 13,
+          "count": 6,
+          "speed": 48,
+          "cooldown": 1.15,
+          "ammo": 22
+        },
+        "special": {
+          "kind": "special",
+          "id": "freezeBeam",
+          "name": "Cryo Beam",
+          "cooldown": 8,
+          "dmg": 12,
+          "duration": 1.8,
+          "slow": 0.45
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "absoluteZero",
+          "name": "ABSOLUTE ZERO",
+          "dmg": 9,
+          "radius": 14
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": null,
+        "heavyRelease": null,
+        "ranged": "shootL",
+        "rangedAlt": null,
+        "channel": "shootLoopL"
+      },
+      "gait": "standard",
+      "capabilities": [
+        {
+          "key": "tauntIce",
+          "title": "Freezing taunt",
+          "means": "Cross-fades into a solid ice block over half a second and thaws in a sixth of one.",
+          "value": "true"
+        }
+      ],
+      "art": {
+        "canonical": "art/glacier/canonical.png",
+        "badge": "art/glacier/badge.png",
+        "poster": "art/glacier/poster.png",
+        "thumbnail": "art/glacier/thumb.png",
+        "turnaround": "art/glacier/turnaround-*.png"
+      }
+    },
+    {
+      "id": "cranky",
+      "name": "CRANKY",
+      "title": "The Abyssal Bulwark",
+      "emoji": "🦀",
+      "personality": {
+        "blurb": "A deep-sea salvage rig that got tired of being salvaged. Waddled ashore trailing kelp and grudges, shell first, questions never. The claws are non-negotiable.",
+        "quotes": {
+          "win": "\"*bubbling chuckle* Shell: 1. Everything else: 0.\"",
+          "intro": "\"You look... crackable.\""
+        }
+      },
+      "look": {
+        "primary": "#a64a28",
+        "accent": "#46759e",
+        "glow": "#4fc3ff",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.3,
+        "torsoW": 1.5,
+        "torsoH": 0.85,
+        "headSize": 0.6,
+        "armLen": 1.18,
+        "legLen": 0.85,
+        "hipW": 1.32,
+        "bulk": 1.25
+      },
+      "stats": {
+        "hp": 1300,
+        "speed": 5.4,
+        "jump": 9,
+        "weight": 0.95,
+        "armor": 0.26,
+        "blockMult": 0.04
+      },
+      "cardStats": {
+        "power": 8,
+        "speed": 3,
+        "defense": 10
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            40,
+            44,
+            60
+          ],
+          "knock": [
+            6,
+            7,
+            14
+          ],
+          "range": 4.6
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 100,
+          "knock": 24,
+          "range": 4.7,
+          "launch": 9
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Hydro Hose",
+          "type": "hose",
+          "dmg": 7,
+          "cooldown": 0.075,
+          "range": 20,
+          "ammo": 150
+        },
+        "special": {
+          "kind": "special",
+          "id": "geyser",
+          "name": "Geyser",
+          "cooldown": 7,
+          "dmg": 62,
+          "radius": 11,
+          "launch": 15,
+          "duration": 6
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "tsunami",
+          "name": "TSUNAMI",
+          "dmg": 135,
+          "width": 30,
+          "range": 48,
+          "knock": 20
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": "clawSnap",
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": "shootLow"
+      },
+      "gait": "hexapod",
+      "capabilities": [
+        {
+          "key": "gait",
+          "title": "Gait table",
+          "means": "Which walk/run cycle this body runs. Bodies SHARE gaits, so tuning one moves every mech that names it.",
+          "value": "hexapod"
+        }
+      ],
+      "art": {
+        "canonical": "art/cranky/canonical.png",
+        "badge": "art/cranky/badge.png",
+        "poster": "art/cranky/poster.png",
+        "thumbnail": "art/cranky/thumb.png",
+        "turnaround": "art/cranky/turnaround-*.png"
+      }
+    },
+    {
+      "id": "saurion",
+      "name": "SAURION",
+      "title": "The Apex Prototype",
+      "emoji": "🦖",
+      "personality": {
+        "blurb": "Unit MX-7, grown in a black-site lab by a corporation that wanted to end wars by ending everything else. It ate the lab, filed itself as CEO, and went hunting.",
+        "quotes": {
+          "win": "\"*metallic shriek* Target archive updated: extinct.\"",
+          "intro": "\"Clever girl? No. Clever MACHINE.\""
+        }
+      },
+      "look": {
+        "primary": "#33343a",
+        "accent": "#17181c",
+        "glow": "#ff2418",
+        "stripes": false
+      },
+      "build": {
+        "scale": 0.896,
+        "torsoW": 0.95,
+        "torsoH": 0.9,
+        "headSize": 1,
+        "armLen": 1,
+        "legLen": 1.15,
+        "hipW": 0.95,
+        "bulk": 0.95
+      },
+      "stats": {
+        "hp": 1080,
+        "speed": 12.8,
+        "jump": 15,
+        "weight": 0.42,
+        "armor": 0.06,
+        "duck": 0.75,
+        "blockMult": 0.16,
+        "guardBreak": 0.6
+      },
+      "cardStats": {
+        "power": 7,
+        "speed": 10,
+        "defense": 3
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            32,
+            34,
+            48
+          ],
+          "knock": [
+            4,
+            5,
+            12
+          ],
+          "range": 3.5
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 80,
+          "knock": 19,
+          "range": 3.8,
+          "launch": 8
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Quill Fan",
+          "type": "spikes",
+          "dmg": 20,
+          "count": 3,
+          "speed": 54,
+          "cooldown": 0.9
+        },
+        "special": {
+          "kind": "special",
+          "id": "sickleRush",
+          "name": "Sickle Pounce",
+          "cooldown": 6,
+          "dmg": 62,
+          "bleed": 9,
+          "leap": 22
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "raptorPack",
+          "name": "RAPTOR PACK",
+          "count": 3,
+          "hpFrac": 0.35,
+          "duration": 18
+        }
+      },
+      "clips": {
+        "light": [
+          "saurionKick1",
+          "saurionKick2",
+          "saurionKick3"
+        ],
+        "heavy": "saurionBite",
+        "heavyRelease": null,
+        "ranged": "saurionQuillFan",
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "standard",
+      "capabilities": [
+        {
+          "key": "foreCarry",
+          "title": "Forelimb carry band",
+          "means": "The arms are weapons held in front, not a jogger`s counter-swing, so every shared clip`s shoulder and elbow pitch is clamped into a measured band.",
+          "value": {
+            "pitch": [
+              -132,
+              -30
+            ],
+            "elbow": [
+              -120,
+              -34
+            ]
+          }
+        }
+      ],
+      "art": {
+        "canonical": "art/saurion/canonical.png",
+        "badge": "art/saurion/badge.png",
+        "poster": "art/saurion/poster.png",
+        "thumbnail": "art/saurion/thumb.png",
+        "turnaround": "art/saurion/turnaround-*.png"
+      }
+    },
+    {
+      "id": "frogger",
+      "name": "FROGGER",
+      "title": "The Gunk Gladiator",
+      "emoji": "🐸",
+      "personality": {
+        "blurb": "Vat-grown smart-slime poured into a bounce-frame with four gunk guns and no indoor voice. Jumps like gravity is a suggestion, lands like a lawsuit.",
+        "quotes": {
+          "win": "\"Ribbit means gg. Look it up.\"",
+          "intro": "\"Four arms. Zero mercy. MAXIMUM GUNK.\""
+        }
+      },
+      "look": {
+        "primary": "#7cb420",
+        "accent": "#262b20",
+        "glow": "#aef23c",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.1,
+        "torsoW": 1.2,
+        "torsoH": 0.95,
+        "headSize": 0.7,
+        "armLen": 1,
+        "legLen": 1.05,
+        "hipW": 1.05,
+        "bulk": 1.05
+      },
+      "stats": {
+        "hp": 1000,
+        "speed": 10.5,
+        "jump": 19,
+        "weight": 0.5,
+        "armor": 0.12,
+        "duck": 1,
+        "blockMult": 0.14
+      },
+      "cardStats": {
+        "power": 6,
+        "speed": 8,
+        "defense": 5
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            30,
+            32,
+            44
+          ],
+          "knock": [
+            4,
+            5,
+            11
+          ],
+          "range": 3
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 78,
+          "knock": 18,
+          "range": 3.3,
+          "launch": 9
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Slime Slinger",
+          "type": "slime",
+          "dmg": 38,
+          "speed": 36,
+          "cooldown": 0.85,
+          "splash": 2.4,
+          "ammo": 20
+        },
+        "special": {
+          "kind": "special",
+          "id": "slimeBarrage",
+          "name": "Quad Gunk Barrage",
+          "cooldown": 6.5,
+          "dmg": 24,
+          "count": 11,
+          "radius": 8
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "sonicCroak",
+          "name": "SONIC CROAK",
+          "dmg": 140,
+          "radius": 30,
+          "paralyze": 2.2
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": null,
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "standard",
+      "capabilities": [],
+      "art": {
+        "canonical": "art/frogger/canonical.png",
+        "badge": "art/frogger/badge.png",
+        "poster": "art/frogger/poster.png",
+        "thumbnail": "art/frogger/thumb.png",
+        "turnaround": "art/frogger/turnaround-*.png"
+      }
+    },
+    {
+      "id": "jerry",
+      "name": "JERRY",
+      "title": "The Tide-Bringer",
+      "emoji": "🦐",
+      "personality": {
+        "blurb": "Dredged from a flooded aquaculture lab, JERRY is a colony pretending to be a mech. The cannons are full of something alive. He would like you to hold still.",
+        "quotes": {
+          "win": "\"*wet clicking* ...the swarm is fed. For now.\"",
+          "intro": "\"They’re hungry. I’m generous.\""
+        }
+      },
+      "look": {
+        "primary": "#b9816b",
+        "accent": "#35291f",
+        "glow": "#ff2818",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.22,
+        "torsoW": 1.15,
+        "torsoH": 1.15,
+        "headSize": 0.75,
+        "armLen": 0.95,
+        "legLen": 1.28,
+        "hipW": 1.18,
+        "bulk": 0.95
+      },
+      "stats": {
+        "hp": 980,
+        "speed": 9.8,
+        "jump": 30,
+        "jumpWindup": 0.18,
+        "weight": 0.45,
+        "armor": 0.08,
+        "duck": 0.9,
+        "blockMult": 0.15
+      },
+      "cardStats": {
+        "power": 6,
+        "speed": 8,
+        "defense": 4
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            28,
+            30,
+            44
+          ],
+          "knock": [
+            4,
+            4,
+            10
+          ],
+          "range": 3.4
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 11,
+          "knock": 3,
+          "range": 3.6,
+          "launch": 0
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Bilge Spit",
+          "type": "goo",
+          "dmg": 18,
+          "speed": 42,
+          "cooldown": 1.1,
+          "splash": 2.2,
+          "range": 46,
+          "ticks": 4,
+          "ammo": 16
+        },
+        "special": {
+          "kind": "special",
+          "id": "fleaSwarm",
+          "name": "Brine Swarm",
+          "cooldown": 7.5,
+          "dmg": 26,
+          "count": 6
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "fleaCircus",
+          "name": "FLEA CIRCUS",
+          "dmg": 14,
+          "count": 20,
+          "duration": 6
+        }
+      },
+      "clips": {
+        "light": [
+          "jerryRakeR",
+          "jerryRakeL",
+          "jerryRake2"
+        ],
+        "heavy": "jerryBarrage",
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "arthropod",
+      "capabilities": [
+        {
+          "key": "climb",
+          "title": "Surface walking",
+          "means": "This body walks up walls and over roofs. The engine samples nearby geometry into an average outward normal and a nearest point, damps the body toward it, and steps the limbs onto real contact points. `upright` 0 means it becomes part of the wall; near 1 means it stays vertical and hauls itself up by the hands.",
+          "value": {
+            "speed": 0.72,
+            "reach": 0.3,
+            "grab": 0.82,
+            "idleRelax": 0.85,
+            "pose": {
+              "hipsPos": [
+                0,
+                -2.3,
+                0
+              ],
+              "torso": [
+                -30,
+                0,
+                0
+              ],
+              "head": [
+                34,
+                0,
+                0
+              ],
+              "shoulderL": [
+                -46,
+                0,
+                -10
+              ],
+              "shoulderR": [
+                -46,
+                0,
+                10
+              ],
+              "elbowL": [
+                -20,
+                0,
+                0
+              ],
+              "elbowR": [
+                -20,
+                0,
+                0
+              ],
+              "thighL": [
+                8,
+                0,
+                -14
+              ],
+              "thighR": [
+                8,
+                0,
+                14
+              ],
+              "kneeL": [
+                16,
+                0,
+                0
+              ],
+              "kneeR": [
+                16,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        {
+          "key": "gait",
+          "title": "Gait table",
+          "means": "Which walk/run cycle this body runs. Bodies SHARE gaits, so tuning one moves every mech that names it.",
+          "value": "arthropod"
+        }
+      ],
+      "art": {
+        "canonical": "art/jerry/canonical.png",
+        "badge": "art/jerry/badge.png",
+        "poster": "art/jerry/poster.png",
+        "thumbnail": "art/jerry/thumb.png",
+        "turnaround": "art/jerry/turnaround-*.png"
+      }
+    },
+    {
+      "id": "nullbot",
+      "name": "NULLBOT",
+      "title": "The Fatal Exception",
+      "emoji": "👾",
+      "personality": {
+        "blurb": "Nobody built NULLBOT. It was simply found in the arena's memory one morning, already undefeated. Where it walks, textures tear, audio stutters, and the scoreboard reads NaN.",
+        "quotes": {
+          "win": "\"SEGMENTATION FAULT. core dumped. ...that was you.\"",
+          "intro": "\"> fatal exception 0x00NULLBOT :: you will be nullified\""
+        }
+      },
+      "look": {
+        "primary": "#17131e",
+        "accent": "#0a080d",
+        "glow": "#ff1f2a",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.26,
+        "torsoW": 0.98,
+        "torsoH": 1.08,
+        "headSize": 0.82,
+        "armLen": 1.14,
+        "legLen": 1.12,
+        "hipW": 0.85,
+        "bulk": 0.88
+      },
+      "stats": {
+        "hp": 1020,
+        "speed": 10.2,
+        "jump": 13.5,
+        "weight": 0.55,
+        "armor": 0.08,
+        "blockMult": 0.12
+      },
+      "cardStats": {
+        "power": 8,
+        "speed": 7,
+        "defense": 4
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            30,
+            32,
+            46
+          ],
+          "knock": [
+            4,
+            5,
+            11
+          ],
+          "range": 3.4,
+          "status": {
+            "glitch": 1
+          }
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 84,
+          "knock": 30,
+          "range": 3.7,
+          "launch": 9,
+          "status": {
+            "glitch": 1
+          }
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Null Pointer",
+          "type": "glitch",
+          "dmg": 30,
+          "speed": 50,
+          "cooldown": 0.75,
+          "ammo": 18
+        },
+        "special": {
+          "kind": "special",
+          "id": "segfault",
+          "name": "SEGFAULT",
+          "cooldown": 6.5,
+          "dmg": 55,
+          "dashLen": 14
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "systemCrash",
+          "name": "SYSTEM CRASH",
+          "dmg": 50,
+          "duration": 7
+        }
+      },
+      "clips": {
+        "light": null,
+        "heavy": "nullBackhand",
+        "heavyRelease": null,
+        "ranged": null,
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "standard",
+      "capabilities": [
+        {
+          "key": "holoTaunt",
+          "title": "Glitch taunt",
+          "means": "The taunt breaks the RENDER — a stutter, not a fade.",
+          "value": "true"
+        }
+      ],
+      "art": {
+        "canonical": "art/nullbot/canonical.png",
+        "badge": "art/nullbot/badge.png",
+        "poster": "art/nullbot/poster.png",
+        "thumbnail": "art/nullbot/thumb.png",
+        "turnaround": "art/nullbot/turnaround-*.png"
+      }
+    },
+    {
+      "id": "konga",
+      "name": "KONGA",
+      "title": "The Silverback Siege",
+      "emoji": "🦍",
+      "personality": {
+        "blurb": "Half the mountain gorilla they started with, half the ordnance they bolted on afterward. The engineers called the arm-graft a success. KONGA calls it the smaller fist.",
+        "quotes": {
+          "win": "\"You brought armor. I brought both arms.\"",
+          "intro": "\"*drums chest* ...Come closer. I want to reach you.\""
+        }
+      },
+      "look": {
+        "primary": "#33302e",
+        "accent": "#a8532c",
+        "glow": "#ffa432",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.24,
+        "torsoW": 1.24,
+        "torsoH": 1,
+        "headSize": 0.95,
+        "armLen": 1.64,
+        "legLen": 0.86,
+        "hipW": 1.12,
+        "bulk": 1.16
+      },
+      "stats": {
+        "hp": 1200,
+        "speed": 9.2,
+        "jump": 13,
+        "weight": 0.88,
+        "armor": 0.15,
+        "blockMult": 0.08
+      },
+      "cardStats": {
+        "power": 10,
+        "speed": 5,
+        "defense": 7
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            40,
+            44,
+            62
+          ],
+          "knock": [
+            6,
+            7,
+            15
+          ],
+          "range": 3.5
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 98,
+          "knock": 26,
+          "range": 4,
+          "launch": 10
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Shoulder Salvo",
+          "type": "salvo",
+          "dmg": 13,
+          "count": 10,
+          "speed": 34,
+          "cooldown": 2.1,
+          "splash": 1.8,
+          "ammo": 12
+        },
+        "special": {
+          "kind": "special",
+          "id": "headSlam",
+          "name": "Skull Driver",
+          "cooldown": 8,
+          "dmg": 96,
+          "range": 4.2,
+          "knock": 16,
+          "radius": 6
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "apexPound",
+          "name": "APEX POUND",
+          "dmg": 18,
+          "slamDmg": 54,
+          "knock": 12,
+          "radius": 13,
+          "waveSpeed": 30,
+          "beat": 0.58,
+          "fistRange": 3.6,
+          "duration": 10
+        }
+      },
+      "clips": {
+        "light": [
+          "bigPunch1",
+          "bigPunch2",
+          "light3"
+        ],
+        "heavy": "kongaSlam",
+        "heavyRelease": null,
+        "ranged": "kongaLob",
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "knuckle",
+      "capabilities": [
+        {
+          "key": "climb",
+          "title": "Surface walking",
+          "means": "This body walks up walls and over roofs. The engine samples nearby geometry into an average outward normal and a nearest point, damps the body toward it, and steps the limbs onto real contact points. `upright` 0 means it becomes part of the wall; near 1 means it stays vertical and hauls itself up by the hands.",
+          "value": {
+            "speed": 0.66,
+            "reach": 0.42,
+            "style": "ape",
+            "grab": 0.95,
+            "idlePose": {
+              "hipsPos": [
+                0,
+                -1.1,
+                0
+              ],
+              "torso": [
+                8,
+                0,
+                0
+              ],
+              "head": [
+                -16,
+                0,
+                0
+              ],
+              "shoulderR": [
+                -52,
+                0,
+                6
+              ],
+              "elbowR": [
+                -14,
+                0,
+                0
+              ],
+              "shoulderL": [
+                26,
+                0,
+                -12
+              ],
+              "elbowL": [
+                40,
+                0,
+                0
+              ],
+              "thighL": [
+                26,
+                0,
+                -8
+              ],
+              "thighR": [
+                26,
+                0,
+                8
+              ],
+              "kneeL": [
+                40,
+                0,
+                0
+              ],
+              "kneeR": [
+                40,
+                0,
+                0
+              ]
+            },
+            "upright": 0.82,
+            "pose": {
+              "hipsPos": [
+                0,
+                -3.6,
+                0
+              ],
+              "torso": [
+                -16,
+                0,
+                0
+              ],
+              "head": [
+                26,
+                0,
+                0
+              ],
+              "shoulderL": [
+                -62,
+                0,
+                -14
+              ],
+              "shoulderR": [
+                -62,
+                0,
+                14
+              ],
+              "elbowL": [
+                -26,
+                0,
+                0
+              ],
+              "elbowR": [
+                -26,
+                0,
+                0
+              ],
+              "thighL": [
+                10,
+                0,
+                -6
+              ],
+              "thighR": [
+                10,
+                0,
+                6
+              ],
+              "kneeL": [
+                26,
+                0,
+                0
+              ],
+              "kneeR": [
+                26,
+                0,
+                0
+              ]
+            }
+          }
+        },
+        {
+          "key": "gait",
+          "title": "Gait table",
+          "means": "Which walk/run cycle this body runs. Bodies SHARE gaits, so tuning one moves every mech that names it.",
+          "value": "knuckle"
+        }
+      ],
+      "art": {
+        "canonical": "art/konga/canonical.png",
+        "badge": "art/konga/badge.png",
+        "poster": "art/konga/poster.png",
+        "thumbnail": "art/konga/thumb.png",
+        "turnaround": "art/konga/turnaround-*.png"
+      }
+    },
+    {
+      "id": "tritone",
+      "name": "TRITONE",
+      "title": "The Walking Siege",
+      "emoji": "🦕",
+      "personality": {
+        "blurb": "Three horns, two cannons, one direction. TRITONE was rebuilt as a mobile gun platform, but nobody told the animal underneath — it still prefers to solve things at a full gallop.",
+        "quotes": {
+          "win": "\"The horns were enough. The guns were courtesy.\"",
+          "intro": "\"*low bellow* ...Move, or be moved.\""
+        }
+      },
+      "look": {
+        "primary": "#62684a",
+        "accent": "#a8532c",
+        "glow": "#ff8a24",
+        "stripes": false
+      },
+      "build": {
+        "scale": 1.144,
+        "torsoW": 1.35,
+        "torsoH": 0.92,
+        "headSize": 1.18,
+        "armLen": 0.98,
+        "legLen": 0.94,
+        "hipW": 1.32,
+        "bulk": 1.24
+      },
+      "stats": {
+        "hp": 1320,
+        "speed": 8.4,
+        "jump": 9,
+        "weight": 1,
+        "armor": 0.22,
+        "blockMult": 0.06
+      },
+      "cardStats": {
+        "power": 9,
+        "speed": 4,
+        "defense": 9
+      },
+      "moves": {
+        "light": {
+          "kind": "light",
+          "dmg": [
+            34,
+            36,
+            54
+          ],
+          "knock": [
+            7,
+            7,
+            16
+          ],
+          "range": 4.2
+        },
+        "heavy": {
+          "kind": "heavy",
+          "dmg": 90,
+          "knock": 30,
+          "range": 4.4,
+          "launch": 13
+        },
+        "ranged": {
+          "kind": "ranged",
+          "name": "Flank Cannons",
+          "type": "siege",
+          "dmg": 42,
+          "speed": 62,
+          "cooldown": 1.6,
+          "splash": 2.6,
+          "knock": 11,
+          "ammo": 14,
+          "aimWindup": 1
+        },
+        "special": {
+          "kind": "special",
+          "id": "goreCharge",
+          "name": "Gore Charge",
+          "cooldown": 7,
+          "dmg": 88,
+          "knock": 30,
+          "launch": 12,
+          "hold": true
+        },
+        "ult": {
+          "kind": "ult",
+          "id": "siegeProtocol",
+          "name": "SIEGE PROTOCOL",
+          "dmg": 20,
+          "count": 96,
+          "duration": 6.5,
+          "radius": 3.2,
+          "speed": 38,
+          "seekTime": 0.62,
+          "sweep": 1.5
+        }
+      },
+      "clips": {
+        "light": [
+          "tritoneGore",
+          "tritoneGoreL",
+          "tritoneGore"
+        ],
+        "heavy": "tritoneToss",
+        "heavyRelease": null,
+        "ranged": "tritoneBrace",
+        "rangedAlt": null,
+        "channel": null
+      },
+      "gait": "trike",
+      "capabilities": [
+        {
+          "key": "floorGuard",
+          "title": "Floor guard",
+          "means": "A body whose skull hangs off the front of a low chassis; shared clips authored for a humanoid drive it through the ground. The engine lifts the render container when the lowest rendered vertex goes too far under.",
+          "value": "true"
+        },
+        {
+          "key": "gait",
+          "title": "Gait table",
+          "means": "Which walk/run cycle this body runs. Bodies SHARE gaits, so tuning one moves every mech that names it.",
+          "value": "trike"
+        }
+      ],
+      "art": {
+        "canonical": "art/tritone/canonical.png",
+        "badge": "art/tritone/badge.png",
+        "poster": "art/tritone/poster.png",
+        "thumbnail": "art/tritone/thumb.png",
+        "turnaround": "art/tritone/turnaround-*.png"
+      }
+    }
+  ]
+}
