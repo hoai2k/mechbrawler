@@ -140,7 +140,7 @@ for (const [key, index, simSeconds, wantsGarnish] of BOARDS) {
 
   // Peak rather than final counts: a traffic card lives under a second, so
   // sampling once at the end would miss the very thing being tested.
-  const peak = { quads: 0, garnish: 0 };
+  const peak = { models: 0, garnish: 0 };
   const target = await (async () => {
     let t = 0;
     const deadline = Date.now() + 240000;
@@ -152,7 +152,7 @@ for (const [key, index, simSeconds, wantsGarnish] of BOARDS) {
         return { t: state.matchTime, ...d };
       });
       t = s.t;
-      peak.quads = Math.max(peak.quads, s.quads);
+      peak.models = Math.max(peak.models, s.models);
       peak.garnish = Math.max(peak.garnish, s.garnish);
       if (!s.camera.every(Number.isFinite) || !Number.isFinite(s.fov)) {
         check(false, `${key}: camera stays finite`, JSON.stringify(s.camera));
@@ -168,8 +168,8 @@ for (const [key, index, simSeconds, wantsGarnish] of BOARDS) {
     return state.fighters.filter((f) => !f.dead && f.respawnTimer <= 0).length;
   });
 
-  check(peak.quads >= alive, `${key}: the scene drew a quad for every fighter`,
-    `${peak.quads} quads / ${alive} alive`);
+  check(peak.models >= alive, `${key}: the scene drew a rig for every fighter`,
+    `${peak.models} rigs / ${alive} alive`);
   if (wantsGarnish) {
     check(peak.garnish > 0, `${key}: garnish cards were spawned`, `${peak.garnish} cards`);
   }
@@ -196,16 +196,13 @@ for (const [key, index, simSeconds, wantsGarnish] of BOARDS) {
   check(errors.length === before, `${key}: no page errors`,
     errors.slice(before).map((e) => e.err).slice(0, 2).join(" | "));
 
-  // The stage must never cut a hole in a fighter. Both flags below were once
-  // the other way round, and the result was a platform slicing a body in half
-  // wherever the two crossed — worst on the boards whose platforms move, where
-  // the cut line slides across the sprite. Asserted on the live materials
-  // because it is one word in each file that brings it back.
+  // The stage must never cut a hole in a fighter. The platform face's flag
+  // was once the other way round, and the result was a platform slicing a
+  // body in half wherever the two crossed — worst on the boards whose
+  // platforms move, where the cut line slides across the rig. Asserted on
+  // the live material because it is one word that brings it back.
   const layer = await page.evaluate(async () =>
     (await import("/src/camera3d/index.js")).debugStats().layering);
-  check(layer.billboardDepthTest === false,
-    `${key}: fighters paint over the stage instead of depth-testing against it`,
-    `depthTest=${layer.billboardDepthTest}`);
   check(layer.platformFaceDepthWrite === false,
     `${key}: the platform face's padded halo writes no depth`,
     `depthWrite=${layer.platformFaceDepthWrite}`);
@@ -262,37 +259,13 @@ const leftovers = await page.evaluate(async () =>
   (await import("/src/camera3d/index.js")).debugStats().garnish);
 check(leftovers === 0, "garnish is cleared when the board changes", `${leftovers} cards left over`);
 
-// The install aura belongs to the SCENE, not to the overlay canvas.
-//
-// Flat, render.js paints it between the shadow and the body, so it sits under
-// the fighter. In this mode the body is in the WebGL layer and the overlay is
-// strictly above it, so leaving the aura on the overlay put it in FRONT of the
-// fighter wearing it — a lit fighter reading as a fighter behind frosted
-// glass. billboards.js draws it as a quad instead, and that quad is the one
-// thing in this scene that has to test depth: only the depth buffer can put a
-// transparent quad behind opaque rig geometry.
-current = "aura";
-await page.evaluate(async () => {
-  const { state } = await import("/src/state.js");
-  for (const f of state.fighters) {
-    f.installs = { duration: 99, life: 99, color: "#ff62cf", label: "PROBE", aura: null };
-  }
-});
-await settleFrames();
-const aura = await page.evaluate(async () =>
-  (await import("/src/camera3d/index.js")).debugStats());
-check(aura.auras > 0, "the install aura is drawn in the scene, not on the overlay",
-  `${aura.auras} aura quad(s)`);
-check(aura.layering.auraDepthTest === true,
-  "the aura quad tests depth, so a fighter with volume occludes it",
-  `depthTest=${aura.layering.auraDepthTest}`);
-
-// Entity effects — traps, ultimate waves, hazards — belong in the SCENE too,
-// and for the same reason. Flat they draw before the fighters; on the overlay
+// Entity effects — traps, ultimate waves, hazards — belong in the SCENE, not
+// on the overlay canvas. Flat they draw before the fighters; on the overlay
 // they could only ever be in front, and these are the biggest pictures the
-// game has: an Encore wave painted there erased the fighter it was cast at and
-// the one across the stage with it. src/camera3d/effects.js draws the whole
-// layer as one quad behind the bodies.
+// game has: every stage hazard's telegraph and body is painted this way.
+// src/camera3d/effects.js draws the whole layer as one quad behind the
+// bodies — and it is wired in index.js, which is exactly what regressed when
+// the billboard paths were retired (the layer existed, nothing created it).
 current = "effect-layer";
 await page.evaluate(async () => {
   const { state } = await import("/src/state.js");
