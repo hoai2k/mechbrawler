@@ -1050,9 +1050,24 @@ function markedKey(id) {
  *  than one player's colour winning and the others vanishing. The rings are
  *  built here instead of in CSS because the combinations are the power set of
  *  four seats; the stylesheet just consumes --mark-rings. */
+/** Does this slot's marker belong on the roster yet?
+ *
+ *  Every human's does, always — it is their cursor. The CPU's is different: it
+ *  is not a selector at all until Player 1 locks in and their selector starts
+ *  steering it (steeredSlot). Drawn before that, a red ring and a CPU tag sat
+ *  on the Random tile from the moment the screen opened, next to a player who
+ *  had picked nothing — and it reads as a second cursor belonging to the person
+ *  holding the pad, which is the one thing it is not. The opponent is still
+ *  shown the whole time, on the CPU's own hero card in the matchup bar, where
+ *  it is labelled and cannot be mistaken for something to move. */
+function marksRoster(id) {
+  return !isCpuSlot(id) || steeringCpu();
+}
+
 function renderRosterMarkers() {
   const marks = new Map();
   for (const id of pickedSlots()) {
+    if (!marksRoster(id)) continue;
     const key = markedKey(id);
     if (!key) continue;
     if (!marks.has(key)) marks.set(key, []);
