@@ -10,6 +10,7 @@ import { preloadChar, frameStyle, setFrameStyle, renderStyle, setRenderStyle } f
 import { previewCharacter, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
 import { CHARACTER_QUOTES, QUOTE_INTRO, QUOTE_WIN, RANDOM_GROUP, TEXT } from "./config_menus.js";
 import { cardFocus } from "./config_cards.js";
+import { ROSTER_ASPECTS } from "./config_menus.js";
 import { CONTROL_ROWS, rowAtPad } from "./config_controls.js";
 import { MATCH_MODES, MAX_FIGHTERS, matchPlan, modeLabel, HUMAN_TEAM } from "./modes.js";
 
@@ -426,10 +427,6 @@ function buildCharacterCard(key) {
 // so buys wider cards, at the cost of height.
 const MIN_ROSTER_ROWS = 2;
 const MAX_ROSTER_ROWS = 5;
-
-// Portrait shapes the fitter may fall back to, tallest first — cropping the art
-// is how a row count that is otherwise right survives a short window.
-const ROSTER_ASPECTS = ["3 / 4", "1 / 1", "5 / 4", "3 / 2", "2 / 1"];
 
 // Under this, the name plate starts losing characters, so a layout this narrow
 // is only ever taken as a last resort.
