@@ -34,6 +34,13 @@
 // complete snapshot of every drawing's parameters — a file to hand back, not a
 // patch to reconcile — and until it is downloaded the bar says there are
 // unexported changes, because with nothing persisted a reload loses them.
+//
+// ON A PHONE the layout goes modal. The viewer takes the whole screen, and the
+// grid of drawings, the parameter panel and the toolbar each become a bottom
+// sheet a button in the mobile bar raises — the SAME elements, moved by a media
+// query rather than rebuilt, so there is one tool and not a handset copy of it.
+// Picking a drawing closes the grid, because the reason to pick one is to look
+// at it.
 
 import {
   getImage, loadSharedImage, sharedSpriteKeys, forgetSharedMirror,
@@ -50,6 +57,7 @@ import {
   bootRenderer, drawMech, drawGhost, mechHeightPx, mechFrameBox, ensureRig,
   rigReady, whenRigReady, resolution, inGameCameraDeg,
 } from "./rig_view.js";
+import { attachSheets } from "./sheet.js";
 
 // ---------------------------------------------------------------- the store
 //
@@ -93,6 +101,7 @@ function setField(key, field, value, dflt) {
   clearSharedRegistry();
   markDirty();
   refreshTile(key);
+  syncMobileCaptions();
   draw();
 }
 
@@ -129,6 +138,7 @@ let showHit = true;
 let showLaunch = true;
 let zoom = 1;
 let poseMode = "launch";
+let sheets = null;    // the phone layout's modal panels; null until boot wires them
 
 const el = (id) => document.getElementById(id);
 
@@ -198,8 +208,11 @@ function draw() {
 function sizeCanvas() {
   const rect = canvas.parentElement.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const w = Math.max(320, Math.floor(rect.width));
-  const h = Math.max(260, Math.floor(rect.height));
+  // Floors against a zero-sized stage mid-layout, not minimum canvas sizes: set
+  // them above a phone's viewport and the canvas overflows the screen it is
+  // supposed to fit.
+  const w = Math.max(240, Math.floor(rect.width));
+  const h = Math.max(200, Math.floor(rect.height));
   if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
     canvas.width = w * dpr; canvas.height = h * dpr;
     canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
@@ -230,7 +243,9 @@ function paint() {
     minY = Math.min(minY, art.top);
     maxY = Math.max(maxY, art.top + art.h);
   }
-  const padX = 36, padY = 26;
+  // Tighter on a phone: the margin that reads as framing on a wide viewer is a
+  // tenth of a handset's width, spent on nothing.
+  const padX = w < 520 ? 14 : 36, padY = w < 520 ? 16 : 26;
   const fit = Math.min((w - padX * 2) / Math.max(1, maxX - minX),
                        (h - padY * 2) / Math.max(1, maxY - minY));
   const z = fit * zoom;
@@ -350,36 +365,87 @@ function drawAttackBox(ctx, card, art, z) {
   ctx.restore();
 }
 
-/** Drag the drawing on the viewer, wheel to size it. The gesture is in CSS
- *  pixels and the stored number is in game pixels, so it is divided by the
+/** Size the selected drawing, clamped and rounded the way the slider stores it. */
+function sizeTo(value) {
+  if (!selected || selected.info?.sizable === false) return;
+  const next = Math.min(3, Math.max(0.15, value));
+  setField(selected.key, "renderScale", Math.round(next * 100) / 100, 1);
+  syncParams();
+}
+
+function sizeBy(factor) {
+  if (!selected) return;
+  sizeTo((store[selected.key]?.renderScale ?? 1) * factor);
+}
+
+/** Drag the drawing on the viewer, wheel or PINCH to size it. The gesture is in
+ *  CSS pixels and the stored number is in game pixels, so it is divided by the
  *  scale the paint used — otherwise a nudge made zoomed in is not the nudge it
- *  looked like. */
+ *  looked like.
+ *
+ *  A phone has no wheel, so the pinch is the only way to size a drawing there;
+ *  it also has more than one finger, which is why the drag counts pointers
+ *  rather than assuming the one it started with is the only one on the glass —
+ *  a second finger landing mid-drag would otherwise fling the art across the
+ *  scene and store the result. */
 function attachViewerInput() {
+  const points = new Map();
   let from = null;
+  let pinch = null;
+
+  const span = () => {
+    const [a, b] = [...points.values()];
+    return b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+  };
+  const seedDrag = () => {
+    const p = [...points.values()][0];
+    from = p && selected && selected.info?.nudge !== false
+      ? { x: p.x, y: p.y, dx: store[selected.key]?.dx ?? 0, dy: store[selected.key]?.dy ?? 0 }
+      : null;
+    canvas.classList.toggle("is-dragging", !!from);
+  };
+
   canvas.addEventListener("pointerdown", (e) => {
-    if (!selected || selected.info?.nudge === false) return;
+    if (!selected) return;
     canvas.setPointerCapture(e.pointerId);
-    from = { x: e.clientX, y: e.clientY,
-             dx: store[selected.key]?.dx ?? 0, dy: store[selected.key]?.dy ?? 0 };
-    canvas.classList.add("is-dragging");
+    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (points.size >= 2) {
+      pinch = { span: span(), scale: store[selected.key]?.renderScale ?? 1 };
+      from = null;
+      canvas.classList.remove("is-dragging");
+    } else {
+      seedDrag();
+    }
   });
   canvas.addEventListener("pointermove", (e) => {
-    if (!from || !selected) return;
+    if (!selected || !points.has(e.pointerId)) return;
+    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && points.size >= 2) {
+      const now = span();
+      // Against the size the pinch STARTED at, not the last frame's, so the
+      // gesture is reversible: open and close back to where you began and the
+      // drawing is the size it was, rather than a rounding error smaller.
+      if (pinch.span > 0 && now > 0) sizeTo(pinch.scale * (now / pinch.span));
+      return;
+    }
+    if (!from) return;
     const z = view?.z || 1;
     setField(selected.key, "dx", Math.round(from.dx + (e.clientX - from.x) / z), 0);
     setField(selected.key, "dy", Math.round(from.dy + (e.clientY - from.y) / z), 0);
     syncParams();
   });
-  const end = () => { from = null; canvas.classList.remove("is-dragging"); };
+  const end = (e) => {
+    points.delete(e.pointerId);
+    if (points.size < 2) pinch = null;
+    if (points.size === 1) seedDrag();
+    if (points.size === 0) { from = null; canvas.classList.remove("is-dragging"); }
+  };
   canvas.addEventListener("pointerup", end);
   canvas.addEventListener("pointercancel", end);
   canvas.addEventListener("wheel", (e) => {
     if (!selected || selected.info?.sizable === false) return;
     e.preventDefault();
-    const cur = store[selected.key]?.renderScale ?? 1;
-    const next = Math.min(3, Math.max(0.15, cur * (e.deltaY < 0 ? 1.06 : 1 / 1.06)));
-    setField(selected.key, "renderScale", Math.round(next * 100) / 100, 1);
-    syncParams();
+    sizeBy(e.deltaY < 0 ? 1.06 : 1 / 1.06);
   }, { passive: false });
 }
 
@@ -406,8 +472,36 @@ function buildTile(card) {
   dot.className = "dot";
   dot.title = "edited this session — in the exported snapshot";
   b.append(thumb, name, who, dot);
-  b.addEventListener("click", () => select(card.key));
+  // On a phone the grid IS a sheet over the viewer, so choosing from it hands
+  // the screen back to what was chosen. On the desk the grid is beside the
+  // viewer and there is no sheet to close, so this is a no-op there.
+  b.addEventListener("click", () => { select(card.key); sheets?.close(); });
   return b;
+}
+
+/** Fetch a drawing's plate once, ever, and fill in whatever is waiting on it. */
+const asked = new Set();
+function askForPlate(key) {
+  if (!key || asked.has(key)) return;
+  asked.add(key);
+  loadSharedImage(key).then(() => {
+    refreshTile(key);
+    if (selected?.key === key) draw();
+  });
+}
+
+/** Ask for the plates of every tile now within a screen of the grid's viewport.
+ *  Rect maths rather than an observer, because it has to answer for a panel
+ *  that was off screen a frame ago. */
+function pumpTiles() {
+  const grid = el("grid");
+  if (!grid) return;
+  const box = grid.getBoundingClientRect();
+  for (const b of grid.querySelectorAll(".tile")) {
+    if (asked.has(b.dataset.key)) continue;
+    const r = b.getBoundingClientRect();
+    if (r.bottom > box.top - 200 && r.top < box.bottom + 200) askForPlate(b.dataset.key);
+  }
 }
 
 /** The tile's thumbnail, once the plate has loaded, and its edited dot. */
@@ -610,6 +704,7 @@ function select(key) {
   el(tileId(key))?.scrollIntoView({ block: "nearest" });
   const ref = referenceFor(card);
   ensureRig(ref.charKey);
+  asked.add(key);   // this fetch counts as the tile's, so the pump does not repeat it
   loadSharedImage(key).then(() => { refreshTile(key); buildParams(); draw(); });
   // A rig is 8-46 MB and lands whenever it lands, with no event to hang off —
   // and until it does, resolveClip cannot answer, so the launch-pose fact would
@@ -628,6 +723,30 @@ function select(key) {
   url.searchParams.set("fx", key);
   history.replaceState(null, "", url);
   el("previewBtn").disabled = false;
+  el("previewM").disabled = false;
+  syncMobileCaptions();
+}
+
+/** What the phone's buttons say. The toolbar and the grid are off screen there,
+ *  so the bar has to carry what is selected, who throws it, and whether this
+ *  drawing has been given anything — the three facts the desk layout shows by
+ *  simply being wide. */
+function syncMobileCaptions() {
+  const pick = el("mPick");
+  if (!pick) return;
+  const card = selected;
+  const name = card ? card.key.split(":").pop().replace(/_/g, " ") : "none";
+  const who = !card ? "" : card.key.startsWith("stagefx:") ? "hazard"
+    : card.use ? card.use.charName : "shared";
+  pick.textContent = who ? `${name} · ${who}` : name;
+  const adj = el("mAdjust");
+  if (adj) {
+    // "set", not "edited": an entry can arrive from config_effects.js with
+    // three fields in it and nobody has touched anything this session. That is
+    // the distinction the dirty dot and the export's `set` flag both make.
+    const fields = card ? Object.keys(store[card.key] || {}).length : 0;
+    adj.textContent = !card ? "—" : fields ? `${fields} set` : "defaults";
+  }
 }
 
 // ------------------------------------------------------------------- preview
@@ -934,7 +1053,11 @@ function paintPreview() {
   ctx.save();
   ctx.fillStyle = "rgba(160, 180, 210, 0.75)";
   ctx.font = "500 11px Inter, system-ui, sans-serif";
-  ctx.fillText(`${anim} @ ${at.toFixed(2)}s · camera ${inGameCameraDeg()}° (the game's own lens) · ${(z * 100).toFixed(0)}% of game scale`, 12, 18);
+  // Painted text does not wrap, so the narrow form is not a truncation of this
+  // one — it is the same facts in the width there is.
+  ctx.fillText(w >= 520
+    ? `${anim} @ ${at.toFixed(2)}s · camera ${inGameCameraDeg()}° (the game's own lens) · ${(z * 100).toFixed(0)}% of game scale`
+    : `${anim} @ ${at.toFixed(2)}s · ${inGameCameraDeg()}° lens · ${(z * 100).toFixed(0)}% of game scale`, 12, 18);
   ctx.restore();
 }
 
@@ -1057,11 +1180,30 @@ function shell() {
         </p>
       </section>
 
-      <aside class="rail">
+      <aside class="rail rail--fx">
         <div id="grid" class="grid"></div>
         <section id="params" class="params"></section>
       </aside>
     </main>
+
+    <!-- The phone's chrome. In the markup on every screen and hidden by the
+         stylesheet above the breakpoint; below it the three panels above become
+         the sheets these buttons raise. -->
+    <nav class="mbar">
+      <div class="mrow">
+        <button class="mbtn mbtn--wide" type="button" data-sheet="items">
+          <span class="mbtn-k">Drawing</span><span class="mbtn-v" id="mPick">…</span>
+        </button>
+        <button class="mbtn" type="button" data-sheet="params">
+          <span class="mbtn-k">Adjust</span><span class="mbtn-v" id="mAdjust">—</span>
+        </button>
+        <button class="mbtn" type="button" data-sheet="tools">
+          <span class="mbtn-k">View</span><span class="mbtn-v">options</span>
+        </button>
+        <button class="mbtn mbtn--icon mbtn--go" id="previewM" type="button"
+                disabled aria-label="Play the launch preview">▶</button>
+      </div>
+    </nav>
 
     <div id="lightbox" class="lightbox" hidden>
       <div class="lb-panel">
@@ -1098,20 +1240,34 @@ export async function boot(root) {
   attachViewerInput();
   new ResizeObserver(() => draw()).observe(canvas.parentElement);
 
+  // The phone layout: the grid, the parameter panel and the toolbar are the
+  // same elements the desk lays out in a rail and a header — a media query puts
+  // them on the bottom edge, and this raises one at a time.
+  sheets = attachSheets(root, {
+    items: { el: el("grid"), title: "Every drawing", onOpen: pumpTiles },
+    params: { el: el("params"), title: "Adjust this drawing" },
+    tools: { el: root.querySelector(".bar-tools"), title: "View & export" },
+  });
+
   // Every plate, fetched as the grid scrolls it into view — sixty plates is not
   // a page load.
   const io = new IntersectionObserver((entries) => {
     for (const e of entries) {
       if (!e.isIntersecting) continue;
-      const key = e.target.dataset.key;
       io.unobserve(e.target);
-      loadSharedImage(key).then(() => {
-        refreshTile(key);
-        if (selected?.key === key) draw();
-      });
+      askForPlate(e.target.dataset.key);
     }
   }, { root: grid, rootMargin: "200px" });
   for (const b of grid.querySelectorAll(".tile")) io.observe(b);
+  // …and again on scroll and whenever the grid is raised as a sheet. On a phone
+  // the grid spends its life translated off the bottom of the screen, which is
+  // not a state an IntersectionObserver can be relied on to see through, so the
+  // observer is the fast path and this is the guarantee.
+  let pumping = 0;
+  grid.addEventListener("scroll", () => {
+    if (pumping) return;
+    pumping = requestAnimationFrame(() => { pumping = 0; pumpTiles(); });
+  }, { passive: true });
 
   el("zoom").addEventListener("input", (e) => {
     zoom = Number(e.target.value);
@@ -1126,7 +1282,9 @@ export async function boot(root) {
     for (const ms of [500, 1500]) setTimeout(draw, ms);
   });
   el("exportBtn").addEventListener("click", exportJSON);
-  el("previewBtn").addEventListener("click", openPreview);
+  for (const id of ["previewBtn", "previewM"]) {
+    el(id).addEventListener("click", () => { sheets?.close(); openPreview(); });
+  }
   el("pvClose").addEventListener("click", closePreview);
   el("pvPlay").addEventListener("click", () => {
     preview.playing = !preview.playing;

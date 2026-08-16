@@ -217,9 +217,21 @@ export function inGameCameraDeg() {
   return scene?.CAMERA_YAW_DEG ?? -78;
 }
 
+/** The live pointers on an element, and the gap between the first two — the one
+ *  piece of book-keeping a pinch needs. Pointer events cover mouse, pen and
+ *  touch alike, so a phone gets the same gestures without a second code path. */
+function pinchSpan(points) {
+  const [a, b] = [...points.values()];
+  return b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+}
+
 /**
- * Mouse-orbit a canvas: drag to rotate, wheel to zoom. Returns a controller
+ * Orbit a canvas: drag to rotate, wheel or PINCH to zoom. Returns a controller
  * carrying the live orbit, so the caller can show it and reset it.
+ *
+ * The pinch is not a nicety. A phone has no wheel, and the dolly is how you get
+ * close enough to see whether a hand is inside a hip — so on a handset it is
+ * the only way to zoom at all.
  *
  * The orbit is stored here and pushed into the scene before every draw by the
  * caller's redraw, rather than pushed on every pointer event — the scene's
@@ -228,13 +240,41 @@ export function inGameCameraDeg() {
  */
 export function attachOrbit(canvas, onChange) {
   const orbit = { ...IN_GAME_ORBIT };
-  let from = null;
+  const points = new Map();
+  let from = null;      // the one-finger drag: where it started, and from what angle
+  let pinch = null;     // the two-finger zoom: the gap it started at, and from what dolly
+
+  /** Begin (or restart) a one-pointer drag from wherever that pointer is now.
+   *  Called on lift as well as on press, so letting one finger off a pinch
+   *  continues the orbit from where the remaining finger is rather than
+   *  snapping the camera by the width of the gesture. */
+  const seedDrag = () => {
+    const p = [...points.values()][0];
+    from = p ? { x: p.x, y: p.y, yaw: orbit.yawDeg, pitch: orbit.pitchDeg } : null;
+  };
+
   canvas.addEventListener("pointerdown", (e) => {
     canvas.setPointerCapture(e.pointerId);
-    from = { x: e.clientX, y: e.clientY, yaw: orbit.yawDeg, pitch: orbit.pitchDeg };
+    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (points.size >= 2) {
+      pinch = { span: pinchSpan(points), dolly: orbit.dolly };
+      from = null;
+    } else {
+      seedDrag();
+    }
     canvas.classList.add("is-orbiting");
   });
   canvas.addEventListener("pointermove", (e) => {
+    if (!points.has(e.pointerId)) return;
+    points.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pinch && points.size >= 2) {
+      const span = pinchSpan(points);
+      if (pinch.span > 0 && span > 0) {
+        orbit.dolly = Math.max(0.3, Math.min(4, pinch.dolly * (span / pinch.span)));
+        onChange?.(orbit);
+      }
+      return;
+    }
     if (!from) return;
     orbit.yawDeg = from.yaw + (e.clientX - from.x) * 0.4;
     // Clamped by scene.setOrbit at ±80° anyway; clamped here too so the
@@ -242,7 +282,15 @@ export function attachOrbit(canvas, onChange) {
     orbit.pitchDeg = Math.max(-80, Math.min(80, from.pitch - (e.clientY - from.y) * 0.35));
     onChange?.(orbit);
   });
-  const end = () => { from = null; canvas.classList.remove("is-orbiting"); };
+  const end = (e) => {
+    points.delete(e.pointerId);
+    if (points.size < 2) pinch = null;
+    if (points.size === 1) seedDrag();
+    if (points.size === 0) {
+      from = null;
+      canvas.classList.remove("is-orbiting");
+    }
+  };
   canvas.addEventListener("pointerup", end);
   canvas.addEventListener("pointercancel", end);
   canvas.addEventListener("wheel", (e) => {
