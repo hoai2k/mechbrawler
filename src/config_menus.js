@@ -328,6 +328,16 @@ export const TEXT = {
     timeOff: "None",
     activeBoards: (on) => `Active Boards: ${on ? "On" : "Off"}`,
     sfxEnabled: (on) => `Sound Effects: ${on ? "On" : "Off"}`,
+    // How the bodies MOVE: "Smooth" samples the clips the way Mech Mayhem
+    // plays them; "On Twos" is JJK Brawler's stepped, drawn-on-paper sampling
+    // (~13 Hz, contact frames preserved). Live — no reload.
+    frames: (style) => `Animation: ${style === "twos" ? "On Twos" : "Smooth"}`,
+    // How the bodies are SHADED: the delivered PBR paint jobs, or the anime
+    // two-band ramp with ink outlines. Needs a reload (render_backend says
+    // why), so the label says so while a match is in the way.
+    render: (style) => `Shading: ${style === "toon" ? "Anime Toon" : "Neon Metal"}`,
+    renderPending: (style) =>
+      `Shading: ${style === "toon" ? "Anime Toon" : "Neon Metal"} (on restart)`,
     back: "Back",
   },
 
