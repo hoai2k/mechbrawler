@@ -366,3 +366,14 @@ export const TEXT = {
     allJoined: (who) => `${who} — A locks your fighter, A again starts · B backs out · LB/RB corner menus`,
   },
 };
+
+// Portrait shapes the roster fitter may fall back to, TALLEST FIRST — cropping
+// the art is how a row count that is otherwise right survives a short window.
+// layoutCharacterGrid() walks this ladder and takes the widest rung that fits,
+// so the last entry is the hardest crop any card ever gets and the one worth
+// aiming a card's focus at (src/config_cards.js, /workbench/?edit=cards).
+//
+// Shared rather than private to ui.js so the card workbench previews the same
+// shapes the game will actually use: a tool that guessed this list would go
+// quietly wrong the first time a rung was added.
+export const ROSTER_ASPECTS = ["3 / 4", "1 / 1", "5 / 4", "3 / 2", "2 / 1"];

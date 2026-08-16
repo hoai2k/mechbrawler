@@ -7,10 +7,11 @@
 // this size in the game, and "looks about right on the big picture" is how the
 // blanket `top` crop got shipped in the first place.
 //
-// So the rail holds the eight real holes (src/config_cards.js lists them), each
-// one an actual `object-fit: cover` box at its actual size, re-cropping live as
-// the line moves. The 52px and 44px squares are the ones worth watching: they
-// throw away the most, so they are where a wrong line shows first.
+// So the rail holds every real hole, each an actual `object-fit: cover` box at
+// its actual size, re-cropping live as the line moves — widest first, because
+// the widest hole discards the most height. The roster tile at the top is the
+// one to watch: it is both the hardest crop in the game and the one most of the
+// game is seen through.
 //
 // Nothing here persists — no localStorage, no server write, same as the other
 // two tools. Export writes a JSON snapshot of every card, tuned or not, and
@@ -18,23 +19,53 @@
 
 import { CHARACTERS, CHARACTER_KEYS } from "../src/characters.js";
 import { CARD_FOCUS, cardFocus } from "../src/config_cards.js";
+import { ROSTER_ASPECTS } from "../src/config_menus.js";
 
 const el = (id) => document.getElementById(id);
 const cardSrc = (key) => `../assets/cards/${key}_card.jpg`;
 
 // The holes the game actually crops a card into, measured off styles.css. The
-// point of listing them here is that they are the REAL numbers: a preview at a
+// point of listing them here is that they are the REAL shapes: a preview at a
 // convenient size would agree with the game only by luck.
-const HOLES = [
+//
+// ORDERED WIDEST FIRST, because a wide hole is a hard crop: `cover` scales the
+// painting until it fills, so the wider the hole relative to the painting, the
+// more of the painting's HEIGHT is thrown away. The first previews are
+// therefore the ones a wrong line ruins first, which is the order to look in.
+//
+// The roster tile is not one shape: layoutCharacterGrid() walks ROSTER_ASPECTS
+// and takes the WIDEST rung that fits the window, so a card is cropped hardest
+// exactly where it is seen most. A 1280×1000 window lands on the last rung —
+// 2:1, which keeps about a third of a portrait's height. Built from the shared
+// ladder so this cannot drift from what the game does.
+const TILE_W = 110; // a roster tile's measured width at a typical window
+const ROSTER_HOLES = ROSTER_ASPECTS.map((aspect, i) => {
+  const [aw, ah] = aspect.split("/").map((n) => Number(n.trim()));
+  return {
+    label: `Roster tile · ${aspect.replace(/\s/g, "")}`,
+    note: i === ROSTER_ASPECTS.length - 1
+      ? ".char-card img — the widest rung, what a normal window actually gets"
+      : `.char-card img — rung ${i + 1} of ${ROSTER_ASPECTS.length}, taken when the window is tall enough`,
+    w: TILE_W,
+    h: Math.round((TILE_W * ah) / aw),
+  };
+});
+
+const HOLES = [...ROSTER_HOLES, ...[
+  { label: "Loser card", note: ".victory-card--loser img — overscanned 124%", w: 140, h: 112 },
+  { label: "Victory hero", note: ".victory-hero-art — overscanned 124%", w: 174, h: 140 },
   { label: "HUD portrait", note: ".hud-portrait — beside the damage", w: 52, h: 52 },
   { label: "Pause chip", note: ".pause-chip img", w: 44, h: 44 },
-  { label: "Select tile", note: ".char-card img — 3:4, the card's own shape", w: 132, h: 176 },
+  { label: "Intro panel", note: ".intro-panel img — overscanned 134%", w: 168, h: 210 },
   { label: "Matchup art", note: ".matchup-side img — the VS splash", w: 150, h: 200 },
   { label: "Victory card", note: ".victory-card img", w: 120, h: 160 },
-  { label: "Victory hero", note: ".victory-hero-art — overscanned 124%", w: 174, h: 140 },
-  { label: "Loser card", note: ".victory-card--loser img", w: 140, h: 112 },
-  { label: "Intro panel", note: ".intro-panel img — overscanned 134%", w: 168, h: 210 },
-];
+]].sort((a, b) => b.w / b.h - a.w / a.h);
+
+// The widest hole above, which is the one that discards the most height — and
+// so the one the dimmed band on the painting is measured against. Derived
+// rather than assumed: this used to hard-code a square, which quietly told the
+// operator that less was being thrown away than really is.
+const tightestAspect = Math.max(...HOLES.map((h) => h.w / h.h));
 
 // key -> percentage from the painting's top edge. Seeded from the committed
 // config so a session REFINES what is shipped rather than starting from blank
@@ -79,14 +110,15 @@ function paintedRect() {
   return { top: box.top + (box.height - h) / 2, height: h, left: box.left, width: box.width };
 }
 
-/** The fraction of the painting's HEIGHT that survives the tightest hole in the
- *  game — a square one. `cover` into a square scales the painting to fill the
- *  width, so what is kept is its own aspect ratio; the rest is thrown away, and
- *  that is the band the overlay dims. */
+/** The fraction of the painting's HEIGHT that survives the WIDEST hole in the
+ *  game — the crop that throws away the most, and so the honest one to draw.
+ *  `cover` scales the painting until it fills the hole's width, which leaves
+ *  (painting aspect ÷ hole aspect) of its height showing; a hole narrower than
+ *  the painting keeps all of it and crops sideways instead, hence the clamp. */
 function keptFraction() {
   const img = el("cardImg");
   if (!img.naturalWidth || !img.naturalHeight) return 1;
-  return Math.min(1, img.naturalWidth / img.naturalHeight);
+  return Math.min(1, (img.naturalWidth / img.naturalHeight) / tightestAspect);
 }
 
 /** Lay the line, its grab handle and the two discarded bands over the painting.
@@ -253,7 +285,8 @@ function shell() {
         <p class="viewer-note">
           <strong>Drag the line</strong> to the height that must survive a crop — usually the head.
           Click anywhere on the painting to send it there; arrow keys nudge by 0.5%, shift by 5%.
-          The dimmed band is what a square crop throws away.
+          The dimmed band is what the <em>hardest</em> crop throws away — the widest roster
+          tile, the first preview on the right, and the one most of the game is seen through.
           <span id="committed" class="muted"></span>
         </p>
       </section>

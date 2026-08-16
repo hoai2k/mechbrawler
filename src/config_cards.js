@@ -33,7 +33,23 @@
 // tuned is never worse than it was.
 
 export const CARD_FOCUS = {
-  // titanus: 18,
+  titanus:  35.3, // Titanus
+  colossus: 31.1, // Colossus
+  rhino:    40.4, // Rhino
+  konga:    39,   // Konga
+  tritone:  56.3, // Tritone
+  viper:    17.1, // Viper
+  saurion:  31.4, // Saurion
+  fenrir:   24.9, // Fenrir
+  tempest:  21.6, // Tempest
+  wraith:   20.1, // Wraith
+  frogger:  20.2, // Frogger
+  jerry:    19.7, // Jerry
+  vulcan:   17.2, // Vulcan
+  inferno:  22.4, // Inferno
+  glacier:  21.6, // Glacier
+  cranky:   59.2, // Cranky
+  nullbot:  26.7, // Nullbot
 };
 
 /** The crop focus for `key`, as a percentage from the painting's top edge.
