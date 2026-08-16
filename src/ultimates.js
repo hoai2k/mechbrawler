@@ -100,6 +100,138 @@ export function performUltimate(f) {
   DIRECTORS[ult.type](f, ult.p, ult);
 }
 
+/**
+ * One egg of a staged clutch (Saurion's RAPTOR PACK).
+ *
+ * It is a `kind: "summon"` entity on purpose: that is the one thing on this
+ * stage the combat layer already knows how to shoot at (combat.js
+ * enemySummons/summonBox), so an egg is breakable by every attack in the game
+ * without a second targeting system. Break it and `hatch` never runs — the
+ * pack-mate inside it is gone. Let it sit and it opens on its own clock, one
+ * egg at a time, which is what makes three raptors an event rather than a wall.
+ */
+function spawnEgg(f, p, offsetX, hatchAt, hatch) {
+  const cfg = p.eggs;
+  const gy = state.platforms[0]?.y ?? 568;
+  const x = clamp(f.x + offsetX, 110, 1170);
+  const egg = {
+    kind: "summon", id: `${p.id}:egg`, owner: f, t: 0, dead: false,
+    intangible: false, hurtT: 0, hatched: false,
+    hp: cfg.hp ?? 34,
+    x, y: gy,
+    hitW: 76, hitH: 84,
+    // Broken by the enemy: the counterplay, and it has to be loud enough that
+    // whoever did it knows it worked.
+    damage(amount) {
+      if (this.dead) return false;
+      this.hp -= amount;
+      this.hurtT = 0.12;
+      burst(this.x, this.y - 40, cfg.color || p.color, 8, 0.6);
+      if (this.hp > 0) return false;
+      this.dead = true;
+      popup(this.x, this.y - 120, "EGG BROKEN", "#ffffff", 20);
+      burst(this.x, this.y - 40, p.color, 26, 1.1);
+      ring(this.x, this.y - 40, p.color, 90);
+      playSfx("blast", 0.6, 1.2);
+      return true;
+    },
+    update(dt) {
+      this.t += dt;
+      if (this.hurtT > 0) this.hurtT -= dt;
+      if (this.t >= hatchAt) {
+        this.dead = true;
+        this.hatched = true;
+        burst(this.x, this.y - 40, p.color, 22, 1);
+        ring(this.x, this.y - 40, p.color, 80);
+        hatch();
+      }
+    },
+    draw(ctx) {
+      const img = cfg.sprite ? getImage(cfg.sprite) : null;
+      // Rocking harder the closer it is to opening — the tell that a body is
+      // about to be on the board, and the timer on the counterplay.
+      const k = clamp(this.t / hatchAt, 0, 1);
+      const tilt = Math.sin(this.t * (5 + k * 12)) * (0.05 + k * 0.16);
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(tilt);
+      ctx.globalAlpha = this.hurtT > 0 ? 0.6 : 1;
+      if (img) {
+        const h = cfg.spriteH || 130;
+        const w = img.width * h / img.height;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 14;
+        ctx.drawImage(img, -w / 2, -h, w, h);
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha *= 0.85;
+        ctx.beginPath();
+        ctx.ellipse(0, -46, 34, 46, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    },
+  };
+  state.entities.push(egg);
+  return egg;
+}
+
+/**
+ * A phantom body running alongside a rampage (Rhino's STAMPEDE).
+ *
+ * Deliberately not a summon: it cannot be killed, it does not hunt, and it is
+ * over when the ult is. It is the same charge, offset — one lane of a wall.
+ */
+function spawnCharger(f, p, total, offset) {
+  state.entities.push({
+    owner: f, t: 0, dead: false, dir: f.facing, x: clamp(f.x + offset, 130, 1150),
+    y: f.y, hitCd: new Map(),
+    update(dt) {
+      this.t += dt;
+      if (this.t >= total || f.dead) { this.dead = true; return; }
+      this.y = f.y;
+      this.x += this.dir * p.speed * dt;
+      if ((this.dir === 1 && this.x > 1150) || (this.dir === -1 && this.x < 130)) {
+        this.dir *= -1;
+        dust(this.x, this.y, 10);
+      }
+      for (const t of state.fighters) {
+        if (!isFoe(f, t) || t.dead || t.respawnTimer > 0) continue;
+        if ((this.hitCd.get(t) || 0) > state.matchTime) continue;
+        if (Math.abs(t.x - this.x) < 110 && Math.abs(t.y - this.y) < 130) {
+          this.hitCd.set(t, state.matchTime + 0.5);
+          applyHit(f, t, {
+            dmg: p.dmg, baseKb: p.base, growth: p.growth, angle: 0.6,
+            label: p.label, sfx: "punch", unblockable: true, heavy: true,
+          }, "script");
+        }
+      }
+      if (Math.random() < dt * 12) dust(this.x - this.dir * 40, this.y, 4);
+    },
+    draw(ctx) {
+      // A ghost of the charger: the read is "there are more of him", and a
+      // solid second body would only be confused for the one you can punish.
+      ctx.save();
+      ctx.globalAlpha = 0.45;
+      ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.ellipse(this.x, this.y - 80, 74, 84, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.5;
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 4;
+      for (let i = 1; i <= 3; i++) {
+        ctx.beginPath();
+        ctx.moveTo(this.x - this.dir * (40 + i * 34), this.y - 30 - i * 8);
+        ctx.lineTo(this.x - this.dir * (90 + i * 34), this.y - 30 - i * 8);
+        ctx.stroke();
+      }
+      ctx.restore();
+    },
+  });
+}
+
 const DIRECTORS = {
   // A massive erasing beam that crosses the stage (Tritone — TSUNAMI).
   beam(f, p) {
@@ -156,37 +288,36 @@ const DIRECTORS = {
     applyInstall(f, { t: p.duration, label: p.label, color: p.color, dmgTakenMul: p.selfDamageMul }, 2);
     const opp = opponentOf(f);
     const dir = opp ? sign(opp.x - f.x) || 1 : 1;
-    spawnSummon(f, {
+    // A pack, not a pet. docs/characters.md caps every summon ult at 2-4 bodies
+    // (down from Mech Mayhem's twenty): each one bigger, legible, and worth
+    // tracking on a screen two platforms wide. `count` is the kit's own number.
+    const count = clamp(Math.round(p.count ?? 1), 1, 4);
+    // Spread along the line between the owner and the fight, so three wolves
+    // arrive as a line abreast rather than three bodies in one silhouette.
+    const spotFor = (i) => dir * (150 + i * 130);
+    const drop = (i) => spawnSummon(f, {
       label: p.label,
       ...p,
       // Animated from the actor's own set where one exists; otherwise the
       // summon falls back to `p.sprites`, and past that the procedural body.
       actor: p.actor && actorPosesReady(p.actor) ? p.actor : null,
       // Between the owner and whoever they are fighting, facing the fight.
-      offsetX: dir * 150,
+      offsetX: spotFor(i),
       backOff: 0,
+      // Every body of one cast shares the cap, so the pack does not dismiss
+      // itself as it lands.
+      maxActive: Math.max(p.maxActive || 1, count),
     });
-    // The warp-in prop (Saurion's egg): the delivered art for the summon's
-    // arrival, fading out as the creature takes over the spot.
-    if (p.eggSprite) {
-      const ex = f.x + dir * 150;
-      const groundY = state.platforms[0]?.y ?? 568;
-      state.entities.push({
-        owner: f, t: 0, dead: false,
-        update(dt) { this.t += dt; if (this.t > 0.7) this.dead = true; },
-        draw(ctx) {
-          const img = getImage(p.eggSprite);
-          if (!img) return;
-          const h = p.eggSpriteH || 150;
-          const w = img.width * h / img.height;
-          ctx.save();
-          ctx.globalAlpha = Math.max(0, 1 - this.t / 0.7) * 0.95;
-          ctx.shadowColor = p.color;
-          ctx.shadowBlur = 18;
-          ctx.drawImage(img, ex - w / 2, groundY - h, w, h);
-          ctx.restore();
-        },
-      });
+
+    // THE EGG STAGING (Saurion's RAPTOR PACK) — the best idea in the upstream
+    // ult, kept. The clutch warps in as breakable props: each egg has hit
+    // points, the ENEMY can crack one before it opens, and they hatch one at a
+    // time so the pack arrives as a threat you can still answer. Any kit that
+    // declares `eggs` gets it; nothing else pays for it.
+    if (p.eggs) {
+      for (let i = 0; i < count; i++) spawnEgg(f, p, spotFor(i), p.eggs.hatchAt + i * p.eggs.hatchGap, () => drop(i));
+    } else {
+      for (let i = 0; i < count; i++) drop(i);
     }
     state.camera.shake = Math.max(state.camera.shake, 10);
   },
@@ -674,6 +805,14 @@ const DIRECTORS = {
   rampage(f, p, ult) {
     const total = p.passes * 1.0;
     beginUltAction(f, total, { lockMovement: true });
+    // A WALL of rhino (docs/characters.md STAMPEDE: three of him, shoulder to
+    // shoulder). The real body charges; `copies - 1` phantoms run the same lane
+    // beside him with their own hitboxes, so the thing that has to be JUMPED is
+    // as wide as the move claims. Data-driven off the kit — an ult with no
+    // `copies` is the single charger it always was (Konga's APEX POUND).
+    for (let i = 1; i < clamp(Math.round(p.copies ?? 1), 1, 4); i++) {
+      spawnCharger(f, p, total, (i % 2 ? 1 : -1) * Math.ceil(i / 2) * 132);
+    }
     applyInstall(f, { t: total, label: "TRICERATOPS", color: p.color, armor: true, dmgMul: 1.1, sprite: p.sprite }, 2);
     f.invuln = Math.max(f.invuln, 0.5);
     state.entities.push({

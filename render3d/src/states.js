@@ -64,7 +64,16 @@ export const STATES = {
   specialNeutral: { loop: false, duration: 0.5,   beat: 0.125, aim: true,  tier: "identity" },
   specialSide:    { loop: false, duration: 0.5,   beat: 0.125, aim: true,  tier: "identity" },
   specialDown:    { loop: false, duration: 0.5,   beat: 0.125, tier: "identity" },
-  ult:            { loop: true,  duration: 0.286, tier: "identity" },
+  // THE ULTIMATE IS A ONE-SHOT, and it used to be a 0.286 s LOOP. Every mech's
+  // ult resolves to a 0.9–1.0 s clip (groundPound / castRaise / hurricaneSpin),
+  // so looping at 0.286 s meant the playhead never left the first third of the
+  // wind-up and then jumped back to frame zero: a fighter juddering between two
+  // near-identical poses for the whole move instead of throwing it. The move
+  // itself runs 0.8–1.1 s (ultimates.js beginUltAction), which is the clip's own
+  // length, so the honest entry is the one every other big swing uses — a
+  // one-shot at the clip length, holding its last frame if the action outlives
+  // it (clipTime clamps, playClip clamps again to the clip's own end).
+  ult:            { loop: false, duration: 1.0,   tier: "identity" },
   // The two dash attacks (moves.js, variant "dash"). Listed so an animKey the
   // game plays is never an unknown state, and ALIASED below rather than
   // authored: a dash attack is the archetype's own strike thrown out of a run,
@@ -75,7 +84,11 @@ export const STATES = {
   dashAttackHeavy:{ loop: false, duration: 0.55,  beat: 0.167, aim: true,  tier: "archetype" },
   dizzy:          { loop: true,  duration: 1.0,   tier: "library" },
   prone:          { loop: true,  duration: 1.0,   tier: "library" },
-  win:            { loop: true,  duration: 1.2,   tier: "identity" },
+  // Same audit as `ult` one line up: every rig's `victory` clip is 2.6 s and
+  // this cycled it at 1.2, so the celebration cut off less than half way and
+  // restarted. It stays a LOOP — a win hold is meant to keep going while the
+  // results sit on screen — at the length the clip actually is.
+  win:            { loop: true,  duration: 2.6,   tier: "identity" },
   // Grab/throw states (?throw=true — src/grab.js). ALIASED for now: each one
   // plays an existing clip via STATE_ALIASES below, so the mechanic works on
   // every rig today with no new clips owed. The entries exist so these are

@@ -48,12 +48,12 @@
     {
       "name": "block",
       "dur": 0.233,
-      "tracks": 15
+      "tracks": 7
     },
     {
       "name": "brace",
       "dur": 0.967,
-      "tracks": 15
+      "tracks": 11
     },
     {
       "name": "braceL",
@@ -78,7 +78,7 @@
     {
       "name": "grabReach",
       "dur": 0.3,
-      "tracks": 13
+      "tracks": 7
     },
     {
       "name": "groundPound",
@@ -98,7 +98,7 @@
     {
       "name": "hitFlinch",
       "dur": 0.333,
-      "tracks": 13
+      "tracks": 7
     },
     {
       "name": "intro",
@@ -123,12 +123,12 @@
     {
       "name": "launched",
       "dur": 0.7,
-      "tracks": 13
+      "tracks": 11
     },
     {
       "name": "liftHold",
       "dur": 0.467,
-      "tracks": 11
+      "tracks": 7
     },
     {
       "name": "poundHold",
@@ -143,12 +143,12 @@
     {
       "name": "punchHold1",
       "dur": 0.7,
-      "tracks": 13
+      "tracks": 11
     },
     {
       "name": "punchHold2",
       "dur": 0.7,
-      "tracks": 7
+      "tracks": 11
     },
     {
       "name": "punchRelease1",
@@ -163,7 +163,7 @@
     {
       "name": "taunt",
       "dur": 5.067,
-      "tracks": 11
+      "tracks": 7
     },
     {
       "name": "throwHeave",

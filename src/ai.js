@@ -176,6 +176,10 @@ function makePlan(f, opp, lvl) {
       input.heavyHeld = true; // held for the plan's lifetime -> real charge
     } else {
       input.lightP = true;
+      // The two charge mechs BANK their light (fighter.js): holding it is the
+      // only way the CPU ever throws a charged haymaker rather than releasing
+      // on the next frame for nothing.
+      if (f.char.charge?.light) input.lightHeld = true;
     }
     if (opp.y < f.y - 50) input.up = true;
   } else if (chance(lvl.special)) {
@@ -195,7 +199,13 @@ function makePlan(f, opp, lvl) {
     // comfortably ahead of the shot, so the CPU shoots without starving its
     // own specials.
     input.rangedP = true;
+    // A held weapon (the gatling, the flamer, the hose) is only itself while
+    // the trigger is down — a CPU that taps it fires one tick of a stream.
+    if (f.char.ranged?.type === "channel") input.rangedHeld = true;
   }
+  // Keep a live channel alive for as long as the pool can pay for it, so the
+  // CPU's flamer reads as a wall rather than as a cough.
+  if (f.channel && (f.energy ?? 0) > 12) input.rangedHeld = true;
 
   // defense reaction
   const danger = opp.action?.kind === "attack" || opp.charging || opp.action?.kind === "special";
@@ -220,6 +230,7 @@ function makePlan(f, opp, lvl) {
       }
     }
     input.lightP = false;
+    input.lightHeld = false;
     input.heavyP = false;
     input.heavyHeld = false;
     input.specialP = false;

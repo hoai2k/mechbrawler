@@ -30,11 +30,13 @@
 //      resolution, with the style in the light half of the cache key so the
 //      two styles can never serve each other's pixels.
 //
-//   4. K3 PRESENTATION.  The facing rules (pose.PRESENT): idle pins to a ¾
-//      toward the lens, travel and an attack's hit phase to pure profile,
-//      an attack's wind-up toward the lens — and facing left is the exact
-//      mirror of facing right. Measured off the posed rig's own feet,
-//      degree-exact against the dials.
+//   4. K3 PRESENTATION, ON EVERY MECH.  The facing rules (pose.PRESENT): idle
+//      pins to a ¾ toward the lens, travel and an attack's hit phase to pure
+//      profile, an attack's wind-up toward the lens — and facing left is the
+//      exact mirror of facing right. Degree-exact against the dials, for the
+//      WHOLE roster: this used to check titanus and viper, the only two rigs
+//      carrying toe and heel bones, and the twelve mechs whose compass was
+//      quietly reading a bone that points backwards were never asked.
 //
 //   5. LOST CONTEXT.  A lost GL context must not poison the pose cache
 //      (frames drawn during the outage are dropped, not stored).
@@ -42,10 +44,18 @@
 // Needs `playwright` and Chromium (CHROMIUM_PATH to override), and the game
 // served first:  node server.mjs   then:  node tools/smoke_render3d.mjs [baseUrl]
 
+import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
 import { pressStart } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
+
+/** The whole delivered roster, read from the manifest rather than listed here
+ *  — the presentation rules are a promise about every mech, so a mech added to
+ *  the manifest is a mech this test starts covering. */
+const ROSTER = Object.keys(JSON.parse(
+  readFileSync(new URL("../render3d/assets/manifest.json", import.meta.url), "utf8"),
+).characters);
 
 let failures = 0;
 const check = (ok, label, detail = "") => {
@@ -368,41 +378,50 @@ async function bootAndFight(page, url) {
   page.on("pageerror", (e) => errors.push(String(e)));
   await bootMenu(page, `${BASE}/index.html?render=3d&camera=flat`);
 
-  const r = await page.evaluate(async (ensureSrc) => {
+  const r = await page.evaluate(async ([ensureSrc, roster]) => {
     const THREE = await import("/vendor/three/three.module.js");
     const rigs = await import("/render3d/src/loader.js");
     const pose = await import("/render3d/src/pose.js");
+    const ik = await import("/render3d/src/ik.js");
     const CAM = -78;
-    const presentedFeet = (rig) => {
-      rig.root.updateMatrixWorld(true);
-      let sx = 0, sz = 0, n = 0;
-      const add = (toe, heel) => {
-        const a = new THREE.Vector3(), b = new THREE.Vector3();
-        toe.getWorldPosition(a); heel.getWorldPosition(b);
-        const d = a.sub(b).setY(0);
-        if (d.lengthSq() < 1e-8) return;
-        sx += d.x; sz += d.z; n++;
-      };
-      for (const [tn, hn] of [["toeL", "heelL"], ["toeR", "heelR"]]) {
-        const t = rig.root.getObjectByName(tn), h = rig.root.getObjectByName(hn);
-        if (t && h) add(t, h);
-      }
-      if (!n) for (const side of ["L", "R"]) {
-        const ankle = rig.root.getObjectByName(`ankle${side}`);
-        const toe = ankle?.children.find((o) => o.isBone);
-        if (ankle && toe) add(toe, ankle);
-      }
-      if (!n) return null;
-      let deg = (Math.atan2(sx, sz) * 180 / Math.PI) - CAM;
+    // The measurement, written out here rather than borrowed from pose.js, so
+    // the assert is a second opinion about the body and not the pin agreeing
+    // with itself: the hip-joint axis's heading now, less the heading it had in
+    // the rig's own bind pose (where the delivery spec says the body faces +Z).
+    // Every delivered skeleton carries thighL/thighR; a rig that did not would
+    // report null and fail loudly rather than silently skip.
+    const hipAxis = (root) => {
+      const L = root.getObjectByName("thighL") || root.getObjectByName("LeftUpLeg");
+      const R = root.getObjectByName("thighR") || root.getObjectByName("RightUpLeg");
+      if (!L || !R) return null;
+      const a = new THREE.Vector3(), b = new THREE.Vector3();
+      L.getWorldPosition(a); R.getWorldPosition(b);
+      const d = a.sub(b).setY(0);
+      return d.lengthSq() > 1e-10 ? Math.atan2(d.x, d.z) * 180 / Math.PI : null;
+    };
+    const wrap = (deg) => {
       while (deg > 180) deg -= 360;
       while (deg < -180) deg += 360;
-      return Math.round(deg);
+      return deg;
     };
     const out = { present: pose.PRESENT, chars: {} };
-    for (const k of ["titanus", "viper"]) {
+    for (const k of roster) {
       await eval(ensureSrc)(k);
       const rig = rigs.getRig(k);
-      out.chars[k] = {};
+      // The rig's own bind heading, taken the same way the engine takes it.
+      const held = [];
+      rig.root.traverse((o) => {
+        if (o.isBone) held.push([o, o.quaternion.clone(), o.position.clone()]);
+      });
+      rig.root.rotation.y = rig.yawOffset || 0;
+      ik.applyBindPose(THREE, rig.root);
+      rig.root.updateMatrixWorld(true);
+      const bind = hipAxis(rig.root);
+      for (const [b, q, p] of held) { b.quaternion.copy(q); b.position.copy(p); }
+      rig.root.rotation.y = 0;
+      rig.root.updateMatrixWorld(true);
+
+      const c = { tiers: pose.compassTiers(rig), bind };
       for (const [label, state, t, facing] of [
           ["idleR", "idle", 0.5, 1], ["idleL", "idle", 0.5, -1],
           ["runR", "run", 0.1, 1], ["runL", "run", 0.1, -1],
@@ -414,17 +433,22 @@ async function bootAndFight(page, url) {
         pose.poseRig(rig, state, pose.sampleTime(state, t), res.clip,
           { charKey: k, presentDeg, facing, facingK: facing,
             turnYawRad: facing < 0 ? 2 * CAM * Math.PI / 180 : 0 });
-        out.chars[k][label] = presentedFeet(rig);
+        rig.root.updateMatrixWorld(true);
+        const now = hipAxis(rig.root);
+        c[label] = (now === null || bind === null)
+          ? null : Math.round(wrap(now - bind - CAM));
         rig.root.rotation.y = 0;
       }
+      out.chars[k] = c;
     }
     return out;
-  }, ENSURE_RIG);
+  }, [ENSURE_RIG, ROSTER]);
 
   const P = r.present;
   for (const [k, c] of Object.entries(r.chars)) {
     check(c.idleR === P.idleDeg && c.idleL === -P.idleDeg,
-      `${k}: idle pins to a ±${P.idleDeg}° ¾ toward the lens`, `${c.idleR}/${c.idleL}`);
+      `${k}: idle pins to a ±${P.idleDeg}° ¾ toward the lens`,
+      `${c.idleR}/${c.idleL} via ${c.tiers[0]}`);
     check(c.runR === P.profileDeg && c.runL === -P.profileDeg,
       `${k}: run pins to ±${P.profileDeg}° pure profile`, `${c.runR}/${c.runL}`);
     check(c.windupR === P.windupDeg && c.windupL === -P.windupDeg,
@@ -433,6 +457,9 @@ async function bootAndFight(page, url) {
     check(c.hitR === P.profileDeg && c.hitL === -P.profileDeg,
       `${k}: the hit phase pins to ±${P.profileDeg}° pure profile`, `${c.hitR}/${c.hitL}`);
   }
+  check(Object.keys(r.chars).length === ROSTER.length,
+    `the presentation pin is measured on the whole roster`,
+    `${Object.keys(r.chars).length} of ${ROSTER.length} mechs`);
   check(errors.length === 0, "no page errors measuring presentation", errors.slice(0, 2).join(" | "));
   await page.close();
 }
@@ -486,6 +513,63 @@ async function bootAndFight(page, url) {
     check(r.restored, "the context comes back");
   }
   check(errors.length === 0, "no page errors around a context loss", errors.slice(0, 2).join(" | "));
+  await page.close();
+}
+
+// ---------------------------------------------------------------------------
+// 6. THE TWO SEAMS. `initRenderBackend` has to hand back the load promise —
+// awaiting a function that returns undefined is a race that reads like a
+// guarantee — and the pose texture's size has to be askable-for, so a zoomed
+// viewer can have a sharp render without a second pipeline, while the GAME's
+// size stays exactly 384.
+
+{
+  const page = await browser.newPage();
+  const errors = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await bootMenu(page, `${BASE}/index.html?render=3d&camera=flat`);
+
+  const r = await page.evaluate(async (ensureSrc) => {
+    const rb = await import("/src/render_backend.js");
+    const scene = await import("/render3d/src/scene.js");
+    const backend = await import("/render3d/src/backend.js");
+    await eval(ensureSrc)("titanus");
+    const returned = rb.initRenderBackend();
+    const thenable = typeof returned?.then === "function";
+    if (thenable) await returned;   // idempotent: init resolves the same load
+
+    const drawnEdge = () => {
+      const c = document.createElement("canvas");
+      c.width = 40; c.height = 40;
+      backend.drawCharFrame(c.getContext("2d"), "titanus",
+        backend.currentFrame("titanus", "idle", 0.5), 20, 36, { facing: 1 });
+      // The cache entry's own canvas is the texture — read its edge back.
+      return window.__render3d.renderer.domElement.width;
+    };
+    const beforeSize = scene.TEX_SIZE;
+    const beforeGl = drawnEdge();
+    const asked = scene.setTexSize(768);
+    const live = scene.TEX_SIZE;   // the live module binding, at the raised size
+    const afterGl = drawnEdge();
+    const back = scene.setTexSize(scene.TEX_SIZE_DEFAULT);
+    return {
+      thenable, beforeSize, asked, live,
+      beforeGl, afterGl, back, backGl: drawnEdge(),
+      clamped: (() => { const v = scene.setTexSize(99999); scene.setTexSize(384); return v; })(),
+    };
+  }, ENSURE_RIG);
+
+  check(r.thenable, "initRenderBackend hands back the load promise, so awaiting it waits");
+  check(r.beforeSize === 384, "the game's pose texture is still 384", `${r.beforeSize}`);
+  check(r.asked === 768 && r.live === 768, "a caller can ask for a sharper texture",
+    `asked 768, got ${r.asked}/${r.live}`);
+  check(r.afterGl === 768 * 2 && r.beforeGl === 384 * 2,
+    "and the render really is drawn at that size (2x supersampled)",
+    `${r.beforeGl} -> ${r.afterGl} px of GL canvas`);
+  check(r.back === 384 && r.backGl === 768, "and it goes back", `${r.back} / ${r.backGl}`);
+  check(r.clamped <= 2048, "an absurd request is clamped rather than honoured", `${r.clamped}`);
+  check(errors.length === 0, "no page errors around the texture-size seam",
+    errors.slice(0, 2).join(" | "));
   await page.close();
 }
 

@@ -58,12 +58,12 @@
     {
       "name": "block",
       "dur": 0.233,
-      "tracks": 16
+      "tracks": 8
     },
     {
       "name": "burst",
       "dur": 0.8,
-      "tracks": 16
+      "tracks": 12
     },
     {
       "name": "dead",
@@ -93,7 +93,7 @@
     {
       "name": "hitFlinch",
       "dur": 0.333,
-      "tracks": 14
+      "tracks": 8
     },
     {
       "name": "intro",
@@ -118,17 +118,17 @@
     {
       "name": "launched",
       "dur": 0.7,
-      "tracks": 14
+      "tracks": 12
     },
     {
       "name": "light1",
       "dur": 0.533,
-      "tracks": 12
+      "tracks": 7
     },
     {
       "name": "light2",
       "dur": 0.567,
-      "tracks": 8
+      "tracks": 7
     },
     {
       "name": "light3",
@@ -138,7 +138,7 @@
     {
       "name": "shoot",
       "dur": 0.5,
-      "tracks": 14
+      "tracks": 7
     },
     {
       "name": "shootLoop",

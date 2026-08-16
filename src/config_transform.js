@@ -6,9 +6,16 @@
 // no mech ultimate swaps the fighter's body for another actor's. The JJK-era
 // worked example (Megumi/Mahoraga) went out with the conversion (plan task K4).
 //
-// TODO: the first mech that wants a true second-body ultimate registers it
-// here — `{ fighter, actor, enabled, install: {...} }` — and lists the actor
-// in SPRITE_ACTORS (characters.js) so its art loads with the fighter's.
+// A4 SWEEP — WHAT KEEPS THIS FILE ALIVE: `transformActorsFor` is called from
+// assets.js:669, once per fighter, on every preload. With an empty table it
+// answers `[]` and costs nothing, but it is a live call on the loading path,
+// so the module stays.
+//
+// The first mech that wants a true second-body ultimate registers it here —
+// `{ fighter, actor, enabled, install: {...} }` — and lists the actor in
+// SPRITE_ACTORS (characters.js) so its art loads with the fighter's. Note that
+// a MECH second body does not need SPRITE_ACTORS at all: an actor key that
+// names another mech already draws through its rig (see config_summons.js).
 
 export const TRANSFORMS = {};
 

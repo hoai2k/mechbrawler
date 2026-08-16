@@ -71,9 +71,14 @@ export const RENDER_BACKEND_LABEL = "3D rigged models";
 /** Start the renderer's async load — the 3D engine, the manifest and the rigs.
  *  Called once at boot from main.js, before anything draws. Drawing before it
  *  resolves paints the placeholder body, which is the load being honest rather
- *  than a race. */
+ *  than a race.
+ *
+ *  RETURNS THE PROMISE. It used to call `init()` and return undefined, so a
+ *  caller that wrote `await initRenderBackend()` awaited nothing and carried on
+ *  with no engine, no manifest and no rigs — a race that looks like a load bug
+ *  and reads, at the call site, like it cannot happen. */
 export function initRenderBackend() {
-  render3d.init();
+  return render3d.init();
 }
 
 // The dispatchers. One property lookup per call, which is nothing against the

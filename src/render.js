@@ -761,24 +761,41 @@ function drawMissingArt(ctx, f, flicker) {
 // and a status is a state you are IN. The clinging art says it continuously,
 // which is what a player needs to read off an opponent at a glance.
 //
-// Two clinging plates, and each one is drawn twice, offset and out of phase, so
-// the flames on a burning mech are not one sprite pulsing in place. `shock_arc`
-// is delivered and loaded but has no home here yet: no move in the mech roster
-// applies an electric status (docs/image-requests.md §2 asked for one against
-// Tempest's kit, which ended up applying none), so wiring it would mean
-// inventing the status rather than drawing it.
+// Each plate is drawn twice, offset and out of phase, so the flames on a
+// burning mech are not one sprite pulsing in place.
+//
+// The mech statuses are all here now (constants.js STATUS): a status the player
+// cannot SEE is a status that does not exist, and these four are the whole
+// reason four mechs play the way they do. GLITCH is the odd one — a COUNT, not
+// a timer — so its plate rides higher and faster the closer the crash is.
 const STATUS_ART = {
   burn: { key: "effect:burn_flame", h: 58, rate: 9, alpha: 0.85 },
   poison: { key: "effect:venom_drip", h: 46, rate: 5, alpha: 0.7 },
+  venom: { key: "effect:venom_drip", h: 52, rate: 6, alpha: 0.85 },
+  frost: { key: "effect:frost_rime", h: 62, rate: 3, alpha: 0.8 },
+  shock: { key: "effect:shock_arc", h: 60, rate: 14, alpha: 0.9 },
+  glitch: { key: "effect:glitch_shard", h: 44, rate: 18, alpha: 0.85, stacking: true },
 };
+
+/** Is this status ON, and how strongly? A tick block (burn, venom) reports its
+ *  remaining time, a plain timer its seconds, and GLITCH its stack count — one
+ *  test so every status can be drawn by the same loop. */
+function statusStrength(f, name, art) {
+  const v = f.statuses[name];
+  if (!v) return 0;
+  if (typeof v === "object") return v.t > 0 ? 1 : 0;
+  if (!art.stacking) return v > 0 ? 1 : 0;
+  return v / 6;   // GLITCH: fuller and faster as the crash approaches
+}
 
 function drawStatusArt(ctx, f) {
   for (const [name, art] of Object.entries(STATUS_ART)) {
-    if (!f.statuses[name]?.t) continue;
+    const strength = statusStrength(f, name, art);
+    if (!strength) continue;
     const img = getImage(art.key);
     if (!img) continue;
     const adj = sharedAdjust(art.key);
-    const h = art.h * adj.scale;
+    const h = art.h * adj.scale * (art.stacking ? 0.6 + strength : 1);
     const w = img.width * h / img.height;
     const half = bodyWidth(f.charKey) * 0.3;
     ctx.save();
@@ -786,8 +803,10 @@ function drawStatusArt(ctx, f) {
     for (const side of [-1, 1]) {
       // Out of phase by half a beat, so the pair reads as fire crawling over
       // the body rather than as one drawing blinking on both shoulders.
-      const t = state.matchTime * art.rate + (side > 0 ? Math.PI : 0);
-      ctx.globalAlpha = art.alpha * (0.65 + 0.35 * Math.sin(t));
+      const t = state.matchTime * art.rate * (art.stacking ? 0.5 + strength : 1)
+        + (side > 0 ? Math.PI : 0);
+      ctx.globalAlpha = art.alpha * (0.65 + 0.35 * Math.sin(t))
+        * (art.stacking ? Math.min(1, 0.45 + strength) : 1);
       const x = f.x + side * half - w / 2 + adj.dx;
       const y = f.y - 70 + Math.sin(t * 0.7) * 6 - h / 2 + adj.dy;
       ctx.drawImage(img, x, y, w, h);

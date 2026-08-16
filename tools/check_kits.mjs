@@ -55,9 +55,15 @@ const DATA_PASSIVES = new Set([]);
 // authored, the behaviour is not wired yet. Named here so the check stays a
 // gate for ACCIDENTAL dead ids — remove an entry the day its passive lands.
 const TODO_PASSIVES = new Set([
-  "siegePlating", "spinUp", "assassinsRead", "plated", "groundedRod",
-  "predatorsRhythm", "eightHundredMetres", "coldShoulder", "predatorsBreak",
-  "lowProfile", "colony", "glitchStack", "longArms", "fourColumns",
+  // Frogger's Low Profile: "crouch transitions 30% faster" has nothing to be
+  // faster THAN — the engine's crouch is instantaneous for everyone, so the
+  // passive is owed a crouch-transition system before it can be owed a number.
+  "lowProfile",
+  // Konga's Long Arms + Climber: the reach half is real and already measured
+  // (config_model_reach.js drives his hitboxes), but the CLIMBER half —
+  // wall-cling and wall-jump, shared with Jerry — needs stage wall geometry
+  // that does not exist yet.
+  "longArms",
 ]);
 
 const { CHARACTERS, STAGED_CHARACTER_KEYS } = await import("../src/characters.js");

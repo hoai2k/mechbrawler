@@ -62,13 +62,28 @@ plays nothing like a platform fighter.
 - [x] C1. characters.js rebuilt (bbe5167) from mechs/characters.json: 17 mechs,
         identity, stats mapped into this engine's terms, relative sizing from
         real export heights, select-screen bars, quotes.
-- [x] C2. config_metrics.js filled (hand-derived first pass; derive tool refresh pending): reach/width/crouch/air per mech from the
-        export's real geometry.
+- [x] C2. config_metrics.js filled — `reach` MEASURED (F3), width/crouch/air
+        still hand-derived: `tools/derive_attack_envelopes.mjs` re-derived
+        against the 17 mech rigs (config_model_reach.js) and every mech's
+        `reach` fraction is now its longest measured committed swing over its
+        own head height. width/crouch/air stay authored and the file now says
+        why — the tool measures a posed box's forward extent and top and
+        normalises against HEAD height, so it has no standing reference to
+        divide a crouch or an air pose by and never measures width at all.
+        The stale "GENERATED — the tool rewrites entries here" header (it
+        never did) is corrected in the same pass.
 - [x] C3. Kits (bbe5167; engine TODO worklist below) — moves.js/specials.js/ultimates.js/summons.js/domains.js
         replaced by the D1 design. JJK cursed-energy framing out; mech
         framing in. frameMeta gating replaced by clip-coverage gating —
         fixes the known smoke_combat failure.
-- [ ] C4. Voice/quips: characters.json quotes wired to intro/win banter.
+- [x] C4. Quips wired (F3). The two spoken screens asked for the SAME line:
+        `quoteFor` in ui.js always resolved `quotes.intro`, so all seventeen
+        mechs' `quotes.win` lines — written in C1, sitting in characters.js —
+        were never spoken anywhere in the game. It now takes the screen
+        (`QUOTE_INTRO` on the VS splash, `QUOTE_WIN` on the results podium)
+        and falls back override -> that kind -> intro -> epithet.
+        `CHARACTER_QUOTES` (config_menus.js) is now a per-kind override table
+        rather than an empty stopgap. VOICE (spoken audio) is still K2's.
 
 ## Phase 3 — the mechs on screen (render3d)
 
@@ -98,8 +113,17 @@ plays nothing like a platform fighter.
 - [x] A3. Arena select: cards now show the arena plate + name + hazard
         blurb (stages.js `desc`, wired in ui.js/styles.css). Painted-card art
         swap can still follow if distinct card paintings are wanted.
-- [ ] A4. domains.js: replaced per D1's ult design; the JJK domain art
-        pipeline deleted.
+- [x] A4. domains.js swept (F3). Nothing on the mech roster can open a domain
+        and nothing ever will — the ultimate took that role (Q3). Of the five
+        stubs, `domainStickFor` and `charDomainSpecialSlot` had no caller in
+        the tree and are DELETED. `activeDomain`/`domainInput` (fighter.js
+        SPECIAL routing) and `domainKnockbackMul` (combat.js, every knockback)
+        are still called from files this pass does not own, so the module
+        stays as three seams with the reason written at the top. Same sweep:
+        `config_transform.js` KEPT — `transformActorsFor` is a live call on
+        assets.js's per-fighter preload path — with the note that a MECH
+        second body needs no SPRITE_ACTORS entry at all, because an actor key
+        naming another mech already draws through its rig.
 
 ## Phase 4b — owner directives (added mid-conversion)
 
@@ -299,6 +323,44 @@ plays nothing like a platform fighter.
         statuses; frill_flare rides a new counter-stance flash in
         specials.js. Validated: check_imports, smoke_stages 12/12,
         smoke_combat, match screenshots reviewed by eye.
+
+- [x] F3. THE CLIPS AND THE IDLE NOW AGREE (content/data layer).
+
+        ROOT CAUSE, in robotworld's exporter, not in this repo. `sampleClip`
+        (robotworld `src/dev/export.js`) hit record on a COLD animator: it
+        called `animator.play(name, {fade:0})` and grabbed frame 0 on a 1e-4
+        step. But that animator is a smoother over an integrator — `cur` eases
+        toward the frame target, the pelvis follows the measured sole
+        clearance at SOLE_FOLLOW_RATE, the readyK carriage layer damps in over
+        ~2s — so frame 0 was not the mech's neutral stance, it was whatever
+        the PREVIOUSLY sampled clip had left behind, still sliding. The pose
+        clips did not have the problem: `samplePose` settles 90 frames first,
+        which is why `battleIdle` alone exported the true ready stance. The
+        digitigrade frames showed it worst because they have the most stance
+        to lose: fenrir's attacks opened half a unit deeper into the crouch
+        with the feet lifted off the floor, and `fenrirSpike` opened with its
+        hips 2.6 units BELOW where idle put them — the mech visibly tipped
+        over at t=0. (Not, as first suspected, a rest-pose bias missing from
+        the sampled stance: the roster restPose is folded into the retarget
+        offsets at capture time, so `battleIdle`'s zeroed leg tracks ARE the
+        digitigrade carriage.)
+
+        FIXED by settling every clip at the same neutral context for the same
+        3 seconds `samplePose` uses, before it records. All 17 re-exported,
+        `exportcheck --all` green, re-copied into mechs/, manifest regenerated
+        (unchanged — same clip inventory). Verified in the pose workbench
+        before/after on fenrir and viper at idle / sideHeavy / upHeavy: every
+        attack now opens in the same digitigrade stance the idle holds. The
+        re-derived reach table dropped every mech's measured `top` by 6-30 px
+        as a side effect, which is the feet coming back down to the floor.
+
+        ALSO: `hover` is mapped for all 17 (tools/mech_intake.mjs) and waits
+        on one entry in render3d/src/states.js plus one line in fighter.js —
+        both written out in the intake tool's header, both in files this pass
+        does not own. And the mech-summon art answer is in config_summons.js:
+        a wolf summon is a small fenrir, the draw site already takes a rig
+        (`summons.js` drawActor), and the wiring is one `actor:` field per
+        summon ult plus one default in `render3d/src/blit.js`.
 
 ## Phase 5 — polish and cleanup
 

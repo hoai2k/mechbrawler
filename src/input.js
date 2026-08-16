@@ -285,10 +285,16 @@ function padSnapshot(pad) {
     jumpP: padButtonPressed(pad, PAD_BUTTONS.jump),
     jumpHeld: padButton(pad, PAD_BUTTONS.jump),
     lightP: padButtonPressed(pad, PAD_BUTTONS.light),
+    // Held, not just pressed: the two charge mechs bank their LIGHT string
+    // (fighter.js) and three kits hold their gun down as a CHANNEL
+    // (specials.js), so both buttons report their hold state.
+    lightHeld: padButton(pad, PAD_BUTTONS.light),
     heavyP: padButtonPressed(pad, PAD_BUTTONS.heavy),
     heavyHeld: padButton(pad, PAD_BUTTONS.heavy),
     specialP: padButtonPressed(pad, PAD_BUTTONS.special),
+    specialHeld: padButton(pad, PAD_BUTTONS.special),
     rangedP: padButtonPressed(pad, PAD_BUTTONS.ranged),
+    rangedHeld: padButton(pad, PAD_BUTTONS.ranged),
     tauntP: padButtonPressed(pad, PAD_BUTTONS.taunt),
     grabP: padButtonPressed(pad, PAD_BUTTONS.grab),
     dashP: padButtonPressed(pad, PAD_BUTTONS.dash),
@@ -326,10 +332,13 @@ function keysSnapshot(map) {
     jumpP: anyPressed(map.up),
     jumpHeld: anyHeld(map.up),
     lightP: anyPressed(map.light),
+    lightHeld: anyHeld(map.light),
     heavyP: anyPressed(map.heavy),
     heavyHeld: anyHeld(map.heavy),
     specialP: anyPressed(map.special),
+    specialHeld: anyHeld(map.special),
     rangedP: anyPressed(map.ranged || []),
+    rangedHeld: anyHeld(map.ranged || []),
     tauntP: anyPressed(map.taunt || []),
     ultP: anyPressed(map.ult),
     shieldHeld: anyHeld(map.shield),
@@ -349,10 +358,10 @@ function keysSnapshot(map) {
 export function blankInput() {
   return {
     left: false, right: false, up: false, down: false,
-    jumpP: false, jumpHeld: false, lightP: false,
-    heavyP: false, heavyHeld: false, specialP: false, ultP: false,
+    jumpP: false, jumpHeld: false, lightP: false, lightHeld: false,
+    heavyP: false, heavyHeld: false, specialP: false, specialHeld: false, ultP: false,
     // The ranged weapon (RB) and the taunt (d-pad down) — see fighter.js.
-    rangedP: false, tauntP: false,
+    rangedP: false, rangedHeld: false, tauntP: false,
     shieldHeld: false, pauseP: false, dirX: 0, dashP: false,
     // How far the stick is pushed sideways, -1..1, kept ALONGSIDE `dirX`
     // rather than replacing it: everything that only asks "which way" still

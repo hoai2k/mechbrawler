@@ -48,27 +48,27 @@
     {
       "name": "block",
       "dur": 0.233,
-      "tracks": 15
+      "tracks": 7
     },
     {
       "name": "burst",
       "dur": 0.8,
-      "tracks": 15
+      "tracks": 11
     },
     {
       "name": "daintyTap",
       "dur": 0.867,
-      "tracks": 8
+      "tracks": 7
     },
     {
       "name": "dead",
       "dur": 1.3,
-      "tracks": 14
+      "tracks": 13
     },
     {
       "name": "frozenSurrender",
       "dur": 0.567,
-      "tracks": 13
+      "tracks": 9
     },
     {
       "name": "getup",
@@ -93,7 +93,7 @@
     {
       "name": "hitFlinch",
       "dur": 0.333,
-      "tracks": 13
+      "tracks": 7
     },
     {
       "name": "intro",
@@ -118,17 +118,17 @@
     {
       "name": "launched",
       "dur": 0.7,
-      "tracks": 13
+      "tracks": 11
     },
     {
       "name": "light1",
       "dur": 0.533,
-      "tracks": 11
+      "tracks": 6
     },
     {
       "name": "light2",
       "dur": 0.567,
-      "tracks": 7
+      "tracks": 6
     },
     {
       "name": "light3",
@@ -138,7 +138,7 @@
     {
       "name": "shootL",
       "dur": 0.5,
-      "tracks": 13
+      "tracks": 6
     },
     {
       "name": "shootLoopL",
@@ -153,7 +153,7 @@
     {
       "name": "victory",
       "dur": 2.6,
-      "tracks": 15
+      "tracks": 7
     },
     {
       "name": "walk",

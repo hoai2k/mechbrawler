@@ -37,6 +37,12 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 const OPTIONAL_ART = [
   "/assets/sprites/summons/",
   "/assets/sprites/effects/",
+  // Arena garnish (gulls, cloud wisps, the aurora curtain, god-ray shafts):
+  // camera3d/garnish.js draws every one of them procedurally when the plate is
+  // absent — artTexture() falling back to auroraDrawn() and friends — so these
+  // are art that has been ASKED FOR and not yet drawn, exactly like the two
+  // families above. They are listed in docs/image-requests.md.
+  "/assets/sprites/garnish/",
   "/assets/backgrounds/domains/",
   // Sound behaves the same way: a cue with no file plays nothing, and the
   // moment still works. Audio round 10 (the domain cues) is open, so opening a
