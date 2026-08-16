@@ -24,7 +24,7 @@ import {
   TEETER_EDGE, TEETER_DELAY,
   RESPAWN_X, SMASH_TILT, SMASH_TILT_ANGLE,
   RESPAWN_WAIT, RESPAWN_PLATFORM_Y, RESPAWN_PLATFORM_HALF_W, RESPAWN_PLATFORM_TIME, RESPAWN_GRACE,
-  INHERENT_ENERGY, STATUS,
+  INHERENT_ENERGY, STATUS, HEAVY_CHARGE_CAP,
 } from "./constants.js";
 import { TRAIL_LEN, TRAIL_STEP, TURN_TIME, LAND_SQUASH_TIME, TAKEOFF_STRETCH_TIME } from "./config_tuning.js";
 import { mainPlatform, spawnXs } from "./stages.js";
@@ -261,17 +261,21 @@ function isRunning(f) {
 /**
  * THE CHARGE CONTRACT (docs/characters.md "Charge heavies").
  *
- * Every mech charges its side heavy, as smashes always have. TITANUS and
- * COLOSSUS charge EVERYTHING — their light strings are hold-to-release
- * haymakers too, they may WALK while the light winds up, and the release lunges
- * them a half-step through the blow. They are the only two, and the kit says
- * so: `char.charge` names the hold times and the walk. Nothing here is keyed to
- * a character name, so a third heavyweight is a data change.
+ * Every mech charges its side heavy to the SAME cap, as smashes always have —
+ * HEAVY_CHARGE_CAP, and no kit overrides it. A per-mech heavy hold was our
+ * invention rather than Mech Mayhem's: upstream `heavyHoldCap` is one shared
+ * number for the whole roster, and the charge CAPABILITY the two heavyweights
+ * carry there (punchHold) is about their LIGHT chain.
+ *
+ * That light chain is what stays theirs. TITANUS and COLOSSUS wind their jabs
+ * up too, may WALK while one banks, and lunge a half-step through the release.
+ * `char.charge` names those; a kit without the block simply does not charge its
+ * light, which is every other mech. Nothing here is keyed to a character name,
+ * so a third such heavyweight is a data change.
  */
 function chargeTime(f, variant) {
-  const c = f.char.charge;
-  if (variant === "light") return c?.light || 0;
-  return c?.heavy ?? 0.8;
+  if (variant === "light") return f.char.charge?.light || 0;
+  return HEAVY_CHARGE_CAP;
 }
 
 /** May this fighter keep walking while the charge banks? Only the light does —
