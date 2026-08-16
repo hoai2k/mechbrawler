@@ -13,10 +13,11 @@
 // rig, and why it was the same on every raised platform.
 //
 // So the check is: park a fighter on each platform in turn and measure the
-// lowest FOOT BONE against the platform's top. Bones, not a Box3 — the AABB
-// of a SkinnedMesh is its bind pose through the root transform, which is
-// nowhere near the posed feet, and believing it hid this bug from an earlier
-// version of the probe.
+// SOLE — the lowest drawn vertex of the posed mesh — against the platform's
+// top. Not a Box3, whose AABB for a SkinnedMesh is the bind pose through the
+// root transform and nowhere near the posed feet (believing it hid this bug
+// from an early version of the probe); and not the lowest foot BONE either,
+// which is the ankle on a mech and read as a constant 73 px of float.
 //
 // TWO BOARDS, because world y = 0 is sim y 568 and the sign of the error
 // matters. Neon District's main platform sits at 570, all but exactly there
@@ -29,21 +30,9 @@
 // were replaced; the pair above is chosen on the same property, measured off
 // src/stages.js rather than remembered.
 //
-// KNOWN RED ON THE MECH ROSTER, and the diagnosis is in the probe rather than
-// in the game. The measurement below takes the LOWEST BONE matching /foot|toe/
-// and calls that the sole. That holds for a human rig, where the foot bone sits
-// a centimetre inside the shoe. It does not hold for a mech: the ankle joint is
-// the lowest bone, and the foot assembly — tracks, pads, splayed toes — hangs
-// well below it. So every mech reads as floating by a CONSTANT, and it is
-// visibly constant: ~72.7-73.2 px for titanus/idle on all three Neon platforms
-// and all six Harbor ones, which is not what a real ground bug looks like (that
-// varies with platform height, which is the bug this tool was written for).
-//
-// Checked against the running game before writing this down: the mechs stand on
-// the deck. Fixing the probe means measuring the lowest skinned VERTEX of the
-// posed mesh instead of the lowest bone — correct for both rig styles, and more
-// work than a comment. Until then, read this tool for the SHAPE of the error
-// across platforms, not for the absolute number.
+// The probe measures the lowest DRAWN vertex of the posed mesh, not the lowest
+// foot bone — see the long note at the measurement itself for why that
+// distinction cost this tool its credibility on the mech roster.
 //
 // Needs playwright + Chromium (CHROMIUM_PATH to override) and the game served:
 //   node server.mjs   then:  node tools/smoke_ground3d.mjs [baseUrl]
@@ -53,16 +42,15 @@ import { pressStart, pickAnyFighter } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
-// Sim pixels of slack between the lowest foot bone and the platform's top.
+// Sim pixels of slack between the sole and the platform's top.
 //
-// Not zero, because the FOOT BONE is not the sole: it is the ankle joint, and
-// how far inside the boot mesh it sits is a fact about each delivered rig, not
-// about this code — across the roster the settled reading runs 0–3.5 px, and
-// the CPU picks a different opponent every run. Six is comfortably above that
-// spread, comfortably below what reads as sinking, and seven times smaller
-// than the bug it is here to catch (≈40 px, the ±0.6 m clamp through the rig
-// scale). A regression does not creep in at this size; it arrives at the
-// clamp.
+// Not zero, because the sole is SAMPLED rather than scanned exhaustively (see
+// the measurement) and the CPU picks a different opponent every run. Now that
+// the probe measures the drawn mesh instead of the ankle bone the settled
+// reading is 0.04–0.26 px across both boards, so six is a wide margin rather
+// than a tuned one — and still seven times smaller than the bug it is here to
+// catch (≈40 px, the ±0.6 m clamp through the rig scale). A regression does
+// not creep in at this size; it arrives at the clamp.
 const TOLERANCE = 6;
 
 let failures = 0;
@@ -156,14 +144,44 @@ for (let i = 0; i < plats.length; i++) {
       who: `${state.fighters[0].spriteChar || state.fighters[0].charKey}`
         + `/${state.fighters[0].animKey}`,
     };
+    // THE LOWEST DRAWN POINT, not the lowest bone.
+    //
+    // This used to take the lowest bone matching /foot|toe/ and call it the
+    // sole. That holds for a human rig, where the foot bone sits a centimetre
+    // inside the shoe, and it does not hold for a mech: the ankle joint is the
+    // lowest bone and the foot assembly — tracks, pads, splayed toes — hangs
+    // well below it. Every mech therefore read as floating by a constant
+    // ~73 px, on every platform of every board, which is exactly the shape a
+    // measurement error makes and not the shape of the bug this tool exists
+    // for (that one varies with platform height).
+    //
+    // Skinning happens on the GPU, so a bounding box off the geometry is the
+    // BIND pose, not the posed one. `applyBoneTransform` is three's exact
+    // CPU-side answer for one vertex, so the sole is found by asking it for
+    // vertices and keeping the lowest.
+    //
+    // SAMPLED, because a mech is tens of thousands of vertices and this runs
+    // per platform per board. The stride is chosen to look at ~3000 per mesh,
+    // which finds the sole to well inside the 6 px tolerance — the foot is a
+    // large flat region, not a single spike. A full scan would be exact and
+    // roughly twenty times slower for no change in verdict.
+    const SAMPLES = 3000;
     for (const c of models.children) {
       if (!c.visible || c.children.some((x) => x.isLight)) continue;
       c.updateWorldMatrix(true, true);
       let low = null;
+      const v = new THREE.Vector3();
       c.traverse((o) => {
-        if (!o.isBone || !/foot|toe/i.test(o.name)) return;
-        const w = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
-        if (low === null || w.y < low) low = w.y;
+        const pos = o.isMesh && o.geometry?.attributes?.position;
+        if (!pos) return;
+        const stride = Math.max(1, Math.floor(pos.count / SAMPLES));
+        for (let i = 0; i < pos.count; i += stride) {
+          v.fromBufferAttribute(pos, i);
+          // Skinned meshes deform; static props (a prop bone's mesh) do not.
+          if (o.isSkinnedMesh) o.applyBoneTransform(i, v);
+          o.localToWorld(v);
+          if (low === null || v.y < low) low = v.y;
+        }
       });
       if (low === null) continue;
       // World y back into sim pixels, positive = below the platform's top.
