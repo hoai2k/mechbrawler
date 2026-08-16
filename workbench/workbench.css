@@ -642,3 +642,147 @@ button.primary { border-color: rgba(98, 220, 255, 0.5); color: var(--cyan); }
   .lb-bar output { order: 2; }
   .lb-notes { max-height: 38%; padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
 }
+
+/* ------------------------------------------------------------- card workbench
+   Three columns, one job each: pick a card on the left, drag its crop line in
+   the middle, watch every hole in the game re-crop on the right. The rail of
+   holes is the point of the tool — a line on a big painting tells you nothing
+   until you can see the 52px square it decides. */
+.split--cards {
+  grid-template-columns: 216px minmax(0, 1fr) 336px;
+  grid-template-areas: "pick view rail";
+}
+.split--cards > .rail--picker { grid-area: pick; }
+.split--cards > .viewer { grid-area: view; }
+.split--cards > .rail--cards { grid-area: rail; }
+.rail--picker {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--line);
+}
+.grid--cards {
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  border-bottom: 0;
+}
+.tile-thumb--card {
+  width: 54px;
+  height: 72px;
+  object-fit: cover;
+  /* Top-cropped on purpose: the picker shows what the game does TODAY, so a
+     card that reads badly here is the one worth opening. */
+  object-position: 50% 0%;
+}
+
+/* The wrap FILLS the stage and the painting letterboxes inside it — the same
+   absolute-inset idiom the canvas tools use. Sizing the wrap to the painting
+   instead would auto-size the flex track and push the note off the page. The
+   overlay is measured against the painted rect (cards.js paintedRect), so the
+   letterbox costs nothing. */
+.viewer-stage--card { overflow: hidden; }
+.cardwrap {
+  position: absolute;
+  inset: 18px;
+  touch-action: none;
+  cursor: ns-resize;
+}
+.cardwrap-img {
+  width: 100%;
+  height: 100%;
+  /* CONTAIN, not cover: this is the one place in the project that must show
+     the whole painting, because it is where the cropping is decided. */
+  object-fit: contain;
+  border-radius: 6px;
+}
+/* The two bands a square crop throws away. Dimmed rather than hidden, so the
+   painting still reads as one picture and you can see what is being given up. */
+.focus-band {
+  position: absolute;
+  background: rgba(7, 10, 18, 0.66);
+  pointer-events: none;
+}
+.focus-line {
+  position: absolute;
+  height: 0;
+  border-top: 1px solid var(--cyan);
+  box-shadow: 0 0 0 1px rgba(7, 10, 18, 0.55);
+  pointer-events: none;
+}
+.focus-grab {
+  position: absolute;
+  height: 22px;
+  margin-top: -11px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  cursor: ns-resize;
+}
+.focus-grab:focus-visible { outline: 1px solid var(--magenta); outline-offset: 2px; }
+.focus-pct {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--bg);
+  background: var(--cyan);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+.rail--cards { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding-bottom: 16px; }
+.rail-actions { display: flex; gap: 8px; margin-top: 10px; }
+.rail-actions button { flex: 1 1 auto; }
+.holes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 12px;
+  padding: 0 14px;
+  align-items: flex-start;
+}
+.hole { margin: 0; display: flex; flex-direction: column; gap: 5px; max-width: 100%; }
+.hole-box {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  flex: 0 0 auto;
+}
+/* The real rule from styles.css, on the real hole sizes: cover plus a y
+   position. If this line and the game's ever disagree, the previews lie. */
+.hole-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hole figcaption { display: flex; flex-direction: column; font-size: 10.5px; line-height: 1.35; max-width: 176px; }
+.hole figcaption strong { color: var(--text); font-size: 11px; }
+
+@media (max-width: 1100px) {
+  /* The picker folds to a strip across the top rather than away: it is the
+     only way to change card, so hiding it would strand the tool on one. */
+  .split--cards {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas: "pick pick" "view rail";
+  }
+  .rail--picker { border-right: 0; border-bottom: 1px solid var(--line); }
+  .grid--cards {
+    grid-auto-flow: column;
+    grid-auto-columns: 84px;
+    grid-template-columns: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 10px;
+  }
+}
+
+/* On a phone the whole page is already one flex column (the shared mobile
+   block above), so the three areas simply stack — the strip, the painting, and
+   the holes under it, each scrolling on its own. */
+@media (max-width: 820px), (max-height: 560px) and (pointer: coarse) {
+  .split--cards {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+  .split--cards > .viewer { flex: 1 1 auto; min-height: 180px; border-right: 0; }
+  .split--cards > .rail--cards { flex: 0 0 auto; max-height: 44%; border-top: 1px solid var(--line); }
+  .rail--picker { flex: 0 0 auto; }
+}

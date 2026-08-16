@@ -1145,6 +1145,7 @@ function shell() {
         <strong>Effect workbench</strong>
         <span id="count" class="muted">…</span>
         <a class="bar-link" href="?edit=pose">pose workbench →</a>
+        <a class="bar-link" href="?edit=cards">card workbench →</a>
       </div>
       <div class="bar-tools">
         <label class="tool">Zoom
