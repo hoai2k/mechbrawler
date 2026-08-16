@@ -3,7 +3,7 @@ import { clamp, sign } from "./utils.js";
 import { getCharacter } from "./characters.js";
 import { lightMove, heavyMove } from "./moves.js";
 import { spawnMelee, opponentOf, updateStatuses } from "./combat.js";
-import { performSpecial, performRanged, updateSpecialState } from "./specials.js";
+import { performSpecial, performRanged, updateSpecialState, updateChannel } from "./specials.js";
 import { performUltimate } from "./ultimates.js";
 import { domainInput, activeDomain } from "./domains.js";
 import { burst, dust, popup, banner, ring } from "./particles.js";
@@ -24,7 +24,7 @@ import {
   TEETER_EDGE, TEETER_DELAY,
   RESPAWN_X, SMASH_TILT, SMASH_TILT_ANGLE,
   RESPAWN_WAIT, RESPAWN_PLATFORM_Y, RESPAWN_PLATFORM_HALF_W, RESPAWN_PLATFORM_TIME, RESPAWN_GRACE,
-  INHERENT_ENERGY,
+  INHERENT_ENERGY, STATUS,
 } from "./constants.js";
 import { TRAIL_LEN, TRAIL_STEP, TURN_TIME, LAND_SQUASH_TIME, TAKEOFF_STRETCH_TIME } from "./config_tuning.js";
 import { mainPlatform, spawnXs } from "./stages.js";
@@ -66,6 +66,9 @@ export function makeFighter(id, charKey, x, facing) {
     // on the held, `grabImmune` on anyone recently released.
     grab: null, grabbedBy: null, grabImmune: 0,
     counter: null, reflect: null, healing: null, installs: null, armorT: 0,
+    // A held weapon channel (specials.js `channel`): the gatling, the flamer
+    // and the hose stream while their trigger is down. Null unless one is live.
+    channel: null,
     // A held protective circle (the simpleDomain special handler). Null unless
     // one is held; no mech kit uses it today.
     simpleDomain: null,
@@ -115,6 +118,11 @@ function freshStatuses() {
     burn: null, bleed: null, poison: null, infest: null,
     snare: 0, soulMark: 0, nailMarks: 0, nailT: 0, silence: 0,
     drench: 0, blind: 0,
+    // The mech statuses (constants.js STATUS). GLITCH is a COUNT with its own
+    // decay clock; SHOCK and FROST are plain timers; VENOM is a tick block like
+    // burn. All four are read by speedMul/updateStatuses and drawn by
+    // render.js STATUS_ART, so a fighter can always be seen to have one.
+    glitch: 0, glitchT: 0, shock: 0, frost: 0, venom: null,
   };
 }
 
@@ -131,6 +139,9 @@ function speedMul(f) {
   if (f.statuses.poison && !unslowable) m *= 0.85;
   // Waterlogged: Dagon's soaking is a movement tax, not damage.
   if (f.statuses.drench > 0 && !unslowable) m *= 0.84;
+  // FROST (Glacier): the heaviest movement tax in the game — the slow IS the
+  // payload, and it is what a frosted foe cannot escape the next barrage with.
+  if (f.statuses.frost > 0 && !unslowable) m *= 1 - STATUS.frost.slow;
   if (f.installs && f.installs.speedMul) m *= f.installs.speedMul;
   return m;
 }
@@ -175,6 +186,10 @@ function executeMove(f, move, opts = {}) {
   spawnMelee(f, {
     ...move,
     base: move.baseKb,
+    // The dash attack is the one normal a passive cares about by name
+    // (Fenrir's Predator's Rhythm), and the animation key is what identifies
+    // it — moves.js has already decided which variant this is.
+    dashAttack: move.anim === "dashAttack",
   });
   if (opts.grunt) playGrunt(f.charKey);
 }
@@ -195,6 +210,13 @@ function beginLight(f, input) {
   } else {
     // jab chain
     if (f.jabResetT <= 0) f.jabStep = 0;
+    // The heavyweights BANK the jab instead of throwing it: the button is held,
+    // the arms glow, and the release is the haymaker (releaseCharge below).
+    if (chargeTime(f, "light") > 0) {
+      f.charging = { variant: "light", t: 0, step: f.jabStep };
+      setAnim(f, "charge");
+      return;
+    }
     const move = lightMove(f.char, "jab", f.jabStep);
     f.jabStep = (f.jabStep + 1) % 3;
     f.jabResetT = 0.6;
@@ -236,6 +258,28 @@ function isRunning(f) {
   return f.grounded && (f.dashT > 0 || Math.abs(f.vx) > stats(f).speed * 0.7);
 }
 
+/**
+ * THE CHARGE CONTRACT (docs/characters.md "Charge heavies").
+ *
+ * Every mech charges its side heavy, as smashes always have. TITANUS and
+ * COLOSSUS charge EVERYTHING — their light strings are hold-to-release
+ * haymakers too, they may WALK while the light winds up, and the release lunges
+ * them a half-step through the blow. They are the only two, and the kit says
+ * so: `char.charge` names the hold times and the walk. Nothing here is keyed to
+ * a character name, so a third heavyweight is a data change.
+ */
+function chargeTime(f, variant) {
+  const c = f.char.charge;
+  if (variant === "light") return c?.light || 0;
+  return c?.heavy ?? 0.8;
+}
+
+/** May this fighter keep walking while the charge banks? Only the light does —
+ *  a smash is still a fighter standing still deciding to. */
+function walkingCharge(f) {
+  return !!(f.charging && f.charging.variant === "light" && f.char.charge?.walk);
+}
+
 function beginHeavy(f, input) {
   if (!f.grounded) {
     executeMove(f, heavyMove(f.char, "air"));
@@ -271,11 +315,32 @@ function beginHeavy(f, input) {
  * arc is measured off the hitbox (moves.js), the crescent follows the aim for
  * free.
  */
-function releaseHeavy(f, input) {
+function releaseCharge(f, input) {
   const c = f.charging;
   if (!c) return;
   f.charging = null;
-  const charge = clamp(c.t / 0.8, 0, 1);
+  const charge = clamp(c.t / Math.max(0.01, chargeTime(f, c.variant)), 0, 1);
+  // A banked LIGHT. Same jab the rest of the roster throws instantly, scaled by
+  // what was put into it, and the release LUNGES him a half-step through it —
+  // the reason a telegraphed haymaker still works is that it arrives further
+  // forward than you stood when you started reading it.
+  if (c.variant === "light") {
+    const move = lightMove(f.char, "jab", c.step ?? f.jabStep);
+    const mul = 1 + 0.6 * charge;
+    move.dmg = Math.round(move.dmg * mul * 10) / 10;
+    move.baseKb *= 1 + 0.5 * charge;
+    move.growth *= 1 + 0.2 * charge;
+    move.lungeVx = (move.lungeVx || 40) + (f.char.charge?.lungeVx || 120) * charge;
+    move.label = charge > 0.5 ? "Banked " + (move.label || f.char.light.label) : move.label;
+    f.jabStep = ((c.step ?? f.jabStep) + 1) % 3;
+    f.jabResetT = 0.6;
+    executeMove(f, move, { grunt: charge > 0.5 });
+    if (charge > 0.25) {
+      burst(f.x + f.facing * 40, f.y - 110, f.char.theme, 8 + charge * 14, 0.8 + charge);
+      state.camera.shake = Math.max(state.camera.shake, 2 + charge * 3);
+    }
+    return;
+  }
   const move = heavyMove(f.char, c.variant, charge);
   const aim = clamp(input?.tiltY || 0, -1, 1);
   if (c.variant === "side" && Math.abs(aim) > 0.25) {
@@ -777,7 +842,7 @@ export function ringOut(f) {
   if (state.domainCasting?.f === f) state.domainCasting = null;
 
   f.action = null; f.charging = null; f.counter = null; f.reflect = null; f.healing = null;
-  f.simpleDomain = null;
+  f.simpleDomain = null; f.channel = null;
   clearGrabLinks(f);
   f.installs = null; f.spriteChar = null; f.hitstun = 0; f.statuses = freshStatuses();
   f.vx = 0; f.vy = 0; f.ledge = null; f.ledgeMove = null; f.ledgeGrabs = 0;
@@ -947,6 +1012,9 @@ export function updateFighter(f, dt, input) {
 
   updateStatuses(f, dt);
   updateSpecialState(f, dt);
+  // A held channel is stepped with the fighter's own input, so releasing the
+  // trigger stops the stream on the frame it is released.
+  updateChannel(f, dt, input);
 
   // installs
   if (f.installs) {
@@ -1116,9 +1184,21 @@ export function updateFighter(f, dt, input) {
     if (!f.grounded) {
       f.charging = null; // knocked or slipped off the ground: charge fizzles
     } else {
+      const light = f.charging.variant === "light";
+      const held = light ? input.lightHeld : input.heavyHeld;
       f.charging.t += dt;
-      if (!input.heavyHeld || f.charging.t >= 0.8) releaseHeavy(f, input);
-      else if (Math.random() < 0.3) burst(f.x, f.y - 90, f.char.theme, 1, 0.5);
+      if (!held || f.charging.t >= chargeTime(f, f.charging.variant)) releaseCharge(f, input);
+      else if (Math.random() < 0.4) {
+        // `chargeGlow: "arms"` — the bank is visible where the blow is coming
+        // from. A kit with no glow site keeps the old body-centre sparkle.
+        if (f.char.charge?.glow === "arms") {
+          const k = clamp(f.charging.t / Math.max(0.01, chargeTime(f, f.charging.variant)), 0, 1);
+          burst(f.x + f.facing * 52, f.y - 118 + (Math.random() - 0.5) * 30,
+                f.char.theme, 1 + Math.round(k * 2), 0.4 + k * 0.7);
+        } else {
+          burst(f.x, f.y - 90, f.char.theme, 1, 0.5);
+        }
+      }
     }
   }
 
@@ -1281,8 +1361,10 @@ export function updateFighter(f, dt, input) {
   }
 
   // ---- movement
+  const walkCharge = walkingCharge(f);
   const locked = f.action?.lockMovement || (f.action && f.action.kind === "attack" && f.grounded) ||
-    f.charging || f.shielding || inHitstun || f.healing || (f.counter && f.counter.holdStill);
+    (f.charging && !walkCharge) || f.shielding || inHitstun || f.healing ||
+    (f.counter && f.counter.holdStill);
 
   const moveMul = speedMul(f);
   // How hard the stick is pushed, which is what separates a walk from a run
@@ -1292,7 +1374,11 @@ export function updateFighter(f, dt, input) {
   const walking = f.grounded && f.dashT <= 0 && tilt > 0 && tilt < RUN_TILT;
   const walkFrac = WALK_MIN + (WALK_MAX - WALK_MIN)
     * clamp((tilt - MOVE_DEADZONE) / Math.max(1e-6, RUN_TILT - MOVE_DEADZONE), 0, 1);
-  const topFrac = f.dashT > 0 ? DASH_MULT : walking ? walkFrac : 1;
+  // Winding up a light, he WALKS: a banked haymaker travels at a walk however
+  // hard the stick is pushed, which is what keeps "he may move while charging"
+  // from being "he may charge out of a run".
+  const topFrac = walkCharge ? Math.min(walkFrac, WALK_MAX)
+    : f.dashT > 0 ? DASH_MULT : walking ? walkFrac : 1;
   // The animation layer and the ledge brake both need to know, and neither is
   // in a position to recompute it — pickAnim runs after the movement block and
   // a slowed fighter's speed alone cannot tell a walk from a snared run.
@@ -1360,7 +1446,7 @@ export function updateFighter(f, dt, input) {
       f.vx *= Math.pow(friction, dt * 60);
       if (Math.abs(f.vx) < 8) f.vx = 0;
     }
-  } else if (f.grounded && (f.crouching || f.shielding || f.charging)) {
+  } else if (f.grounded && (f.crouching || f.shielding || (f.charging && !walkCharge))) {
     f.vx *= Math.pow(friction, dt * 90);
     if (Math.abs(f.vx) < 8) f.vx = 0;
   } else if (inHitstun) {
@@ -1443,8 +1529,12 @@ export function updateFighter(f, dt, input) {
 
   // ---- physics
   if (!f.grounded) {
-    const fallCap = f.fastFalling ? MAX_FALL * FASTFALL_MULT : MAX_FALL;
-    f.vy = Math.min(f.vy + GRAVITY * (state.stageMods.gravityMul || 1) * dt, fallCap);
+    // FROST slows the FALL as well as the walk (docs/characters.md: "movement +
+    // fall-speed slow"), which is the half that matters against a zoner: rimed
+    // over, you come down through his barrage rather than past it.
+    const frost = f.statuses.frost > 0 ? STATUS.frost.fallSlow : 1;
+    const fallCap = (f.fastFalling ? MAX_FALL * FASTFALL_MULT : MAX_FALL) * frost;
+    f.vy = Math.min(f.vy + GRAVITY * (state.stageMods.gravityMul || 1) * frost * dt, fallCap);
   }
 
   const prevY = f.y;

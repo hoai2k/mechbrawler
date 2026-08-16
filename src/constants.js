@@ -367,6 +367,30 @@ export const INHERENT_ENERGY = {
   specialCost: 30,  // what a special spends when its p names no energyCost
 };
 
+// ------------------------------------------------------------------ statuses
+//
+// The mech roster's four new statuses, each introduced by exactly one mech
+// (docs/characters.md "Statuses"). The numbers live here rather than in the
+// kits because a status is a SHARED system — arenas and future kits apply the
+// same GLITCH the same way — so one mech's config is the wrong owner for them.
+// A kit that wants its own flavour of one can still override per application
+// (applyStatus's `extra`).
+export const STATUS = {
+  // Nullbot. Every landed hit stacks corruption; the sixth CRASHES the victim
+  // and clears the count. `decay` is how long a stack survives without a
+  // follow-up — the pressure has to be kept on for the crash to arrive.
+  glitch: { max: 6, decay: 5.0, crashStun: 1.2, detonateDmg: 2.4 },
+  // Tempest. Not a stun of its own: it makes every hit that lands on a shocked
+  // body stick a beat longer, which is what turns his poke into a combo.
+  shock: { dur: 1.6, hitstunAdd: 0.14 },
+  // Glacier. `slow` is the movement tax (MM's slow 0.45) and `fallSlow` caps
+  // the fall speed, so a frosted opponent hangs in his barrage.
+  frost: { dur: 2.8, slow: 0.45, fallSlow: 0.62 },
+  // Viper's ultimate only. Damage over time plus one beat of paralysis on
+  // application — the fang PINS, the rest of the brood piles on.
+  venom: { dur: 3.0, tick: 0.5, dmg: 1.7, paralyze: 0.55 },
+};
+
 // meter / ultimate
 export const METER_MAX = 100;
 export const METER_PASSIVE = 1.1;

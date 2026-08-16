@@ -10,11 +10,11 @@ import { playSfx, noteFireBurning } from "./audio.js";
 import { domainKnockbackMul } from "./domains.js";
 import { isFoe } from "./teams.js";
 import {
-  SHIELD_DAMAGE_MULT, SHIELD_BREAK_STUN, PARRY_WINDOW, METER_MAX,
+  SHIELD_DAMAGE_MULT, SHIELD_BREAK_STUN, SHIELD_MAX, PARRY_WINDOW, METER_MAX,
   METER_ON_DEAL, METER_ON_TAKE, HURTBOX,
   GROUND_RELEASE, GROUND_SLIDE_BOOST, GROUND_SPIKE_BOUNCE,
   SAKURAI, SAKURAI_AIR, SAKURAI_LOW, SAKURAI_POP, SAKURAI_KB,
-  COMBO_GRACE,
+  COMBO_GRACE, STATUS, INHERENT_ENERGY, DASH_TIME, DASH_MULT,
 } from "./constants.js";
 import { bodyMetrics } from "./silhouette.js";
 import { comFrac, muzzlePoint, hurtboxFit } from "./body_points.js";
@@ -138,6 +138,7 @@ export function spawnMelee(owner, cfg) {
     unblockable: !!cfg.unblockable,
     heavy: !!cfg.heavy,
     spike: !!cfg.spike,
+    dashAttack: !!cfg.dashAttack,
     critBand: cfg.critBand || null,
     // Carried purely so the strike arc can show how hard this swing is
     // (drawStrikeArcs in render.js). Nothing in the simulation reads it.
@@ -332,8 +333,16 @@ export function spawnProjectile(owner, cfg) {
     // radians per second.
     steerable: !!cfg.steerable,
     steerRate: cfg.steerRate ?? 5.2,
+    // Where it left from and how far it has flown, for the shots whose damage
+    // is a function of range (Wraith's Sniper Round — `distanceScale` on the
+    // kit, the `eightHundredMetres` passive in applyHit). Every projectile
+    // keeps the number; only a shot that declares the scaling spends it.
+    spawnX: 0, spawnY: 0, travelled: 0,
+    distanceScale: cfg.distanceScale || null,
     hit: new Set(),
   };
+  p.spawnX = p.x;
+  p.spawnY = p.y;
   state.projectiles.push(p);
   return p;
 }
@@ -360,6 +369,7 @@ export function updateProjectiles(dt) {
     if (p.owner && p.owner.hitPause > 0) continue;
     p.age += dt;
     p.dur -= dt;
+    p.travelled = Math.hypot(p.x - p.spawnX, p.y - p.spawnY);
     // Comet tail: sample where the shot has actually been, so an arcing or
     // steered path's tail bends with it. Drawn in render.js.
     p.trailTick += dt;
@@ -499,15 +509,21 @@ export function applyStatus(effect, owner, target, extra = {}) {
     // curse is not troubled by its own roaches. Only ever reachable in a mirror
     // match, but a fighter losing to their own signature status reads as a bug.
     (target.char.passive.id === "tideBorn" && effect === "drench") ||
-    (target.char.passive.id === "infiniteHunger" && ["infest", "blind"].includes(effect));
+    (target.char.passive.id === "infiniteHunger" && ["infest", "blind"].includes(effect)) ||
+    // FOUR COLUMNS (Tritone): six tonnes on four legs cannot be flipped,
+    // tripped or DRAGGED — the gunk tax slides off him.
+    (target.char.passive.id === "fourColumns" && ["drench", "snare"].includes(effect));
   if (immune) {
     popup(target.x, target.y - 150, "IMMUNE", "#b8ffe2", 20);
     return;
   }
   switch (effect) {
     case "burn": {
-      const mult = owner.char.passive.id === "disasterFlame" ? 1.5 : 1;
-      s.burn = { t: 2.6, tick: 0.45, dmg: 1.2 * mult, from: owner };
+      // SLOW BURN (Inferno, the `disasterFlame` id this reuses): fire he starts
+      // does not want to go out. It ticks harder AND, per docs/characters.md,
+      // 30% longer — the duration half was owed and is here now.
+      const hot = owner.char.passive.id === "disasterFlame";
+      s.burn = { t: 2.6 * (hot ? 1.3 : 1), tick: 0.45, dmg: 1.2 * (hot ? 1.5 : 1), from: owner };
       break;
     }
     case "bleed":
@@ -572,11 +588,108 @@ export function applyStatus(effect, owner, target, extra = {}) {
       s.blind = Math.max(s.blind || 0, 2.4);
       popup(target.x, target.y - 150, "BLINDED", "#8f3b4e", 18);
       break;
+    // ---------------------------------------------------------- mech statuses
+    //
+    // GLITCH (Nullbot). A COUNT, not a timer: every landed hit adds one and the
+    // sixth CRASHES the victim — a stun long enough to be a whole combo, then
+    // the count clears. The stacks decay if the pressure comes off, so the
+    // crash is something Nullbot has to keep earning.
+    case "glitch": {
+      s.glitch = (s.glitch || 0) + (extra.stacks || 1);
+      s.glitchT = STATUS.glitch.decay;
+      if (s.glitch >= STATUS.glitch.max) {
+        s.glitch = 0;
+        s.glitchT = 0;
+        crashOut(target, owner);
+      } else {
+        // The count is the information: a player has to be able to see the
+        // crash coming, on themselves and on the opponent.
+        popup(target.x, target.y - 150, `GLITCH ${s.glitch}/${STATUS.glitch.max}`, "#27f6ff", 17);
+        spriteFlash("effect:glitch_shard", target.x, target.y - 90,
+          { h: 60 + s.glitch * 9, life: 0.3, grow: 0.5, alpha: 0.8 });
+        specks(target.x, target.y - 90, 4 + s.glitch, 0.5);
+      }
+      break;
+    }
+    // SHOCK (Tempest). No stun of its own — it lengthens the hitstun of hits
+    // that land while it is on, which is what turns his chip into a combo.
+    case "shock":
+      s.shock = Math.max(s.shock || 0, STATUS.shock.dur);
+      spriteFlash("effect:shock_arc", target.x, target.y - 90,
+        { h: 96, life: 0.28, grow: 0.4, alpha: 0.9 });
+      popup(target.x, target.y - 150, "SHOCK", "#3fd8ff", 17);
+      break;
+    // FROST (Glacier). Movement and fall-speed slow (fighter.js speedMul and
+    // the gravity step), with the rime visible on the body for its whole life.
+    case "frost":
+      s.frost = Math.max(s.frost || 0, extra.dur || STATUS.frost.dur);
+      spriteFlash("effect:frost_rime", target.x, target.y - 90,
+        { h: 110, life: 0.4, grow: 0.3, alpha: 0.85 });
+      popup(target.x, target.y - 150, "FROST", "#7ce0ff", 17);
+      break;
+    // VENOM (Viper's ultimate only). Damage over time, and one beat of
+    // paralysis as it goes in — the first fang PINS.
+    case "venom":
+      s.venom = { t: STATUS.venom.dur, tick: STATUS.venom.tick, dmg: STATUS.venom.dmg, from: owner };
+      target.hitstun = Math.max(target.hitstun, STATUS.venom.paralyze);
+      target.vx *= 0.3;
+      interruptActions(target);
+      spriteFlash("effect:venom_drip", target.x, target.y - 90,
+        { h: 92, life: 0.45, grow: 0.25, alpha: 0.9 });
+      popup(target.x, target.y - 150, "VENOM", "#5aff2e", 18);
+      break;
     case "weaponBreak":
       break; // handled at shield contact
     default:
       break;
   }
+}
+
+/**
+ * The GLITCH crash: the sixth stack, cashed.
+ *
+ * Uses `dizzy` rather than hitstun because a crash is a fighter who has stopped
+ * running, not a fighter being hit — dizzy owns the whole update (fighter.js),
+ * plays the dizzy pose, and cannot be acted out of, which is exactly what
+ * "1.2s engulfed in corruption" means. It reads on the HUD's own terms too: the
+ * dizzy state is already drawn.
+ */
+function crashOut(target, owner) {
+  target.dizzy = Math.max(target.dizzy, STATUS.glitch.crashStun);
+  target.hitstun = Math.max(target.hitstun, 0.1);
+  interruptActions(target);
+  target.shielding = false;
+  banner("CRASH!", "#27f6ff", { y: 180, size: 42, life: 1.1 });
+  popup(target.x, target.y - 170, "0x00 FATAL", "#27f6ff", 20);
+  spriteFlash("effect:glitch_shard", target.x, target.y - 90,
+    { h: 240, life: 0.6, grow: 0.9, alpha: 1 });
+  burst(target.x, target.y - 90, "#27f6ff", 34, 1.3);
+  playSfx("guardBreak", 0.8);
+  state.camera.shake = Math.max(state.camera.shake, 10);
+  rumbleEvent(target, "shieldBreak");
+  if (owner) rumbleEvent(owner, "parry");
+}
+
+/** How many GLITCH stacks are on a fighter — read by Nullbot's Stack Overflow,
+ *  which detonates them early instead of waiting for the crash. */
+export function glitchStacks(f) {
+  return f.statuses.glitch || 0;
+}
+
+/** Blow the stacks now (Nullbot's D). Returns the damage dealt, so the caller
+ *  can decide what to say about it. */
+export function detonateGlitch(owner, target) {
+  const stacks = target.statuses.glitch || 0;
+  if (!stacks) return 0;
+  target.statuses.glitch = 0;
+  target.statuses.glitchT = 0;
+  const dmg = stacks * STATUS.glitch.detonateDmg;
+  target.damage = Math.min(999, target.damage + dmg);
+  popup(target.x, target.y - 190, `×${stacks} DETONATE`, "#27f6ff", 22);
+  spriteFlash("effect:glitch_shard", target.x, target.y - 90,
+    { h: 90 + stacks * 26, life: 0.45, grow: 0.8, alpha: 0.95 });
+  burst(target.x, target.y - 90, "#27f6ff", 10 + stacks * 4, 1);
+  return dmg;
 }
 
 export function updateStatuses(f, dt) {
@@ -628,6 +741,32 @@ export function updateStatuses(f, dt) {
     // still dripping — a soaked fighter reads as soaked between hits
     if (Math.random() < 3 * dt) spray(f.x + (Math.random() - 0.5) * 48, f.y - 30, 0, 1, 0.3);
   }
+  // GLITCH decays as a block: let the pressure off and the whole corruption
+  // count clears rather than draining one stack at a time, so a crash is a
+  // sustained offense and never a thing that arrives twenty seconds later.
+  if (s.glitchT > 0) {
+    s.glitchT -= dt;
+    if (Math.random() < 6 * dt) specks(f.x + (Math.random() - 0.5) * 40, f.y - 90, 2, 0.4);
+    if (s.glitchT <= 0) s.glitch = 0;
+  }
+  if (s.shock > 0) {
+    s.shock -= dt;
+    if (Math.random() < 5 * dt) burst(f.x + (Math.random() - 0.5) * 40, f.y - 90, "#3fd8ff", 3, 0.4);
+  }
+  if (s.frost > 0) {
+    s.frost -= dt;
+    if (Math.random() < 4 * dt) burst(f.x + (Math.random() - 0.5) * 44, f.y - 70, "#7ce0ff", 3, 0.5);
+  }
+  if (s.venom) {
+    s.venom.t -= dt;
+    s.venom.tick -= dt;
+    if (s.venom.tick <= 0) {
+      s.venom.tick = STATUS.venom.tick;
+      f.damage = Math.min(999, f.damage + s.venom.dmg);
+      burst(f.x, f.y - 80, "#5aff2e", 6, 0.5);
+    }
+    if (s.venom.t <= 0) s.venom = null;
+  }
   if (s.blind > 0) s.blind -= dt;
   if (s.soulMark > 0) s.soulMark -= dt;
   if (s.silence > 0) s.silence -= dt;
@@ -640,7 +779,46 @@ export function updateStatuses(f, dt) {
 // ------------------------------------------------------------------- hits
 
 function shieldDamageMult(target) {
-  return target.char.passive.id === "limitlessGuard" ? 0.55 : 1;
+  const base = target.char.passive.id === "limitlessGuard" ? 0.55 : 1;
+  // An install may thicken the guard on top of the character's own (Colossus'
+  // Bunker Down). Multiplied, not replaced: a temporary buff should never make
+  // the best shell in the game worse.
+  return base * (target.installs?.shieldDmgMul ?? 1);
+}
+
+// ------------------------------------------------------- the armour passives
+//
+// The top-plate mechs (MM armor >= 0.18) do not FLINCH at jabs. It is one
+// behaviour with three names on the roster — Siege Plating (titanus, colossus,
+// charging), Plated (rhino, walking) and Four Columns (tritone, walking) — so
+// it is one function, and each passive only says WHEN the plate is up.
+// The ids are QUOTED so tools/check_kits.mjs can see them: its whole job is
+// catching a passive that is authored on a kit and read by nothing.
+const JAB_ARMOR = {
+  // A charge is the heavyweight's whole identity: you can see the hit coming
+  // and it still works, because chip damage cannot shake it out of him.
+  "siegePlating": (f) => !!f.charging,
+  // Walking, not running: the plate is a stance, not a sprint.
+  "plated": (f) => f.grounded && (f.walking || !!f.charging),
+  "fourColumns": (f) => f.grounded && (f.walking || !!f.charging),
+};
+
+/** What a jab is, for the plating: a light, non-heavy hit. A smash, a special
+ *  or a projectile shell still moves them — this is immunity to being pecked,
+ *  not immunity to being hit. */
+const JAB_DMG_MAX = 9;
+
+// TOP-HEAVY (Cranky). How hard a launch has to be to flip him, and how long he
+// lies there once it has. The knockdown is deliberately longer than the
+// engine's ordinary 1.1s: it is the price of the best guard in the game.
+const ROLLOVER_KB = 900;
+const ROLLOVER_PRONE = 1.8;
+
+function jabArmored(target, hit, dmg) {
+  const test = JAB_ARMOR[target.char.passive.id];
+  if (!test || hit.heavy || hit.unblockable) return false;
+  if (dmg > JAB_DMG_MAX) return false;
+  return test(target);
 }
 
 /** The victim's stick as a unit vector, or null when they aren't holding one. */
@@ -800,7 +978,17 @@ export function applyHit(owner, target, hit, source) {
     let shieldDmg = dmg * SHIELD_DAMAGE_MULT * (hit.shieldMul || 1) * shieldDamageMult(target);
     if (hit.effect === "weaponBreak") shieldDmg += 18;
     if (hit.effect === "heavenly") shieldDmg += 14;
+    // SAURION is the only guard-breaker in the game (docs/characters.md;
+    // upstream guardBreak 0.6, spent by the pounce). `guardBreak` on the hit is
+    // the fraction of a FULL guard it tears off on top of the ordinary shield
+    // damage — 0.6 of the bar means a raised shield does not survive two.
+    if (hit.guardBreak) shieldDmg += SHIELD_MAX * hit.guardBreak;
     target.shield -= shieldDmg;
+    // COLD SHOULDER (Glacier): touch the shell at your own risk. A melee
+    // attacker who puts a fist on his guard leaves rimed.
+    if (target.char.passive.id === "coldShoulder" && source === "melee" && owner !== target) {
+      applyStatus("frost", target, owner);
+    }
     target.shieldStun = 0.1 + dmg * 0.012;
     target.vx += dir * (90 + dmg * 14);
     playSfx("guardHit", 0.85);
@@ -812,6 +1000,9 @@ export function applyHit(owner, target, hit, source) {
 
   // armor: damage but no launch
   const armored = (target.installs && target.installs.armor) || target.armorT > 0;
+  // The plating passives: a jab does its damage and nothing else to a mech
+  // whose plate is up (JAB_ARMOR above). Decided here, alongside the install
+  // armor it behaves exactly like, and read once `dmg` is final below.
 
   // Sweetspot / sourspot. A `critBand` is a distance band: land inside it and
   // the hit is stronger, land outside it and — if the band says so — weaker.
@@ -892,6 +1083,24 @@ export function applyHit(owner, target, hit, source) {
   if (owner.installs && owner.installs.dmgMul) dmg *= owner.installs.dmgMul;
   if (target.installs && target.installs.dmgTakenMul) dmg *= target.installs.dmgTakenMul;
   if (target.char.passive.id === "barkArmor" && target.grounded) dmg *= 0.88;
+  // ASSASSIN'S READ (Viper): angles nobody teaches. Struck from behind means
+  // the victim is facing away from the attacker at the moment of contact.
+  if (owner.char.passive.id === "assassinsRead" && sign(owner.x - target.x) === -target.facing) {
+    dmg *= 1.15;
+    popup(target.x, target.y - 196, "BEHIND YOU", owner.char.theme, 16);
+  }
+  // PREDATOR'S BREAK (Saurion): prey already off the ground takes more — the
+  // pounce-first gameplan paying itself off.
+  if (owner.char.passive.id === "predatorsBreak" && !target.grounded) dmg *= 1.1;
+  // 800 METRES (Wraith): the rifle round grows with the distance it has flown.
+  // Data-driven — only a shot whose kit declares `distanceScale` scales, and
+  // the projectile carries how far it actually travelled (spawnProjectile).
+  if (owner.char.passive.id === "eightHundredMetres" && hit.distanceScale && hit.travelled) {
+    const d = hit.distanceScale;
+    const mul = clamp(1 + (hit.travelled / (d.per || 400)) * (d.gain || 0.25), 1, d.max || 1.75);
+    dmg *= mul;
+    if (mul > 1.15) popup(target.x, target.y - 210, `${Math.round(hit.travelled)}m`, owner.char.theme, 16);
+  }
   if (owner.cpuDamageMul) dmg *= owner.cpuDamageMul;
 
   dmg = Math.round(dmg * 10) / 10;
@@ -902,6 +1111,15 @@ export function applyHit(owner, target, hit, source) {
   let mGain = dmg * METER_ON_DEAL;
   if (owner.char.passive.id === "gamblersFlow") mGain *= 1.3;
   if (owner.char.passive.id === "warCompensation") mGain *= 1.25;
+  // GROUNDED ROD (Tempest): the storm feeds the showman — a shocked body is a
+  // better conductor, and his meter fills faster while one is on the board.
+  if (owner.char.passive.id === "groundedRod" && target.statuses.shock > 0) mGain *= 1.25;
+  // COLONY (Jerry): the swarm feeds back. Every hit that is NOT his own fists —
+  // a shrimp mine, a flea from the CIRCUS — banks a little extra for the whole.
+  if (owner.char.passive.id === "colony" && source !== "melee") {
+    mGain *= 1.35;
+    owner.energy = Math.min(INHERENT_ENERGY.max, (owner.energy ?? 0) + 4);
+  }
   owner.meter = clamp(owner.meter + mGain, 0, METER_MAX);
   target.meter = clamp(target.meter + dmg * METER_ON_TAKE, 0, METER_MAX);
   if (owner.char.passive.id === "heavenlyVoid") target.meter = clamp(target.meter - 4, 0, METER_MAX);
@@ -930,8 +1148,10 @@ export function applyHit(owner, target, hit, source) {
   const angle = diAngle(target, authored, dir);
   kb *= diSpeedScale(target, authored, dir);
 
-  if (armored) {
-    popup(target.x, target.y - 150, "ARMOR", "#c9b6ff", 20);
+  const plated = !armored && jabArmored(target, hit, dmg);
+  if (plated) popup(target.x, target.y - 150, "PLATED", "#ffd35a", 19);
+  if (armored || plated) {
+    if (armored) popup(target.x, target.y - 150, "ARMOR", "#c9b6ff", 20);
     target.vx += dir * 60;
   } else {
     // a hit knocks a hanging fighter off the ledge
@@ -980,6 +1200,10 @@ export function applyHit(owner, target, hit, source) {
     }
     let stun = clamp(0.12 + kb * 0.00048 + stunBonus, 0.12, 1.35);
     if (target.char.passive.id === "oldGuard") stun *= 0.75; // barely flinches
+    // SHOCK (Tempest): the servos are still ringing, so everything that lands
+    // on a shocked body sticks a beat longer. It is a combo extender, not a
+    // stun — the whole reason the Arc Bolt is worth landing first.
+    if (target.statuses.shock > 0) stun += STATUS.shock.hitstunAdd;
     target.hitstun = stun;
     // A fresh launch overrides a knockdown: getting hit off the floor is being
     // hit, not lying down. Moves that WANT the victim flat (`knockdown: true`,
@@ -991,6 +1215,15 @@ export function applyHit(owner, target, hit, source) {
     target.prone = hit.knockdown || slammed
       ? Math.max(target.prone, hit.proneTime ?? (slammed ? 0.6 : 1.1))
       : 0;
+    // TOP-HEAVY (Cranky): the one crack in the best guard in the game. A big
+    // enough launch does not just send the crab — it FLIPS him, onto his back,
+    // for a longer knockdown than anyone else's. The threshold is a real launch
+    // rather than any old hit, so it is a punish for committing, not a tax.
+    if (target.char.passive.id === "limitlessGuard" && kb > ROLLOVER_KB) {
+      target.prone = Math.max(target.prone, ROLLOVER_PRONE);
+      target.spin = dir * 9;
+      popup(target.x, target.y - 176, "ROLLOVER!", target.char.theme, 20);
+    }
     interruptActions(target);
   }
 
@@ -1034,6 +1267,13 @@ export function applyHit(owner, target, hit, source) {
 
   applyStatus(hit.effect, owner, target, { stunBonus: hit.stunBonus });
 
+  // THE GLITCH STACK (Nullbot): the whole kit is stack delivery, so the stack
+  // is applied HERE rather than move by move — every landed hit corrupts,
+  // fists and bolts and SEGFAULT alike, which is what the passive says.
+  if (owner.char.passive.id === "glitchStack" && owner !== target) {
+    applyStatus("glitch", owner, target);
+  }
+
   // A `contactBurn` install sears anyone who strikes its owner up close. No
   // mech kit sets the flag today; the install system still carries it.
   if (target.installs && target.installs.contactBurn && source === "melee") {
@@ -1041,7 +1281,18 @@ export function applyHit(owner, target, hit, source) {
     burst(owner.x, owner.y - 80, "#ff7a2f", 10, 0.7);
   }
 
-  recordHit(owner, target, dmg, armored);
+  // PREDATOR'S RHYTHM (Fenrir): the chase pays for itself. A landed dash
+  // attack hands half the dash straight back — the chase continues — plus a
+  // tick of the inherent pool, which is what makes running at people his
+  // economy rather than his risk.
+  if (owner.char.passive.id === "predatorsRhythm" && hit.dashAttack) {
+    owner.dashT = Math.max(owner.dashT, DASH_TIME * 0.5);
+    owner.vx = owner.facing * Math.max(Math.abs(owner.vx), owner.char.stats.speed * DASH_MULT * 0.75);
+    owner.energy = Math.min(INHERENT_ENERGY.max, (owner.energy ?? 0) + 12);
+    popup(owner.x, owner.y - 176, "RHYTHM", owner.char.theme, 16);
+  }
+
+  recordHit(owner, target, dmg, armored || plated);
   return "hit";
 }
 
@@ -1120,6 +1371,9 @@ function interruptActions(target) {
     target.action = null;
   }
   target.charging = null;
+  // A held channel is a move in progress like any other: being hit stops the
+  // stream (specials.js updateChannel charges its cooldown when it ends).
+  target.channel = null;
   if (target.healing) target.healing = null;
   target.counter = null;
   target.reflect = null;

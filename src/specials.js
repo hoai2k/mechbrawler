@@ -14,7 +14,7 @@ import { clamp, sign, rand, chance } from "./utils.js";
 // The scaled spawns: kit blocks author oy/h for the reference body, and these
 // wrappers size them to the caster (combat.js spawnMeleeScaled) — the same
 // height-normalisation moves.js applies to normals.
-import { spawnMeleeScaled as spawnMelee, spawnProjectileScaled as spawnProjectile, opponentOf, applyHit, hurtbox, applyStatus, ownerStick, debugShape } from "./combat.js";
+import { spawnMeleeScaled as spawnMelee, spawnProjectileScaled as spawnProjectile, opponentOf, applyHit, hurtbox, applyStatus, ownerStick, debugShape, detonateGlitch } from "./combat.js";
 import { burst, dust, ring, popup, banner } from "./particles.js";
 import { playSfx, playGrunt, moveCallFor, spokenLead, spokenCommitAt, cutSfx, playCutGrunt } from "./audio.js";
 import { METER_MAX, INHERENT_ENERGY } from "./constants.js";
@@ -306,6 +306,24 @@ const HANDLERS = {
     grantSummonMeter(f, cfg);
   },
 
+  // A HELD CHANNEL — the trigger stays down and the weapon keeps working
+  // (Vulcan's Gatling Burst, Inferno's Dragon's Breath, Cranky's Hydro Hose).
+  //
+  // A channel is not a burst repeated: it is one continuous move that spends
+  // inherent energy PER TICK, so the pool is the magazine and the refusal when
+  // it runs dry is the reload. `p` is an ordinary projectile block plus
+  // `tickRate` (seconds between tongues) and `maxT` (how long the trigger can
+  // be held at once). The first tick fires on the press, so a tap is still a
+  // shot — nothing about the weapon is worse for a player who never holds it.
+  channel(f, p, cfg, slot) {
+    const s = currentSlot(cfg, f);
+    effortSound(f, cfg);
+    // Long enough that the action outlives the hold; updateChannel ends it.
+    beginSpecialAction(f, s, (p.maxT ?? 3) + 0.3, { channel: true });
+    f.channel = { slot: s, cfg, p, t: 0, next: 0, ticks: 0 };
+    channelTick(f);
+  },
+
   wave(f, p, cfg) {
     beginSpecialAction(f, currentSlot(cfg, f), 0.46);
     effortSound(f, cfg);
@@ -350,7 +368,22 @@ const HANDLERS = {
   burst(f, p, cfg) {
     beginSpecialAction(f, currentSlot(cfg, f), (p.delay || 0.1) + (p.dur || 0.16) + 0.26);
     effortSound(f, cfg);
+    // Armored through it, where the kit asks for it (Titanus' Bulwark Stomp):
+    // the answer to being crowded cannot be a move that gets jabbed out of.
+    if (p.armor) f.armorT = Math.max(f.armorT, (p.delay || 0.1) + (p.dur || 0.16) + 0.12);
     spawnMelee(f, { ...p });
+    // A burst that CASHES a status instead of only landing (Nullbot's Stack
+    // Overflow). Data-driven off the kit: `detonateStatus` names what blows and
+    // `detonateRadius` how far it reaches, so any future move can do the same.
+    if (p.detonateStatus === "glitch") {
+      let total = 0;
+      for (const t of state.fighters) {
+        if (!isFoe(f, t) || t.dead || t.respawnTimer > 0) continue;
+        if (Math.abs(t.x - f.x) > (p.detonateRadius || 200)) continue;
+        total += detonateGlitch(f, t);
+      }
+      if (!total) popup(f.x, f.y - 160, "no stacks…", "#9aa4c0", 15);
+    }
     if (p.sprite) spawnSummonFlash(f, p.sprite, 0.52, p.spriteH || 220, p.spriteForward || 105);
     if (p.unblockable) ring(f.x + f.facing * 70, f.y - 90, p.color || f.char.theme, 80);
   },
@@ -391,6 +424,9 @@ const HANDLERS = {
       unblockable: p.unblockable, healPerSec: p.healPerSec,
       contactBurn: p.contactBurn, dmgTakenMul: p.dmgTakenMul, aura: p.aura,
       ampUp: p.ampUp, selfDrainPerSec: p.selfDrainPerSec,
+      // A thicker GUARD for the duration (Colossus' Bunker Down): read by
+      // combat.js shieldDamageMult, so the shield takes less while it holds.
+      shieldDmgMul: p.shieldDmgMul,
     });
     if (!ok) return;
     banner(p.label || cfg.name, p.color || f.char.theme, { y: 240, size: 38, life: 1.0 });
@@ -511,6 +547,24 @@ const HANDLERS = {
     ring(f.x + f.facing * 80, f.y - 100, "#ffffff", 180);
     glints(f.x + f.facing * 40, f.y - 100, f.facing, 8, 0.9, [p.color, "#ffffff"]);
     playSfx("blast", 0.9, 1.2);
+    // A RALLYING cry rather than a plain cone (Fenrir's Howl): the caller gets
+    // a brief surge of his own, and the pack answers — energy for every foe
+    // caught inside it. Both are kit fields, so only a kit that asks pays.
+    if (p.selfSpeed) {
+      applyInstall(f, { t: p.selfSpeedT || 2.4, label: cfg.name, color: p.color, speedMul: p.selfSpeed }, 1);
+    }
+    if (p.energyPerFoe) {
+      let caught = 0;
+      for (const t of state.fighters) {
+        if (!isFoe(f, t) || t.dead) continue;
+        if (Math.abs(t.x - f.x) < (p.w || 300) * 0.6) caught += 1;
+      }
+      if (caught) {
+        f.energy = Math.min(INHERENT_ENERGY.max, (f.energy ?? 0) + p.energyPerFoe * caught);
+        f.meter = clamp(f.meter + 4 * caught, 0, METER_MAX);
+        popup(f.x, f.y - 190, "THE PACK ANSWERS", p.color || f.char.theme, 17);
+      }
+    }
   },
 
   crush(f, p, cfg) {
@@ -652,7 +706,9 @@ const HANDLERS = {
     f.counter = {
       t: p.window || 0.55, holdStill: true,
       dmg: p.dmg, baseKb: p.base, growth: p.growth, angle: p.angle,
-      label: cfg.name, name: "SKY FOLD",
+      // The counter's own announcement. Named by the kit rather than baked, so
+      // Cranky's shell and Tritone's frill do not both shout "SKY FOLD".
+      label: cfg.name, name: (p.callout || cfg.name || "COUNTER").toUpperCase(),
     };
     f.reflect = { t: p.window || 0.55, color: p.color || f.char.theme };
     ring(f.x, f.y - 90, p.color || f.char.theme, 110);
@@ -1068,6 +1124,69 @@ function makeWindColumn(owner, x, p) {
 }
 
 // Per-frame special bookkeeping: timed action events.
+/** One tick of a held channel: the shot itself, plus the spin-up read. */
+function channelTick(f) {
+  const ch = f.channel;
+  if (!ch) return;
+  const p = ch.p;
+  ch.ticks += 1;
+  ch.next = p.tickRate ?? 0.1;
+  let spread = p.spread || 0;
+  // SPIN-UP (Vulcan): the barrels remember. Consecutive seconds on the trigger
+  // tighten the spread — the stream starts as area denial and becomes a line.
+  if (f.char.passive.id === "spinUp" && spread) {
+    spread *= Math.max(p.spinUpFloor ?? 0.35, 1 - ch.ticks * (p.spinUpStep ?? 0.06));
+  }
+  const count = p.count || 1;
+  for (let i = 0; i < count; i++) {
+    const spreadVy = count > 1 ? (i - (count - 1) / 2) * spread : (Math.random() - 0.5) * spread;
+    spawnProjectile(f, { ...p, vy: (p.vy || 0) + spreadVy });
+  }
+  muzzleFx(p.fxElement, f.x + f.facing * 70, f.y - 86, f.facing, p.color || f.char.theme);
+  if (p.tickSfx) playSfx(p.tickSfx, 0.6);
+}
+
+/**
+ * The held half of a channel, stepped by fighter.js every frame.
+ *
+ * Ends on any of: the trigger released, the pool dry, the hold limit reached,
+ * or the fighter being hit. Whichever it is, the cooldown is charged HERE
+ * rather than at the press, so the gap between streams is measured from when
+ * the stream stopped.
+ */
+export function updateChannel(f, dt, input) {
+  const ch = f.channel;
+  if (!ch) return;
+  const cost = ch.p.energyCost ?? INHERENT_ENERGY.rangedFloor;
+  const held = ch.slot === "ranged" ? !!input?.rangedHeld : !!input?.specialHeld;
+  const dry = (f.energy ?? 0) < cost;
+  ch.t += dt;
+  ch.next -= dt;
+  const done = !held || dry || f.hitstun > 0 || f.dizzy > 0 ||
+    (ch.p.groundOnly && !f.grounded) ||
+    ch.t >= (ch.p.maxT ?? 3) || f.action?.kind !== "special";
+  if (done) {
+    endChannel(f, dry);
+    return;
+  }
+  if (ch.next <= 0) {
+    f.energy = Math.max(0, (f.energy ?? 0) - cost);
+    channelTick(f);
+  }
+  // The action is held open for as long as the stream is: a channel is one
+  // move, not a queue of them.
+  if (f.action) f.action.t = Math.min(f.action.t, f.action.dur - 0.1);
+}
+
+function endChannel(f, dry = false) {
+  const ch = f.channel;
+  if (!ch) return;
+  f.channel = null;
+  f.cooldowns[ch.slot] = ch.cfg.cooldown || 0.6;
+  if (dry) popup(f.x, f.y - 160, "LOW ENERGY", "#6ee7ff", 15);
+  if (f.action?.channel) f.action = null;
+}
+
 export function updateSpecialState(f, dt) {
   if (f.action && f.action.events && f.action.events.length) {
     for (const ev of f.action.events) {

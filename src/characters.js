@@ -74,10 +74,13 @@ export const CHARACTERS = {
     theme: "#ffa832",
     shadow: "rgba(255, 168, 50, 0.36)",
     stats: { speed: 377, airSpeed: 309, accel: 2200, jump: 858, airJumps: 1, weight: 1.23, friction: 0.9 },
-    // MM light 46/50/68 with triple the roster's knockback; the charge contract
-    // (punchHold/heavyHold, walk-while-charging, arm glow) is engine work.
-    // TODO(engine): hold-to-charge light string and side heavy (punchHold /
-    // heavyHold / chargeGlow:"arms" — titanus and colossus only).
+    // MM light 46/50/68 with triple the roster's knockback. THE CHARGE CONTRACT
+    // (docs/characters.md): `charge` is read by fighter.js — `light` and
+    // `heavy` are the seconds to a full bank, `walk` lets him keep walking
+    // while the light winds up, `lungeVx` is the half-step the release carries
+    // him through the blow, and `glow` sites the charge sparks on the arms.
+    // Titanus and colossus are the only two kits that declare it.
+    charge: { light: 0.7, heavy: 2.4, walk: true, lungeVx: 190, glow: "arms" },
     light: { dmg: 9.2, speed: 0.9, angle: 0.34, effect: null, label: "Haymaker String", sfx: "punch" },
     heavy: { dmg: 16.2, speed: 0.9, angle: 0.46, effect: null, label: "Overhead Pound", sfx: "punch", shieldMul: 1.8 },
     // The MM gun, on RB. A big single shell: priced near the top of the band.
@@ -103,9 +106,7 @@ export const CHARACTERS = {
       down: {
         name: "Bulwark Stomp", type: "burst", cooldown: 4.0,
         desc: "A short ground quake around him that knocks the crowd up and off.",
-        // TODO(engine): armor during the stomp (the burst handler reads no
-        // armor field; docs/characters.md wants him flinch-proof through it).
-        p: { delay: 0.12, dur: 0.16, ox: 0, oy: -60, w: 300, h: 130, dmg: 12, base: 470, growth: 7.4, angle: 1.2, label: "Bulwark Stomp", color: "#ffa832", sfx: "punch" },
+        p: { armor: true, delay: 0.12, dur: 0.16, ox: 0, oy: -60, w: 300, h: 130, dmg: 12, base: 470, growth: 7.4, angle: 1.2, label: "Bulwark Stomp", color: "#ffa832", sfx: "punch" },
       },
     },
     ultimate: {
@@ -115,7 +116,6 @@ export const CHARACTERS = {
       // meteor director drops one rock, so it lands as one huge one.
       p: { sprite: "effect:meteor_rock", spriteH: 310, dmg: 32, base: 920, growth: 11, r: 200, fallTime: 1.1, burnField: 2.6, color: "#ffa832", label: "METEOR BREAKER" },
     },
-    // TODO(engine): implement — no flinch from jabs while charging anything.
     passive: { id: "siegePlating", name: "Siege Plating", desc: "Armor plate over everything: jabs cannot flinch him while a charge is banking." },
     ai: { style: "heavy", range: 280 },
     blurb: "A decommissioned siege engine that refused to power down. Slow as a glacier, hits like the end of the world. Speaks rarely — mostly in earthquakes.",
@@ -138,12 +138,13 @@ export const CHARACTERS = {
     heavy: { dmg: 12.0, speed: 1.0, angle: 0.44, effect: null, label: "Barrel Club", sfx: "punch", shieldMul: 1.6 },
     // The MM gun, on RB. The cheapest, most rapid gun in the game.
     ranged: {
-      name: "Gatling Burst", type: "projectile", cooldown: 0.75,
-      desc: "A spray of tracer that chips, pushes, and never kills — it exists to make you approach.",
-      // TODO(engine): docs/characters.md wants a held CHANNEL (stream while
-      // the trigger is down, barrels spinning up, arms swapping); the
-      // projectile handler fires a burst per press instead.
-      p: { sprite: "effect:gatling_tracer", spriteH: 40, energyCost: 4, speed: 900, vy: 0, r: 14, dur: 0.55, dmg: 2, base: 130, growth: 2.2, angle: 0.28, color: "#ff8c30", count: 3, spread: 70, label: "Gatling" },
+      name: "Gatling Burst", type: "channel", cooldown: 0.75,
+      desc: "A held spray of tracer that chips, pushes, and never kills — it exists to make you approach.",
+      // A held CHANNEL: `tickRate` is the cadence, `energyCost` the price of
+      // each tick out of the inherent pool, `maxT` how long one hold may run.
+      // `spinUpStep`/`spinUpFloor` are the Spin-Up passive's tightening.
+      // TODO(engine): swapping arms every couple of seconds (channelSwap 2).
+      p: { sprite: "effect:gatling_tracer", spriteH: 40, tickRate: 0.09, maxT: 3.2, energyCost: 4, speed: 900, vy: 0, r: 14, dur: 0.55, dmg: 2, base: 130, growth: 2.2, angle: 0.28, color: "#ff8c30", count: 2, spread: 90, spinUpStep: 0.05, spinUpFloor: 0.3, label: "Gatling" },
     },
     specials: {
       // New N (the gun moved to RB): more ammunition, of course — a lobbed
@@ -169,7 +170,6 @@ export const CHARACTERS = {
       desc: "A hundred rounds fall into orbit around him — a storm of lead that folds onto whoever strays close.",
       p: { sprite: "effect:gatling_tracer", spriteH: 250, speed: 300, r: 120, dur: 2.8, tickRate: 0.16, dmgTick: 3.5, base: 200, growth: 4.2, finalBase: 780, pull: 340, color: "#ff8c30", label: "BULLET HURRICANE" },
     },
-    // TODO(engine): implement — consecutive Gatling bursts tighten the spread.
     passive: { id: "spinUp", name: "Spin-Up", desc: "The barrels remember: consecutive Gatling seconds tighten its spread." },
     ai: { style: "zoner", range: 460 },
     blurb: "Ex-military fire-support platform with a laugh setting stuck on maniacal. Believes every problem is just insufficient ammunition.",
@@ -218,12 +218,10 @@ export const CHARACTERS = {
     ultimate: {
       name: "SERPENT STORM", type: "eruption",
       desc: "She coils, springs skyward, and the brood floods the stage floor — the first fang pins, the rest pile on.",
-      // TODO(engine): VENOM (damage over time + a beat of paralysis on
-      // application) is a new status; the eruption waves carry plain damage
-      // until it exists.
-      p: { sprite: "effect:energy_serpent", waves: 5, waveGap: 0.45, dmg: 11, base: 400, growth: 7.0, color: "#5aff2e", label: "SERPENT STORM" },
+      // VENOM is hers alone (constants.js STATUS.venom): the first fang PINS
+      // — a beat of paralysis — and the DoT is the rest of the brood piling on.
+      p: { sprite: "effect:energy_serpent", waves: 5, waveGap: 0.45, dmg: 11, base: 400, growth: 7.0, effect: "venom", color: "#5aff2e", label: "SERPENT STORM" },
     },
-    // TODO(engine): implement — +15% damage when striking from behind.
     passive: { id: "assassinsRead", name: "Assassin's Read", desc: "Angles nobody teaches: +15% damage striking from behind." },
     ai: { style: "rush", range: 260 },
     blurb: "A prototype infiltration unit that developed a taste for theatrics. Strikes from angles geometry teachers refuse to acknowledge.",
@@ -274,9 +272,10 @@ export const CHARACTERS = {
     ultimate: {
       name: "STAMPEDE", type: "rampage",
       desc: "Three of him, shoulder to shoulder, thunder across the whole stage floor — a wall of rhino you jump, not block.",
-      p: { passes: 3, speed: 900, dmg: 15, base: 540, growth: 8.2, color: "#ff2a20", label: "STAMPEDE" },
+      // THREE of him, shoulder to shoulder (`copies`, ultimates.js): the two
+      // phantom rhinos charge alongside the real one, so the wall is a wall.
+      p: { passes: 3, copies: 3, speed: 900, dmg: 15, base: 540, growth: 8.2, color: "#ff2a20", label: "STAMPEDE" },
     },
-    // TODO(engine): implement — no flinch from jabs while walking (armor plate).
     passive: { id: "plated", name: "Plated", desc: "Top-grade plate: jabs cannot flinch him while he walks." },
     ai: { style: "heavy", range: 280 },
     blurb: "One horn. One direction. Zero brakes. RHINO once charged through four buildings to win an argument he was already winning.",
@@ -296,14 +295,14 @@ export const CHARACTERS = {
     shadow: "rgba(63, 216, 255, 0.36)",
     stats: { speed: 459, airSpeed: 376, accel: 2896, jump: 900, airJumps: 1, weight: 0.94, friction: 0.86 },
     light: { dmg: 5.6, speed: 1.05, angle: 0.3, effect: null, label: "Static Jab", sfx: "punch" },
-    heavy: { dmg: 6.5, speed: 1.05, angle: 0.42, effect: null, label: "Travelling Tornado", sfx: "whoosh", shieldMul: 1.5 },
+    heavy: { dmg: 6.5, speed: 1.05, angle: 0.42, effect: "shock", label: "Travelling Tornado", sfx: "whoosh", shieldMul: 1.5 },
     // The MM gun, on RB. Rapid lightning: cheap.
     ranged: {
       name: "Arc Bolt", type: "projectile", cooldown: 0.9,
       desc: "Lightning that jumps — it finds its mark and wants a second body nearby.",
-      // TODO(engine): SHOCK status (brief hitstun extension) and the
-      // chain-to-a-second-target behavior are new engine work.
-      p: { sprite: "effect:arc_bolt", spriteH: 70, energyCost: 8, speed: 760, vy: 0, r: 22, dur: 0.7, dmg: 8, base: 330, growth: 6.4, angle: 0.36, color: "#3fd8ff", label: "Arc Bolt" },
+      // TODO(engine): the chain-to-a-second-target behaviour is still owed;
+      // SHOCK is live (constants.js STATUS.shock).
+      p: { sprite: "effect:arc_bolt", spriteH: 70, energyCost: 8, speed: 760, vy: 0, r: 22, dur: 0.7, dmg: 8, base: 330, growth: 6.4, angle: 0.36, color: "#3fd8ff", effect: "shock", label: "Arc Bolt" },
     },
     specials: {
       // New N (the bolt moved to RB): the concert made a weapon — a resonant
@@ -321,15 +320,14 @@ export const CHARACTERS = {
       down: {
         name: "Feedback Coil", type: "counter", cooldown: 3.5,
         desc: "An electric counter — the riposte is a point-blank discharge.",
-        p: { window: 0.5, dmg: 13, base: 460, growth: 7.4, angle: 0.5, color: "#3fd8ff", label: "Feedback Coil" },
+        p: { window: 0.5, dmg: 13, base: 460, growth: 7.4, angle: 0.5, effect: "shock", color: "#3fd8ff", label: "Feedback Coil" },
       },
     },
     ultimate: {
       name: "THUNDERFALL", type: "tempest",
       desc: "The sky goes dark over most of the stage and the weather answers — bolts hammer everyone caught in the gloom.",
-      p: { sprite: "effect:storm_cell", spriteH: 420, duration: 3.4, dmgTick: 4, tickRate: 0.28, base: 210, growth: 4.5, finalBase: 760, color: "#3fd8ff", label: "THUNDERFALL" },
+      p: { sprite: "effect:storm_cell", spriteH: 420, duration: 3.4, dmgTick: 4, tickRate: 0.28, base: 210, growth: 4.5, finalBase: 760, effect: "shock", color: "#3fd8ff", label: "THUNDERFALL" },
     },
-    // TODO(engine): implement — +25% energy gain while a foe is in SHOCK.
     passive: { id: "groundedRod", name: "Grounded Rod", desc: "The storm feeds the showman: +25% energy gain while a foe is shocked." },
     ai: { style: "balanced", range: 340 },
     blurb: "A weather-control unit that discovered showmanship. Every battle is a concert, every lightning bolt a chord. The crowd goes wild; the crowd is usually on fire.",
@@ -372,25 +370,26 @@ export const CHARACTERS = {
       down: {
         name: "Howl", type: "shout", cooldown: 4.0,
         desc: "A rallying cry — nearby foes get a flinch of hesitation, and the pack answers.",
-        // TODO(engine): the self speed-up and +energy per foe caught in the
-        // howl are new; the shout handler delivers only the flinch cone.
-        p: { ox: 0, oy: -110, w: 340, h: 180, dmg: 5, base: 280, growth: 4.4, angle: 0.4, color: "#6cd8ff", label: "HOWL" },
+        p: { ox: 0, oy: -110, w: 340, h: 180, dmg: 5, base: 280, growth: 4.4, angle: 0.4, selfSpeed: 1.18, selfSpeedT: 2.6, energyPerFoe: 14, color: "#6cd8ff", label: "HOWL" },
       },
     },
     ultimate: {
       name: "WILD HUNT", type: "summon",
       desc: "Rifts tear open and the pack pours out, running down the nearest enemy — a wolf that lands its bite is satisfied and leaves.",
-      // TODO(engine): docs/characters.md wants THREE pack-mates; the summon
-      // director spawns one body per cast, so one great wolf answers for now.
+      // THREE pack-mates (docs/characters.md, capped from MM's twenty).
       p: {
-        id: "wildHunt", behavior: "chaser", duration: 6, speed: 520, maxActive: 1,
+        count: 3,
+        // A pack-mate IS the mech: the summon draws through fenrir's own rig
+        // (`actor`), shrunk by `scale` so three wolves read as a pack rather
+        // than as three fenrirs. The hitbox stays hitW/hitH — shrinking the
+        // drawing never shrinks the threat (src/config_summons.js).
+        actor: "fenrir", scale: 0.45,
+        id: "wildHunt", behavior: "chaser", duration: 6, speed: 520, maxActive: 3,
         color: "#6cd8ff", h: 130, hitW: 110, hitH: 96, standOff: 22,
         attack: { dmg: 8, base: 340, growth: 6.0, angle: 0.35, cd: 0.9, sfx: "slash" },
         label: "WILD HUNT",
       },
     },
-    // TODO(engine): implement — landing a dash attack refunds half the dash
-    // and a tick of energy.
     passive: { id: "predatorsRhythm", name: "Predator's Rhythm", desc: "The chase pays for itself: a landed dash attack refunds half the dash and a tick of energy." },
     ai: { style: "rush", range: 280 },
     blurb: "An autonomous hunter-frame that slipped its leash decades ago. Runs with no pack, answers to no handler, howls at every full moon — and every explosion.",
@@ -409,8 +408,9 @@ export const CHARACTERS = {
     theme: "#ffc23c",
     shadow: "rgba(255, 194, 60, 0.36)",
     stats: { speed: 364, airSpeed: 298, accel: 2200, jump: 844, airJumps: 1, weight: 1.24, friction: 0.9 },
-    // TODO(engine): the titanus charge contract (punchHold + heavyHold +
-    // chargeGlow:"arms") — see titanus.
+    // The titanus charge contract, with artillery patience: he banks a beat
+    // longer than titanus does and gets a little less out of the step.
+    charge: { light: 0.8, heavy: 2.4, walk: true, lungeVx: 160, glow: "arms" },
     light: { dmg: 8.4, speed: 0.9, angle: 0.34, effect: null, label: "Banked Haymaker", sfx: "punch" },
     heavy: { dmg: 15.4, speed: 0.9, angle: 0.46, effect: null, label: "Thunderclap Pound", sfx: "punch", shieldMul: 1.8 },
     // The MM gun, on RB. The biggest single shell in the game: priced to match.
@@ -436,9 +436,7 @@ export const CHARACTERS = {
       down: {
         name: "Bunker Down", type: "install", cooldown: 4.5,
         desc: "Plants: heavy armor and a thicker guard for a beat — the patient answer to pressure.",
-        // TODO(engine): the shield-strength boost for the duration; the
-        // install carries armor + damage reduction until it exists.
-        p: { duration: 2.6, armor: true, dmgTakenMul: 0.8, color: "#ffc23c", label: "BUNKER" },
+        p: { duration: 2.6, armor: true, dmgTakenMul: 0.8, shieldDmgMul: 0.6, color: "#ffc23c", label: "BUNKER" },
       },
     },
     ultimate: {
@@ -448,7 +446,6 @@ export const CHARACTERS = {
       // the ×2.2 growth docs/characters.md stages, waiting on engine support.
       p: { duration: 9, dmgMul: 1.35, speedMul: 0.9, armor: true, scaleMul: 2.2, color: "#ffc23c", label: "COLOSSAL FORM" },
     },
-    // TODO(engine): implement — as titanus.
     passive: { id: "siegePlating", name: "Siege Plating", desc: "Armor plate over everything: jabs cannot flinch him while a charge is banking." },
     ai: { style: "zoner", range: 440 },
     blurb: "A firebase that learned to walk, then learned chess. Plays the long game: every shell placed three moves ahead of where you plan to be.",
@@ -475,7 +472,9 @@ export const CHARACTERS = {
       name: "Sniper Round", type: "projectile", cooldown: 1.5,
       desc: "A piercing shot down the rifle line — slow to aim, flat, hits through bodies.",
       // TODO(engine): hold-to-steady charge and the laser-sight telegraph.
-      p: { sprite: "effect:sniper_beam", spriteH: 40, energyCost: 16, speed: 940, vy: 0, r: 18, dur: 0.6, dmg: 12, base: 430, growth: 7.2, angle: 0.24, color: "#ff2030", pierce: true, label: "Sniper Round" },
+      // 800 METRES: the round grows with the distance it has flown
+      // (`distanceScale`, read by the passive in combat.js).
+      p: { sprite: "effect:sniper_beam", spriteH: 40, energyCost: 16, speed: 940, vy: 0, r: 18, dur: 0.6, dmg: 12, base: 430, growth: 7.2, angle: 0.24, color: "#ff2030", pierce: true, distanceScale: { per: 320, gain: 0.28, max: 1.8 }, label: "Sniper Round" },
     },
     specials: {
       // New N (the rifle moved to RB): sniper theatre without the rifle — a
@@ -504,7 +503,6 @@ export const CHARACTERS = {
       desc: "The flock becomes a real gyre that wheels around him and takes turns stooping on whoever he hates.",
       p: { sprite: "effect:bat_wisp", spriteH: 250, speed: 300, r: 130, dur: 2.8, tickRate: 0.16, dmgTick: 3.5, base: 200, growth: 4.2, finalBase: 780, pull: 300, color: "#ff2030", label: "DEATH SWARM" },
     },
-    // TODO(engine): implement — Sniper Round damage grows with distance flown.
     passive: { id: "eightHundredMetres", name: "800 Metres", desc: "The round is patient: Sniper Round damage grows with distance flown." },
     ai: { style: "zoner", range: 520 },
     blurb: "Officially, this unit was scrapped years ago. Officially, nobody is picking off mechs from 800 meters. Officially, you are perfectly safe.",
@@ -529,11 +527,9 @@ export const CHARACTERS = {
     heavy: { dmg: 13.2, speed: 0.95, angle: 0.44, effect: null, label: "Furnace Hook", sfx: "punch", shieldMul: 1.7 },
     // The MM gun, on RB. A held-stream flamer: cheap per tongue.
     ranged: {
-      name: "Dragon's Breath", type: "projectile", cooldown: 0.75,
+      name: "Dragon's Breath", type: "channel", cooldown: 0.75,
       desc: "A long narrow jet of held flame — the cone is a wall; walking into it is the mistake.",
-      // TODO(engine): a held channel (stream while the trigger is down); fires
-      // a burning tongue per press instead.
-      p: { sprite: "effect:flame_jet", spriteH: 96, energyCost: 5, speed: 420, vy: 0, r: 30, dur: 0.8, dmg: 6, base: 160, growth: 3.2, angle: 0.34, color: "#ff8a1e", effect: "burn", pierce: true, label: "Dragon's Breath" },
+      p: { sprite: "effect:flame_jet", spriteH: 96, tickRate: 0.12, maxT: 2.6, energyCost: 5, speed: 420, vy: 0, r: 30, dur: 0.8, dmg: 3, base: 160, growth: 3.2, angle: 0.34, spread: 40, color: "#ff8a1e", effect: "burn", pierce: true, label: "Dragon's Breath" },
     },
     specials: {
       // New N (the flamer moved to RB): the brawler half of him — a torch-hand
@@ -593,14 +589,12 @@ export const CHARACTERS = {
       neutral: {
         name: "Cold Snap", type: "burst", cooldown: 3.5,
         desc: "The air around him flash-freezes — a point-blank nova for anyone rude enough to get close.",
-        p: { sprite: "effect:frost_rime", spriteH: 180, delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 250, h: 160, dmg: 9, base: 420, growth: 6.6, angle: 0.6, effect: "drench", label: "Cold Snap", color: "#7ce0ff", sfx: "punch" },
+        p: { sprite: "effect:frost_rime", spriteH: 180, delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 250, h: 160, dmg: 9, base: 420, growth: 6.6, angle: 0.6, effect: "frost", label: "Cold Snap", color: "#7ce0ff", sfx: "punch" },
       },
       side: {
         name: "Cryo Beam", type: "wave", cooldown: 5.0,
         desc: "A held beam that frosts — the slow is the payload; a frosted foe can't escape the next barrage.",
-        // TODO(engine): FROST (movement + fall-speed slow with ice rime) is a
-        // new status; `drench` is the engine's nearest movement tax for now.
-        p: { sprite: "effect:icicle_shard", spriteH: 96, speed: 540, r: 30, dur: 0.8, dmg: 4, base: 180, growth: 3.6, angle: 0.3, color: "#7ce0ff", effect: "drench", pierce: true, label: "Cryo Beam" },
+        p: { sprite: "effect:icicle_shard", spriteH: 96, speed: 540, r: 30, dur: 0.8, dmg: 4, base: 180, growth: 3.6, angle: 0.3, color: "#7ce0ff", effect: "frost", pierce: true, label: "Cryo Beam" },
       },
       down: {
         name: "Ice Wall", type: "trap", cooldown: 4.5,
@@ -615,9 +609,8 @@ export const CHARACTERS = {
       desc: "The stage floor flash-freezes white — everyone else on the sheet frosts over and skates, traction gone.",
       // TODO(engine): the frozen floor-state (skating traction for the
       // duration) is arena work; the freeze waves carry the damage today.
-      p: { sprite: "effect:ice_wall", waves: 5, waveGap: 0.45, dmg: 10, base: 380, growth: 6.8, color: "#7ce0ff", label: "ABSOLUTE ZERO" },
+      p: { sprite: "effect:ice_wall", waves: 5, waveGap: 0.45, dmg: 10, base: 380, growth: 6.8, effect: "frost", color: "#7ce0ff", label: "ABSOLUTE ZERO" },
     },
-    // TODO(engine): implement — melee attackers who hit his shield take FROST.
     passive: { id: "coldShoulder", name: "Cold Shoulder", desc: "Touch at your own risk: melee attackers who strike his shield are frosted." },
     ai: { style: "zoner", range: 460 },
     blurb: "Guardian of a polar research station, promoted to war machine by boredom. Devastating in combat, insufferable at parties — every joke is about ice, and he thinks they all land.",
@@ -640,11 +633,10 @@ export const CHARACTERS = {
     heavy: { dmg: 15.4, speed: 0.9, angle: 0.44, effect: null, label: "Pincer Clap", sfx: "punch", shieldMul: 1.8 },
     // The MM gun, on RB. A held hose: the cheapest shot in the game.
     ranged: {
-      name: "Hydro Hose", type: "projectile", cooldown: 0.75,
+      name: "Hydro Hose", type: "channel", cooldown: 0.75,
       desc: "Held water pressure — less a gun than a push. Shoves bodies off platforms and stuffs approaches.",
-      // TODO(engine): a held channel; fires a pressure slug per press. The
-      // push IS the move: tiny damage, outsized base knockback.
-      p: { sprite: "effect:water_jet", spriteH: 74, energyCost: 4, speed: 560, vy: 0, r: 26, dur: 0.65, dmg: 2, base: 300, growth: 3.0, angle: 0.2, color: "#4fc3ff", effect: "drench", pierce: true, label: "Hydro Hose" },
+      // The push IS the move: tiny damage per tick, outsized base knockback.
+      p: { sprite: "effect:water_jet", spriteH: 74, tickRate: 0.11, maxT: 3.0, energyCost: 4, speed: 560, vy: 0, r: 26, dur: 0.65, dmg: 1.4, base: 300, growth: 3.0, angle: 0.2, spread: 30, color: "#4fc3ff", effect: "drench", pierce: true, label: "Hydro Hose" },
     },
     specials: {
       // New N (the hose moved to RB): the pincers themselves — a command grab
@@ -660,11 +652,9 @@ export const CHARACTERS = {
         p: { sprite: "effect:geyser_column", spriteH: 260, atOpponent: true, armTime: 0.5, lifetime: 0.7, w: 120, h: 260, dmg: 12.5, base: 520, growth: 8.0, angle: 1.25, color: "#4fc3ff", effect: "drench", label: "Geyser" },
       },
       down: {
-        name: "Shell Up", type: "counter", cooldown: 4.0,
-        desc: "Full counter — the best guard in the game, weaponised.",
-        // TODO(engine): reflect projectiles during the window; the counter
-        // answers melee only today.
-        p: { window: 0.6, dmg: 13, base: 500, growth: 7.6, angle: 0.5, color: "#4fc3ff", label: "Shell Up" },
+        name: "Shell Up", type: "reflectCounter", cooldown: 4.0,
+        desc: "Full counter — the best guard in the game, weaponised, and shells bounce off it.",
+        p: { window: 0.6, callout: "SHELL UP", dmg: 13, base: 500, growth: 7.6, angle: 0.5, color: "#4fc3ff", label: "Shell Up" },
       },
     },
     ultimate: {
@@ -673,9 +663,8 @@ export const CHARACTERS = {
       p: { sprite: "effect:tsunami_wall", spriteH: 300, dmg: 27, base: 880, growth: 10.5, color: "#4fc3ff", width: 220, duration: 1.5, label: "TSUNAMI" },
     },
     // The 45% shield-damage reduction is exactly what combat.js gives
-    // `limitlessGuard` (0.55 multiplier), so the id is reused verbatim.
-    // TODO(engine): the Top-Heavy half — a big enough launch flips him onto
-    // his back for a longer knockdown than anyone else's.
+    // `limitlessGuard` (0.55 multiplier), so the id is reused verbatim — and
+    // the same id carries the Top-Heavy rollover (combat.js ROLLOVER_KB).
     passive: { id: "limitlessGuard", name: "Hard Shell + Top-Heavy", desc: "The shell takes 45% less shield damage — but a big enough launch flips him onto his back." },
     ai: { style: "heavy", range: 340 },
     blurb: "A deep-sea salvage rig that got tired of being salvaged. Waddled ashore trailing kelp and grudges, shell first, questions never. The claws are non-negotiable.",
@@ -713,10 +702,11 @@ export const CHARACTERS = {
       side: {
         name: "Sickle Pounce", type: "dashStrike", cooldown: 3.75,
         desc: "The bird-of-prey kill-leap — and the only shield-breaker in the game.",
-        // The roster's one guard-breaker: shieldMul 4 mauls a raised guard.
-        // TODO(engine): a true shield SHATTER on block (guardBreak 0.6
-        // upstream) and the biteLatch perch on a landed pounce.
-        p: { vel: 720, iframes: 0.1, delay: 0.05, dur: 0.26, ox: 64, oy: -92, w: 210, h: 104, dmg: 12.5, base: 470, growth: 7.4, angle: 0.34, effect: "bleed", shieldMul: 4.0, label: "Sickle Pounce", sfx: "slashHeavy" },
+        // The roster's one guard-breaker: `guardBreak` tears 0.6 of a FULL
+        // guard off on contact (combat.js), on top of shieldMul's mauling —
+        // two pounces do not leave a shield standing.
+        // TODO(engine): the biteLatch perch on a landed pounce.
+        p: { vel: 720, iframes: 0.1, delay: 0.05, dur: 0.26, ox: 64, oy: -92, w: 210, h: 104, dmg: 12.5, base: 470, growth: 7.4, angle: 0.34, effect: "bleed", shieldMul: 4.0, guardBreak: 0.6, label: "Sickle Pounce", sfx: "slashHeavy" },
       },
       down: {
         name: "Tail Lash", type: "burst", cooldown: 3.5,
@@ -727,19 +717,19 @@ export const CHARACTERS = {
     ultimate: {
       name: "RAPTOR PACK", type: "summon",
       desc: "He lays a clutch — eggs warp in, roll like the heavy shells they are, and hatch into pack-mates.",
-      // TODO(engine): the egg staging (three eggs, breakable by the enemy,
-      // kickable by saurion, hatching one at a time) — the best idea in the
-      // upstream ult. The summon director fields one hatched raptor today.
+      // THREE eggs, staged: they warp in, the enemy may break one before it
+      // opens, and they hatch one at a time (ultimates.js `eggs`).
+      // TODO(engine): saurion kicking one of his own eggs out of danger.
       p: {
         sprites: ["effect:raptor_egg"],
-        id: "raptorPack", behavior: "chaser", duration: 12, speed: 520, maxActive: 1,
+        count: 3, eggs: { hp: 34, hatchAt: 1.1, hatchGap: 1.6, sprite: "effect:raptor_egg", spriteH: 130 },
+        actor: "saurion", scale: 0.45,
+        id: "raptorPack", behavior: "chaser", duration: 12, speed: 520, maxActive: 3,
         color: "#ff2418", h: 120, hitW: 104, hitH: 92, standOff: 22,
         attack: { dmg: 7, base: 320, growth: 5.6, angle: 0.34, cd: 0.8, sfx: "slash" },
         label: "RAPTOR PACK",
       },
     },
-    // TODO(engine): implement — the pounce's shield-shatter, plus +10% damage
-    // against launched foes.
     passive: { id: "predatorsBreak", name: "Predator's Break", desc: "Guards mean nothing to the pounce, and prey already in the air takes 10% more." },
     ai: { style: "rush", range: 270 },
     blurb: "Unit MX-7, grown in a black-site lab by a corporation that wanted to end wars by ending everything else. It ate the lab, filed itself as CEO, and went hunting.",
@@ -854,17 +844,17 @@ export const CHARACTERS = {
     ultimate: {
       name: "FLEA CIRCUS", type: "summon",
       desc: "Copies of him spring off and ricochet around the stage like fleas, biting whatever they land on, while the real Jerry keeps fighting.",
-      // TODO(engine): FOUR ricocheting copies; the summon director fields one
-      // flea-jerry per cast today.
+      // FOUR of him (docs/characters.md, capped from MM's twenty).
       p: {
         sprites: ["effect:shrimp_mine"],
-        id: "fleaCircus", behavior: "chaser", duration: 6, speed: 620, maxActive: 1,
+        count: 4,
+        actor: "jerry", scale: 0.35,
+        id: "fleaCircus", behavior: "chaser", duration: 6, speed: 620, maxActive: 4,
         color: "#ff2818", h: 130, hitW: 100, hitH: 110, standOff: 20,
         attack: { dmg: 6, base: 280, growth: 5.0, angle: 0.4, cd: 0.7, sfx: "punch" },
         label: "FLEA CIRCUS",
       },
     },
-    // TODO(engine): implement — each mine or flea hit banks bonus energy.
     passive: { id: "colony", name: "Colony", desc: "The swarm feeds back: every mine and flea hit banks bonus energy for the whole." },
     ai: { style: "balanced", range: 340 },
     blurb: "Dredged from a flooded aquaculture lab, JERRY is a colony pretending to be a mech. The cannons are full of something alive. He would like you to hold still.",
@@ -883,9 +873,8 @@ export const CHARACTERS = {
     theme: "#ff1f2a",
     shadow: "rgba(255, 31, 42, 0.36)",
     stats: { speed: 434, airSpeed: 356, accel: 2740, jump: 879, airJumps: 1, weight: 1.01, friction: 0.86 },
-    // TODO(engine): GLITCH status — every landed hit stacks corruption; at 6
-    // stacks a 1.2s CRASH stun, then the count clears. The whole kit is stack
-    // delivery once the status exists.
+    // GLITCH is applied by the PASSIVE, on every landed hit (combat.js), so no
+    // move in this kit names it: the whole kit is stack delivery by definition.
     light: { dmg: 6.0, speed: 1.05, angle: 0.3, effect: null, label: "De-rez Combo", sfx: "punch" },
     heavy: { dmg: 12.9, speed: 1.05, angle: 0.46, effect: null, label: "The Backhand", sfx: "punch", shieldMul: 1.6 },
     // The MM gun, on RB. A rapid stack-builder: cheap.
@@ -912,9 +901,9 @@ export const CHARACTERS = {
       down: {
         name: "Stack Overflow", type: "burst", cooldown: 3.5,
         desc: "Cashes the corruption out early instead of waiting for the crash.",
-        // TODO(engine): detonate GLITCH stacks on nearby foes for scaling
-        // burst damage (nobara's detonate, keyed to glitch); flat burst now.
-        p: { sprite: "effect:glitch_shard", spriteH: 190, delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 260, h: 160, dmg: 13, base: 470, growth: 7.4, angle: 0.5, label: "Stack Overflow", color: "#27f6ff", sfx: "punch" },
+        // Cashes the stacks out: the burst lands as normal AND every GLITCH
+        // stack in `radius` detonates for its own damage (specials.js).
+        p: { sprite: "effect:glitch_shard", spriteH: 190, delay: 0.1, dur: 0.14, ox: 0, oy: -90, w: 260, h: 160, dmg: 13, base: 470, growth: 7.4, angle: 0.5, detonateStatus: "glitch", detonateRadius: 200, label: "Stack Overflow", color: "#27f6ff", sfx: "punch" },
       },
     },
     ultimate: {
@@ -924,7 +913,6 @@ export const CHARACTERS = {
       // (opponents fall through the world and re-enter from the sky).
       p: { sprite: "effect:glitch_shard", waves: 5, waveGap: 0.5, dmg: 10, base: 420, growth: 7.2, color: "#27f6ff", label: "SYSTEM CRASH" },
     },
-    // TODO(engine): implement — the glitch stack, above.
     passive: { id: "glitchStack", name: "The Glitch Stack", desc: "Every landed hit corrupts; at six stacks the victim CRASHES — 1.2s of stun — and the count clears." },
     ai: { style: "rush", range: 300 },
     blurb: "Nobody built NULLBOT. It was simply found in the arena's memory one morning, already undefeated. Where it walks, textures tear, audio stutters, and the scoreboard reads NaN.",
@@ -1026,10 +1014,9 @@ export const CHARACTERS = {
         p: { vel: 700, armor: true, delay: 0.1, dur: 0.3, ox: 70, oy: -90, w: 230, h: 110, dmg: 17, base: 560, growth: 8.6, angle: 0.5, label: "Gore Charge", sfx: "punch" },
       },
       down: {
-        name: "Frill Bulwark", type: "counter", cooldown: 4.0,
-        desc: "Braces behind the frill — a front-facing counter; the display organ flares as the tell.",
-        // TODO(engine): reflect projectiles during the window.
-        p: { window: 0.6, dmg: 14, base: 520, growth: 7.8, angle: 0.45, color: "#ff8a24", label: "Frill Bulwark" },
+        name: "Frill Bulwark", type: "reflectCounter", cooldown: 4.0,
+        desc: "Braces behind the frill — a front-facing counter that reflects shells; the display organ flares as the tell.",
+        p: { window: 0.6, callout: "FRILL BULWARK", dmg: 14, base: 520, growth: 7.8, angle: 0.45, color: "#ff8a24", label: "Frill Bulwark" },
       },
     },
     ultimate: {
@@ -1037,8 +1024,9 @@ export const CHARACTERS = {
       desc: "All four legs plant, both cannons hose the sky in opposite-phase sweeps — then the whole cloud wakes up and comes down hunting.",
       p: { volleys: 7, dmg: 8, base: 340, growth: 6.6, finisherDmg: 18, finisherBase: 720, color: "#ff8a24", label: "SIEGE PROTOCOL" },
     },
-    // TODO(engine): implement — cannot be flipped, tripped or dragged by gunk;
-    // jab flinch immunity while walking.
+    // Jab-flinch immunity while walking is live (combat.js JAB_ARMOR); the
+    // flip/trip immunity is the prone-and-rollover half, also live — nothing
+    // in the engine flips him and Top-Heavy is Cranky's alone.
     passive: { id: "fourColumns", name: "Four Columns", desc: "Four legs, no lever: he cannot be flipped, tripped, or dragged, and jabs do not flinch him while he walks." },
     ai: { style: "heavy", range: 340 },
     blurb: "Three horns, two cannons, one direction. TRITONE was rebuilt as a mobile gun platform, but nobody told the animal underneath — it still prefers to solve things at a full gallop.",

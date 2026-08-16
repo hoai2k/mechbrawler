@@ -9,7 +9,7 @@ import { padsMenuState, padsMenuStates } from "./input.js";
 import { cameraMode } from "./camera_mode.js";
 import { preloadChar } from "./render_backend.js";
 import { previewCharacter, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
-import { CHARACTER_QUOTES, RANDOM_GROUP, TEXT } from "./config_menus.js";
+import { CHARACTER_QUOTES, QUOTE_INTRO, QUOTE_WIN, RANDOM_GROUP, TEXT } from "./config_menus.js";
 import { CONTROL_ROWS, rowAtPad } from "./config_controls.js";
 import { MATCH_MODES, MAX_FIGHTERS, matchPlan, modeLabel, HUMAN_TEAM } from "./modes.js";
 
@@ -339,11 +339,17 @@ function heroCardSrc(key) {
   return `assets/cards/${key}_card.jpg`;
 }
 
-/** A fighter's one spoken line — the VS splash and the results screen both say
- *  it. Falls back to the epithet so a fighter without a written line still
- *  speaks rather than standing under an empty quote mark. */
-function quoteFor(key) {
-  return CHARACTER_QUOTES[key] || CHARACTERS[key]?.quotes?.intro || CHARACTERS[key]?.epithet || "";
+/** A fighter's spoken line for one SCREEN. The VS splash asks for their
+ *  walk-on (`intro`), the results podium for their victory line (`win`) —
+ *  characters.js writes both, and asking for the wrong one is how every mech's
+ *  win line went unspoken. Falls back through the intro line to the epithet,
+ *  so a fighter with only half a pair still speaks rather than standing under
+ *  an empty quote mark. See CHARACTER_QUOTES in config_menus.js. */
+function quoteFor(key, kind = QUOTE_INTRO) {
+  const q = CHARACTERS[key]?.quotes;
+  return CHARACTER_QUOTES[key]?.[kind]
+    || q?.[kind] || q?.intro
+    || CHARACTERS[key]?.epithet || "";
 }
 
 /** The art the roster GRID draws — the hero card, cropped by the grid. */
@@ -1406,7 +1412,7 @@ export function showBattleIntro(entrants, { loading = false } = {}) {
           <div class="intro-plate">
             <i class="intro-seat">${seat(e)}</i>
             <b class="intro-name">${char.name}</b>
-            <em class="intro-quote">“${quoteFor(e.key)}”</em>
+            <em class="intro-quote">“${quoteFor(e.key, QUOTE_INTRO)}”</em>
           </div>
         </div>`;
       }).join("")}
@@ -1788,7 +1794,7 @@ function renderPodium(winner, side = null) {
       <figcaption class="victory-hero-plate">
         <i>${TEXT.roundOver.winnerBadge}</i>
         <b>${f.char.name}</b>
-        <em>“${quoteFor(f.charKey)}”</em>
+        <em>“${quoteFor(f.charKey, QUOTE_WIN)}”</em>
       </figcaption>
     </figure>`;
   const slat = (f, badge) => `
