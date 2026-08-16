@@ -30,14 +30,26 @@
 //
 // NOTHING HERE IS EDITABLE, so there is nothing to save and nothing to export:
 // every number on screen is read out of the engine.
+//
+// ON A PHONE the same tool goes modal. The viewer takes the whole screen and
+// everything else is behind a button: WHO (the roster, as a list you can read
+// rather than a native dropdown), WHICH POSE (the state list, grouped by tier
+// and marked where a state is an alias), and the loader's readout. The two
+// pickers are the point — checking a model's poses on a handset is a walk
+// through the cast, and each step should be one tap on a target a thumb can
+// hit. The desktop dropdowns stay in the DOM and stay in step, so there is one
+// state here and two ways to move it rather than two tools.
 
 import {
   bootRenderer, MECHS, POSE_STATES, resolution, drawMech, drawGhost,
   mechHeightPx, mechFrameBox, ensureRig, rigReady, whenRigReady, attachOrbit,
   setOrbit, inGameCameraDeg,
 } from "./rig_view.js";
+import { attachSheets } from "./sheet.js";
 
 const el = (id) => document.getElementById(id);
+
+let sheets = null;    // the phone layout's modal panels; null until boot wires them
 
 const view = {
   mech: MECHS[0]?.key || "titanus",
@@ -77,8 +89,11 @@ function paint() {
   if (!canvas) return;
   const stage = canvas.parentElement.getBoundingClientRect();
   const dpr = Math.min(2, window.devicePixelRatio || 1);
-  const w = Math.max(360, Math.floor(stage.width));
-  const h = Math.max(320, Math.floor(stage.height));
+  // The floors are a guard against a zero-sized stage mid-layout, not a minimum
+  // canvas: set them above a phone's viewport and the canvas overflows the
+  // screen it was supposed to fit.
+  const w = Math.max(240, Math.floor(stage.width));
+  const h = Math.max(200, Math.floor(stage.height));
   if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
     canvas.width = w * dpr; canvas.height = h * dpr;
     canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
@@ -98,7 +113,11 @@ function paint() {
   // face, a limb through the torso, feet through the floor — so the frame is
   // never allowed to crop at the hips, however wide the pose throws itself.
   const box = mechFrameBox(view.mech);
-  const z = Math.min((w - 70) / box.side, (h - 60) / box.side);
+  // Less air around the machine on a phone: the margin that reads as framing on
+  // a 1400px viewer is a tenth of a handset's width, and the mech is the thing
+  // that came here to be looked at.
+  const pad = w < 520 ? 18 : 70;
+  const z = Math.min((w - pad) / box.side, (h - pad * 0.85) / box.side);
   const originX = w / 2;
   const originY = (h - box.side * z) / 2 + box.above * z;
   ctx.setTransform(z * dpr, 0, 0, z * dpr, originX * dpr, originY * dpr);
@@ -131,11 +150,21 @@ function paint() {
   ctx.font = "500 11px Inter, system-ui, sans-serif";
   ctx.fillStyle = drew ? "rgba(160, 180, 210, 0.75)" : "rgba(255, 120, 120, 0.9)";
   const o = view.orbit.orbit;
+  // The caption is painted, so nothing wraps it: on a narrow canvas the long
+  // form runs off the right edge and the sentence that explains what you are
+  // looking at is the half you cannot read. Same facts, fewer words.
+  const roomy = w >= 520;
   ctx.fillText(view.orbit.moved()
-    ? `orbited — yaw ${o.yawDeg.toFixed(0)}° / pitch ${o.pitchDeg.toFixed(0)}° / ${o.dolly.toFixed(2)}× off the game's camera. Reset returns to it.`
-    : `the game's own camera — ${inGameCameraDeg()}° yaw, presentation pin applied exactly as in a match`, 12, 20);
+    ? (roomy
+      ? `orbited — yaw ${o.yawDeg.toFixed(0)}° / pitch ${o.pitchDeg.toFixed(0)}° / ${o.dolly.toFixed(2)}× off the game's camera. Reset returns to it.`
+      : `orbited ${o.yawDeg.toFixed(0)}° / ${o.pitchDeg.toFixed(0)}° / ${o.dolly.toFixed(2)}× · ⟳ returns to the game's camera`)
+    : (roomy
+      ? `the game's own camera — ${inGameCameraDeg()}° yaw, presentation pin applied exactly as in a match`
+      : `the game's own camera — ${inGameCameraDeg()}° yaw, pinned as in a match`), 12, 20);
   if (!drew) {
-    ctx.fillText("nothing rendered: this mech's rig is not in memory yet, or this state resolves to no clip", 12, 38);
+    ctx.fillText(roomy
+      ? "nothing rendered: this mech's rig is not in memory yet, or this state resolves to no clip"
+      : "nothing rendered: the rig is still loading, or no clip", 12, 38);
   }
   ctx.restore();
 }
@@ -157,11 +186,79 @@ function tick() {
     const dur = spec?.duration ?? 1;
     view.t = spec?.loop ? (view.t + dt) % dur : Math.min(view.t + dt, dur - 1e-4);
     if (!spec?.loop && view.t >= dur - 1e-3) view.t = 0;
-    el("timeSlider").value = String(view.t);
-    el("timeOut").textContent = `${view.t.toFixed(2)}s`;
+    showTime(view.t);
     paint();
   }
   requestAnimationFrame(tick);
+}
+
+// ------------------------------------------------- the two copies of a control
+//
+// The clip clock and the play button exist twice: once on the desk toolbar and
+// once in the phone's bar, because neither layout can borrow the other's node.
+// Every write goes through these, so the copy that is off screen is never the
+// one holding the truth.
+
+function showTime(t) {
+  for (const id of ["timeSlider", "timeSliderM"]) {
+    const s = el(id);
+    if (s) s.value = String(t);
+  }
+  for (const id of ["timeOut", "timeOutM"]) {
+    const o = el(id);
+    if (o) o.textContent = `${t.toFixed(2)}s`;
+  }
+}
+
+function setPlaying(on) {
+  view.playing = on;
+  view.last = performance.now();
+  if (el("play")) el("play").textContent = on ? "Pause" : "Play ▶";
+  if (el("playM")) el("playM").textContent = on ? "❚❚" : "▶";
+}
+
+function scrubTo(t) {
+  setPlaying(false);
+  view.t = t;
+  showTime(t);
+  paint();
+}
+
+// -------------------------------------------------------------- the selection
+//
+// One way in for each of the two choices, because there are now two controls
+// for each: the desk dropdown and the phone's picker. Both call these, so the
+// select, the picker, the mobile button's caption and `view` cannot disagree.
+
+function setMech(key, onChange) {
+  if (!MECHS.some((m) => m.key === key)) return;
+  view.mech = key;
+  if (el("mech")) el("mech").value = key;
+  syncPickers();
+  onChange?.();
+}
+
+function setPose(state, onChange) {
+  if (!POSE_STATES.some((s) => s.state === state)) return;
+  view.pose = state;
+  view.t = 0;
+  if (el("pose")) el("pose").value = state;
+  showTime(0);
+  syncPickers();
+  onChange?.();
+}
+
+/** The phone's captions and ticks, for whatever the state now is. */
+function syncPickers() {
+  const mech = MECHS.find((m) => m.key === view.mech);
+  if (el("mMech")) el("mMech").textContent = mech?.name || view.mech;
+  if (el("mPose")) el("mPose").textContent = view.pose;
+  for (const b of document.querySelectorAll("#mechList .pick")) {
+    b.classList.toggle("is-on", b.dataset.mech === view.mech);
+  }
+  for (const b of document.querySelectorAll("#poseList .pick")) {
+    b.classList.toggle("is-on", b.dataset.pose === view.pose);
+  }
 }
 
 // ------------------------------------------------------------- the readout
@@ -184,9 +281,23 @@ function refreshReadout() {
     `<dt>${k}</dt><dd${k.startsWith("⚠") || (k === "loader resolved to" && !r.ok) ? ' class="warn"' : ""}>${v}</dd>`
   ).join("");
 
-  const slider = el("timeSlider");
-  slider.max = String((r.duration - 1e-4).toFixed(4));
-  if (view.t > r.duration) { view.t = 0; slider.value = "0"; el("timeOut").textContent = "0.00s"; }
+  for (const id of ["timeSlider", "timeSliderM"]) {
+    const s = el(id);
+    if (s) s.max = String((r.duration - 1e-4).toFixed(4));
+  }
+  if (view.t > r.duration) { view.t = 0; showTime(0); }
+
+  // The verdict, on the button that opens the readout. On a phone the rail is
+  // off screen, and "this state resolves to nothing" is the one thing this tool
+  // exists to say — so it is said on the bar rather than one tap away.
+  const btn = el("mInfoBtn");
+  if (btn) {
+    const bad = r.rig && !r.ok;
+    btn.classList.toggle("is-bad", bad);
+    el("mResolved").textContent = !r.rig ? "loading rig…"
+      : bad ? "NO CLIP"
+      : r.alias ? "alias" : "resolved";
+  }
 }
 
 // ----------------------------------------------------------------- the shell
@@ -209,7 +320,7 @@ function shell() {
         <span class="muted">${MECHS.length} mechs · ${POSE_STATES.length} states</span>
         <a class="bar-link" href="./">← effect workbench</a>
       </div>
-      <div class="bar-tools">
+      <div class="bar-tools bar-tools--desk">
         <label class="tool">Mech <select id="mech">${mechOpts}</select></label>
         <label class="tool">Pose <select id="pose">
           ${group("library", "library — shared locomotion & defense")}
@@ -238,7 +349,7 @@ function shell() {
           read out of the engine.
         </p>
       </section>
-      <aside class="rail rail--pose">
+      <aside id="rail" class="rail rail--pose">
         <h2 class="rail-head">What the loader resolved</h2>
         <dl id="readout" class="readout"></dl>
         <p class="muted rail-foot">
@@ -250,7 +361,84 @@ function shell() {
           (<code>render3d/src/states.js</code>).
         </p>
       </aside>
-    </main>`;
+    </main>
+
+    <!-- The phone's chrome. In the markup on every screen, hidden by the
+         stylesheet above the breakpoint; the desk toolbar is hidden below it.
+         Neither is a copy of the other's layout — they are two controls over
+         the one piece of state, kept in step by setMech / setPose. -->
+    <nav class="mbar">
+      <div class="mscrub">
+        <button id="playM" class="mbtn mbtn--icon" type="button" aria-label="Play or pause the clip">▶</button>
+        <input id="timeSliderM" type="range" min="0" max="1" step="0.005" value="0" aria-label="Clip time">
+        <output id="timeOutM">0.00s</output>
+      </div>
+      <div class="mrow">
+        <button class="mbtn" type="button" data-sheet="mech">
+          <span class="mbtn-k">Mech</span><span class="mbtn-v" id="mMech">—</span>
+        </button>
+        <button class="mbtn" type="button" data-sheet="pose">
+          <span class="mbtn-k">Pose</span><span class="mbtn-v" id="mPose">—</span>
+        </button>
+        <button class="mbtn" type="button" id="mInfoBtn" data-sheet="info">
+          <span class="mbtn-k">Loader</span><span class="mbtn-v" id="mResolved">…</span>
+        </button>
+        <button class="mbtn mbtn--icon" id="resetM" type="button" aria-label="Reset the view to the game's camera">⟳</button>
+      </div>
+    </nav>
+
+    <section class="sheet" id="sheetMech">
+      <h3 class="sheet-title">Which mech · ${MECHS.length} in the roster</h3>
+      <div class="picklist" id="mechList"></div>
+    </section>
+
+    <section class="sheet" id="sheetPose">
+      <h3 class="sheet-title">Which pose · ${POSE_STATES.length} states</h3>
+      <div class="picklist" id="poseList"></div>
+    </section>`;
+}
+
+/** The phone's two pickers. Lists rather than dropdowns: a native select on a
+ *  handset is a wheel of truncated strings, and these carry what the choice is
+ *  actually made on — the mech's key, and whether a state is an alias for
+ *  somebody else's clip. */
+function buildPickers(onMech, onPose) {
+  const mechList = el("mechList");
+  for (const m of MECHS) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pick";
+    b.dataset.mech = m.key;
+    b.innerHTML = `<span>${m.name}</span><span class="pick-sub">${m.key}</span>`;
+    b.addEventListener("click", () => onMech(m.key));
+    mechList.append(b);
+  }
+
+  const poseList = el("poseList");
+  const TIERS = [
+    ["library", "library — shared locomotion & defense"],
+    ["archetype", "archetype — the normals"],
+    ["identity", "identity — bespoke per mech"],
+  ];
+  for (const [tier, label] of TIERS) {
+    const items = POSE_STATES.filter((s) => stateTier(s) === tier);
+    if (!items.length) continue;
+    const head = document.createElement("p");
+    head.className = "pick-group";
+    head.textContent = label;
+    poseList.append(head);
+    for (const s of items) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pick";
+      b.dataset.pose = s.state;
+      b.innerHTML = `<span>${s.state}</span>` +
+        (s.alias ? `<span class="pick-sub">plays ${s.alias}</span>`
+                 : `<span class="pick-sub">${s.loop ? "loops" : `${s.duration.toFixed(2)}s`}</span>`);
+      b.addEventListener("click", () => onPose(s.state));
+      poseList.append(b);
+    }
+  }
 }
 
 /** A state's authoring tier, taken from the state table (library / archetype /
@@ -300,31 +488,31 @@ export async function boot(root) {
     }
   };
 
-  el("mech").addEventListener("change", (e) => { view.mech = e.target.value; changed(); });
-  el("pose").addEventListener("change", (e) => {
-    view.pose = e.target.value;
-    view.t = 0;
-    el("timeSlider").value = "0";
-    el("timeOut").textContent = "0.00s";
-    changed();
-  });
-  el("timeSlider").addEventListener("input", (e) => {
-    view.playing = false;
-    el("play").textContent = "Play ▶";
-    view.t = Number(e.target.value);
-    el("timeOut").textContent = `${view.t.toFixed(2)}s`;
-    paint();
-  });
-  el("play").addEventListener("click", () => {
-    view.playing = !view.playing;
-    view.last = performance.now();
-    el("play").textContent = view.playing ? "Pause" : "Play ▶";
-  });
-  el("reset").addEventListener("click", () => {
-    view.orbit.reset();
-    draw();
+  // A pick on the phone closes the sheet it was made in: the choice was made to
+  // look at something, so the thing being looked at gets the screen back.
+  const pickMech = (key) => { setMech(key, changed); sheets?.close(); };
+  const pickPose = (state) => { setPose(state, changed); sheets?.close(); };
+  buildPickers(pickMech, pickPose);
+
+  sheets = attachSheets(root, {
+    mech: { el: el("sheetMech"), title: "Mech" },
+    pose: { el: el("sheetPose"), title: "Pose" },
+    info: { el: el("rail"), title: "What the loader resolved" },
   });
 
+  el("mech").addEventListener("change", (e) => setMech(e.target.value, changed));
+  el("pose").addEventListener("change", (e) => setPose(e.target.value, changed));
+  for (const id of ["timeSlider", "timeSliderM"]) {
+    el(id).addEventListener("input", (e) => scrubTo(Number(e.target.value)));
+  }
+  for (const id of ["play", "playM"]) {
+    el(id).addEventListener("click", () => setPlaying(!view.playing));
+  }
+  for (const id of ["reset", "resetM"]) {
+    el(id).addEventListener("click", () => { view.orbit.reset(); draw(); });
+  }
+
+  syncPickers();
   view.last = performance.now();
   requestAnimationFrame(tick);
   changed();

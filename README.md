@@ -17,15 +17,27 @@ Then open http://127.0.0.1:5174
 
 Or double-click `play-mac.command` (macOS) / `play-windows.bat` (Windows).
 
-### The effect workbench
+### The workbenches
 
-<http://127.0.0.1:5174/workbench/> — every shared drawing in the game in one
-grid, each beside the mech that throws it, rendered by the real rig at the
-game's own scale. Sizing an effect is a question about a ratio, and this is
-where that question can be answered by looking. Drag to nudge, scroll to size,
-then **Copy config** and paste the result over `EFFECT_PLACEMENT` in
-`src/config_effects.js`. New art gets there via
+<http://127.0.0.1:5174/workbench/> — the **effect workbench**: every shared
+drawing in the game in one grid, each beside the mech that throws it, rendered
+by the real rig at the game's own scale. Sizing an effect is a question about a
+ratio, and this is where that question can be answered by looking. Drag to
+nudge, scroll to size, then **Export JSON** and hand the file back to be applied
+to `EFFECT_PLACEMENT` in `src/config_effects.js`. New art gets there via
 [assets/intake/README.md](assets/intake/README.md).
+
+<http://127.0.0.1:5174/workbench/?edit=pose> — the **pose workbench**: one mech
+in one animation state, through the game's own camera, with the loader's answer
+about where that pose came from printed beside it. A state that resolves to no
+clip says so in red, which is the failure it exists to find. The URL carries the
+mech and the state, so a bad pose can be pasted into a bug report as a link.
+
+Both are built for a phone as well as a desk: below 820px (or on a short
+landscape handset) the viewer takes the whole screen and everything else —
+the roster, the state list, the grid of drawings, the parameters, the toolbar —
+moves behind the buttons along the bottom, one bottom sheet at a time. Drag to
+orbit, pinch to zoom.
 
 ## Controls
 
