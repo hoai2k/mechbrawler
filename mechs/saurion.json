@@ -53,7 +53,7 @@
     {
       "name": "block",
       "dur": 0.233,
-      "tracks": 16
+      "tracks": 10
     },
     {
       "name": "dead",
@@ -63,7 +63,7 @@
     {
       "name": "getup",
       "dur": 0.767,
-      "tracks": 14
+      "tracks": 16
     },
     {
       "name": "groundPound",
@@ -83,7 +83,7 @@
     {
       "name": "hitFlinch",
       "dur": 0.333,
-      "tracks": 16
+      "tracks": 10
     },
     {
       "name": "intro",
@@ -108,7 +108,7 @@
     {
       "name": "launched",
       "dur": 0.7,
-      "tracks": 16
+      "tracks": 14
     },
     {
       "name": "pounceLeap",
@@ -123,7 +123,7 @@
     {
       "name": "saurionClawL",
       "dur": 0.467,
-      "tracks": 16
+      "tracks": 10
     },
     {
       "name": "saurionClawR",
@@ -138,12 +138,12 @@
     {
       "name": "saurionKick2",
       "dur": 0.533,
-      "tracks": 16
+      "tracks": 13
     },
     {
       "name": "saurionQuillFan",
       "dur": 0.467,
-      "tracks": 13
+      "tracks": 10
     },
     {
       "name": "taunt",

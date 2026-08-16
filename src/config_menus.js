@@ -74,15 +74,32 @@ export const RANDOM_GROUP = {
   show: true,
 };
 
-// One line per fighter, in their own voice: spoken on the VS splash as the
-// panels slam in, and again under their name when they take the results
-// screen. Keyed by character key; a fighter without a line falls back to
-// their epithet, so adding a new fighter never breaks either screen.
-// TODO(C4): per-mech VS-splash lines. Every mech already carries intro/win
-// lines in characters.js (`quotes`); ui.js falls back to `quotes.intro` and
-// then the epithet, so this override table is empty until C4 wires real
-// banter (and voice) properly.
+// THE SPOKEN LINES, and there are TWO of them per mech, not one.
+//
+// A fighter says one thing walking on and another thing standing over the
+// wreckage, and characters.js has carried both since C1 (`quotes.intro` /
+// `quotes.win`). This table only exists to OVERRIDE that pair per screen when
+// a menu wants a different line from the one the dossier gives — which nobody
+// does today, so it is empty and every mech speaks its own written line.
+//
+// Resolution order, per screen (ui.js quoteFor):
+//   CHARACTER_QUOTES[key][kind]  ->  characters.js quotes[kind]
+//                               ->  characters.js quotes.intro  ->  epithet
+//
+// The intro fallback matters: a mech may be given a walk-on line before its
+// victory line is written, and the results screen should still say something
+// in its voice rather than dropping to the epithet.
+//
+// (This closes the C4 half that was a wiring bug rather than content: the
+// results screen used to call the same quote the VS splash did, so every
+// mech's `win` line — all seventeen of them, already written — was never
+// spoken anywhere in the game.)
 export const CHARACTER_QUOTES = {};
+
+/** Which line a screen asks for. `intro` is the VS splash, `win` the results
+ *  podium. Anything else falls through to the intro line. */
+export const QUOTE_INTRO = "intro";
+export const QUOTE_WIN = "win";
 
 // Every player-facing string in the game. Values that take an argument are
 // written as functions so word order stays translatable.

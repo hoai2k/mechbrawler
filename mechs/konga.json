@@ -58,7 +58,7 @@
     {
       "name": "bigPunch1",
       "dur": 0.667,
-      "tracks": 18
+      "tracks": 14
     },
     {
       "name": "bigPunch2",
@@ -68,7 +68,7 @@
     {
       "name": "block",
       "dur": 0.233,
-      "tracks": 14
+      "tracks": 10
     },
     {
       "name": "dead",
@@ -83,7 +83,7 @@
     {
       "name": "grabReach",
       "dur": 0.3,
-      "tracks": 16
+      "tracks": 10
     },
     {
       "name": "groundPound",
@@ -103,7 +103,7 @@
     {
       "name": "hitFlinch",
       "dur": 0.333,
-      "tracks": 16
+      "tracks": 10
     },
     {
       "name": "intro",
@@ -118,7 +118,7 @@
     {
       "name": "kongaLob",
       "dur": 0.867,
-      "tracks": 14
+      "tracks": 10
     },
     {
       "name": "kongaSlam",
@@ -138,12 +138,12 @@
     {
       "name": "launched",
       "dur": 0.7,
-      "tracks": 16
+      "tracks": 12
     },
     {
       "name": "liftHold",
       "dur": 0.467,
-      "tracks": 14
+      "tracks": 10
     },
     {
       "name": "light3",
@@ -153,7 +153,7 @@
     {
       "name": "taunt",
       "dur": 1.9,
-      "tracks": 16
+      "tracks": 10
     },
     {
       "name": "victory",

@@ -35,8 +35,28 @@ the ready combat stance, the readyK carriage layer fully engaged with the
 idle breath/sway alive on top. Per-mech personality is baked in (konga's
 `airReach` arms-up, frogger's deep squat).
 
-Generated from robotworld `ad1e65d` (+ the pose-clip sampling extension to
-`tools/export-mech.mjs`/`src/dev/export.js`), and all 17 exports passed `exportcheck`
+## Every clip starts from the same settled neutral (F3)
+
+`src/dev/export.js` `sampleClip` used to hit record on a COLD animator. The
+animator is a smoother over an integrator — `cur` eases toward the frame
+target, the pelvis follows the measured sole clearance, the readyK carriage
+layer damps in — so frame 0 of an action clip was not the mech's neutral
+stance but whatever the previously sampled clip had left behind, still
+sliding. `battleIdle` did not have the problem because `samplePose` settles
+for 90 frames before recording.
+
+That is what made the digitigrade frames (viper, fenrir, saurion, wraith)
+look like they SNAPPED at the start of every attack: idle carried the real
+ready stance and each attack opened half a unit deeper into the crouch with
+the feet lifted off the floor — fenrir's `fenrirSpike` opened with its hips
+2.6 units below where idle put them. Every clip now runs the same 3-second
+settle at the same neutral context before it records, so idle and the attacks
+agree about the neutral leg carriage by construction, and each strike departs
+from it rather than starting mid-transient.
+
+Generated from robotworld `ad1e65d` (+ the pose-clip sampling extension and
+the per-clip settle in `tools/export-mech.mjs`/`src/dev/export.js`), and all
+17 exports passed `exportcheck`
 at that revision: 0.00% size difference against the game build, 0° facing,
 15/15 game joints present by name, every anchor on the right bone, and every
 clip moving bones rather than merely existing.

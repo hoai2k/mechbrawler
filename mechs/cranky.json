@@ -48,17 +48,17 @@
     {
       "name": "block",
       "dur": 0.233,
-      "tracks": 19
+      "tracks": 11
     },
     {
       "name": "castRaise",
       "dur": 0.967,
-      "tracks": 19
+      "tracks": 15
     },
     {
       "name": "clawSnap",
       "dur": 0.567,
-      "tracks": 15
+      "tracks": 11
     },
     {
       "name": "dead",
@@ -88,7 +88,7 @@
     {
       "name": "hitFlinch",
       "dur": 0.333,
-      "tracks": 17
+      "tracks": 11
     },
     {
       "name": "intro",
@@ -113,17 +113,17 @@
     {
       "name": "launched",
       "dur": 0.7,
-      "tracks": 17
+      "tracks": 13
     },
     {
       "name": "light1",
       "dur": 0.533,
-      "tracks": 15
+      "tracks": 10
     },
     {
       "name": "light2",
       "dur": 0.567,
-      "tracks": 11
+      "tracks": 10
     },
     {
       "name": "light3",
@@ -133,7 +133,7 @@
     {
       "name": "shootLow",
       "dur": 0.4,
-      "tracks": 17
+      "tracks": 9
     },
     {
       "name": "taunt",
@@ -143,7 +143,7 @@
     {
       "name": "victory",
       "dur": 2.6,
-      "tracks": 13
+      "tracks": 11
     },
     {
       "name": "walk",

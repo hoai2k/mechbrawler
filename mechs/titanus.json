@@ -48,12 +48,12 @@
     {
       "name": "block",
       "dur": 0.233,
-      "tracks": 16
+      "tracks": 8
     },
     {
       "name": "castRaise",
       "dur": 0.967,
-      "tracks": 16
+      "tracks": 12
     },
     {
       "name": "dead",
@@ -63,7 +63,7 @@
     {
       "name": "fistCatch",
       "dur": 0.867,
-      "tracks": 14
+      "tracks": 8
     },
     {
       "name": "fistLaunch",
@@ -78,7 +78,7 @@
     {
       "name": "grabReach",
       "dur": 0.3,
-      "tracks": 14
+      "tracks": 8
     },
     {
       "name": "groundPound",
@@ -98,7 +98,7 @@
     {
       "name": "hitFlinch",
       "dur": 0.333,
-      "tracks": 14
+      "tracks": 8
     },
     {
       "name": "intro",
@@ -123,12 +123,12 @@
     {
       "name": "launched",
       "dur": 0.7,
-      "tracks": 14
+      "tracks": 12
     },
     {
       "name": "liftHold",
       "dur": 0.467,
-      "tracks": 12
+      "tracks": 8
     },
     {
       "name": "pounceLeap",
@@ -138,7 +138,7 @@
     {
       "name": "poundHold",
       "dur": 0.8,
-      "tracks": 16
+      "tracks": 12
     },
     {
       "name": "poundSlam",
@@ -148,12 +148,12 @@
     {
       "name": "punchHold1",
       "dur": 0.7,
-      "tracks": 14
+      "tracks": 12
     },
     {
       "name": "punchHold2",
       "dur": 0.7,
-      "tracks": 8
+      "tracks": 12
     },
     {
       "name": "punchRelease1",
@@ -173,7 +173,7 @@
     {
       "name": "throwHeave",
       "dur": 0.5,
-      "tracks": 14
+      "tracks": 8
     },
     {
       "name": "victory",

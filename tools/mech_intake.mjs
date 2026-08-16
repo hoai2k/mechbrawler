@@ -33,10 +33,25 @@
 //              retired. Each mech's personality is baked in — konga jumps
 //              arms-up ready to grab, frogger squats to the floor. ball is
 //              the DODGE tuck and never the jump.
-//   hover   <- the MM jet-flight pose, exported alongside (K8). The 26-state
-//              contract has NO hover/air-jump state today (states.js), so
-//              the key is written but nothing resolves it yet — the jet-burn
-//              air-jump feature can consume it when it lands.
+//   hover   <- the MM jet-flight pose, exported alongside (K8): feet gathered
+//              under the body, thrust down. This is the pose the JET BURN air
+//              jump wants (fighter.js spends `airJumpsLeft` and flashes
+//              `effect:jet_flame` under the mech — these are jets, not
+//              flight). The key is written for every mech and the clip is in
+//              every export; what it needs to become visible is TWO lines
+//              this tool cannot write, in files it does not own:
+//
+//                render3d/src/states.js, in STATES, after `fall`:
+//                  hover: { loop: true, duration: 0.4, tier: "library" },
+//
+//                src/fighter.js, where the air jump is spent (~line 1501,
+//                beside the jet_flame flash): hold the state for the burn,
+//                e.g. `setAnim(f, "hover"); f.hoverT = 0.22;` and let the
+//                airborne branch (~line 1642) keep playing `hover` while
+//                `f.hoverT > 0` before falling back to jump/fall.
+//
+//              Nothing else changes: the manifest already names the clip, and
+//              the loader resolves a state to `clips.<state>.glb` by name.
 //   dodge   <- ball, written under the dodge_roll AND dodge_air keys:
 //              render3d aliases the dodge state to those clip names
 //              (states.js STATE_ALIASES), so a plain `dodge` key is dead.
@@ -73,9 +88,9 @@ const CHARGE_FREEZE_T = 0.35;
 // Bespoke names lead so a mech with its own move animation always uses it.
 // charge is handled after the loop — its frozen frame needs the `freeze`
 // key, not just a name. idle/jump/fall/crouch are the K8-sampled MM
-// stance/procedural layers, real held clips now — no freeze. hover has no state in
-// the 26-state contract yet (see the compromises block); its key is written
-// for the jet-burn air-jump to consume later. The dodge tuck is written
+// stance/procedural layers, real held clips now — no freeze. hover is mapped
+// for every mech and waits only on the states.js entry named in the
+// compromises block above. The dodge tuck is written
 // under dodge_roll AND dodge_air: render3d resolves by CLIP name, and the
 // dodge state aliases to dodge_roll (states.js STATE_ALIASES), so a plain
 // `dodge` key would never be looked up.
