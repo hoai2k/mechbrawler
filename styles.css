@@ -978,8 +978,10 @@ html, body {
   position: relative;
   width: 100%;
   /* The name label sizes off the card's own width (11cqw), which is what keeps
-     the longest single-word name — GAKUGANJI — inside the tile at every column
-     count instead of being clipped to "GAKUGA". */
+     the longest name on the roster — COLOSSUS — inside the tile at every column
+     count instead of being clipped. The rule was tuned against a nine-letter
+     name (the JJK roster's longest); the mech roster tops out at eight, so it
+     has headroom rather than needing a retune. */
   container-type: inline-size;
   border: 1px solid var(--line);
   border-radius: 4px;
@@ -1022,11 +1024,11 @@ html, body {
   font-family: var(--font-display);
   padding: 12px 2px 4px;
   /* Scales with the portrait rather than sitting at a fixed size, because the
-     longest single-word name on the roster (GAKUGANJI, 9 characters) has to
-     fit the tile at every responsive card size — at a fixed 0.62rem it ran
-     past the edge and `overflow: hidden` clipped it to "GAKUGA". Multi-word
-     names (REGGIE STAR) still wrap to two lines, which is why this scales the
-     text instead of forcing `nowrap`. */
+     longest name on the roster (COLOSSUS, 8 characters) has to fit the tile at
+     every responsive card size — at a fixed 0.62rem a nine-letter name ran past
+     the edge and `overflow: hidden` clipped it mid-word. The mech names are all
+     one word, so nothing wraps today; this still scales the text rather than
+     forcing `nowrap`, because that is what survives a longer name later. */
   font-size: clamp(0.4rem, 12cqw, 0.72rem);
   font-weight: 800;
   text-transform: uppercase;
@@ -1159,7 +1161,8 @@ html, body {
 }
 
 /* The hero card carries the character's FULL name (roster tiles stay short), so
-   this has to hold "Megumi Fushiguro" as readily as "Panda". The card height is
+   it has to hold the longest of them as readily as the shortest — "Colossus"
+   next to "Jerry". The card height is
    a fixed budget (--hero-furniture) that assumes a one-line name, so the size
    scales with the viewport instead of wrapping — the ellipsis is a guard for a
    future name longer than anything on the roster, not an expected state. */

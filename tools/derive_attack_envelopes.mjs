@@ -102,8 +102,17 @@ const browser = await chromium.launch({
 const page = await browser.newPage();
 page.on("pageerror", (e) => console.error("PAGEERROR", String(e).slice(0, 200)));
 
-await page.goto(`${BASE}/index.html?render=3d&camera=flat`, { waitUntil: "load" });
-await page.waitForFunction(() => window.__render3d?.ready === true, { timeout: 90000 });
+// `rigs=eager` is load-bearing, not a nicety. Rigs load LAZILY by default —
+// a mech GLB is 8-46 MB and a match needs at most four of them, so
+// render3d/src/backend.js warms them on demand and `hasRig` is false for
+// everyone at page load. This tool measures the WHOLE roster in one pass off
+// `hasRig`, so under the default it found nothing and said "no rigs measured —
+// is the server running with rigs approved?", which sounds like a rig problem
+// and is not one. Nothing was wrong except that nobody had asked for them.
+await page.goto(`${BASE}/index.html?render=3d&camera=flat&rigs=eager`, { waitUntil: "load" });
+// Eager means init awaits every rig in the roster before it reports ready, so
+// this wait is minutes rather than seconds on a cold cache.
+await page.waitForFunction(() => window.__render3d?.ready === true, { timeout: 600000 });
 
 const measured = await page.evaluate(async () => {
   const loader = await import("/render3d/src/loader.js");

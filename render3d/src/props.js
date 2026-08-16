@@ -55,36 +55,17 @@ const DEG = Math.PI / 180;
 // END, because which end is heavy is measurable and which end is the top is
 // not. They are also the brief a modeller draws the weapon plate from.
 export const CHARACTER_PROPS = {
-  yuta:      [{ bone: "Prop_Main", kind: "sword", hand: "RightHand",
-                lengthM: 0.95, grip: 0.82 }],
-  nanami:    [{ bone: "Prop_Main", kind: "sword", hand: "RightHand",
-                lengthM: 0.80, grip: 0.85 }],
-  toji:      [{ bone: "Prop_Main", kind: "spear2h", hand: "RightHand",
-                lengthM: 1.90, grip: 0.55 }],
-  reggie:    [{ bone: "Prop_Main", kind: "umbrella", hand: "RightHand",
-                lengthM: 0.95, grip: 0.85 }],
-  nobara:    [{ bone: "Prop_Main", kind: "hammer", hand: "RightHand",
-                lengthM: 0.35, grip: 0.80 },
-              { bone: "Prop_Off", kind: "nail", hand: "LeftHand",
-                lengthM: 0.12, grip: 0.60 }],
-  // `rescue: "offBone"` — see blender_conform.py rescue_offbone_prop. Her axe
-  // hangs at hip height, so the default strategy (find the thing taller than
-  // the fighter) cannot see it; what does see it is that the generator bound
-  // it to her thigh and hands, leaving it further from those bones than skin
-  // ever is. OPT-IN because loose clothing looks identical to that test.
-  meimei:    [{ bone: "Prop_Main", kind: "axe", hand: "RightHand",
-                rescue: "offBone", lengthM: 1.30, grip: 0.80 }],
-  maki:      [{ bone: "Prop_Main", kind: "spear2h", hand: "RightHand",
-                lengthM: 1.80, grip: 0.45 }],
-  momo:      [{ bone: "Prop_Main", kind: "broom", hand: "RightHand",
-                lengthM: 1.40, grip: 0.70 }],
-  // `gripAt` re-grips a DELIVERED weapon at runtime — see the note under
-  // CARRY_DROP_DEG. He arrived holding the guitar by the headstock, which is
-  // the one place on a guitar nobody holds it.
-  gakuganji: [{ bone: "Prop_Main", kind: "guitar", hand: "LeftHand",
-                lengthM: 1.00, grip: 0.75, gripAt: 0.42 }],
-  mahoraga:  [{ bone: "Prop_Float", kind: "wheel", hand: null,
-                lengthM: 0.90, grip: 0.50 }],
+  // EMPTY, and correct: a mech carries its armament in its own mesh. The JJK
+  // roster's swords, spears and guitars were separately generated plates joined
+  // onto a `Prop_Main` bone (tools/blender_attach_prop.py), because a human
+  // fighter and their weapon were drawn by different passes. A mech GLB arrives
+  // whole — the cannon IS the arm — so there is nothing to attach and every
+  // lookup here correctly finds nothing.
+  //
+  // The machinery below is kept rather than deleted because it is generic and
+  // still wired (mannequin placeholders, the two-handed grip solve, the carry
+  // aim in ik.js): the day a mech needs a detachable prop bone, this is the
+  // hook, and the shape of an entry is documented above.
 };
 
 // `fromSkin: true` means the chain is not a hook for a rigger to hang art on
@@ -95,29 +76,11 @@ export const CHARACTER_PROPS = {
 // as 7500 vertices of Head, so it could only ever do exactly what her head
 // did. Declared here because it is a fact about the FIGHTER, like a weapon.
 export const CHARACTER_CHAINS = {
-  // The braid is the whole point of her silhouette, so it is extracted from
-  // the head's skin like Uro's mane — four segments, because a plaited rope
-  // that long reads wrong as three: it needs a curve, not a bend.
-  // Sway eased off the placeholder's 14: a thin rope shows every degree where
-  // a mane absorbs it. Note what this layer CANNOT do — the braids swing out
-  // wide on a body-twisting heavy, and they do it in lockstep with the twist
-  // rather than trailing it, because the sway is a function of the pose clock
-  // and not of the fighter's motion (the caching trade this file opens with).
-  // Inertia needs `simulate: true` and per-frame renders.
-  // SIMULATED. The pendulum could not do what her braids are for: it is a
-  // function of the pose clock, so the braids swung out on a body-twisting
-  // heavy in lockstep with the twist instead of trailing it. `simulate: true`
-  // hands them to the integrator (simulateChains below) — they lag a turn,
-  // overshoot, and settle. It costs her the pose cache; see that function.
-  meimei: [{ name: "braid", from: "Head", segments: 4, length: 0.55,
-             fromSkin: true, simulate: true,
-             stiffness: 0.14, damping: 0.76, gravity: 5.5 }],
-  dagon:  [{ name: "tendrilL", from: "Head", segments: 3, length: 0.3, sway: 10 },
-           { name: "tendrilR", from: "Head", segments: 3, length: 0.3, sway: 10 }],
-  // A mane that reads as its own mass — big, slow and trailing, so it lags
-  // the head rather than shadowing it.
-  uro:    [{ name: "hair", from: "Head", segments: 3, length: 0.6, sway: 16,
-             fromSkin: true }],
+  // EMPTY for the same reason as CHARACTER_PROPS: these were hair, braids and
+  // tendrils — soft human silhouette that had to move independently of the
+  // skull it was welded to. Nothing on the mech roster has any. The pendulum
+  // and the integrator below stay, and `simulates()` now answers false for
+  // everyone, which is what keeps every mech on the pose cache.
 };
 
 // ------------------------------------------------------- two-handed weapons
@@ -184,9 +147,8 @@ export const CARRY_DROP_DEG = 28;
 /** Per-character overrides. `carry: false` opts a prop out entirely (a prop
  *  that is not held — Mahoraga's floating wheel — has no carry to correct). */
 export const CARRY_OVERRIDES = {
-  // The wheel rides beside him rather than in a hand; there is no "heavy end
-  // trailing" to speak of and aiming it would just make it wobble.
-  mahoraga: { carry: false },
+  // Empty while CHARACTER_PROPS is: an override corrects how a prop is carried,
+  // and there are no props.
 };
 
 /** The two-handed prop a fighter carries, or null. `{ bone, spacing }`. */
@@ -218,24 +180,10 @@ export function twoHandGrip(charKey) {
 // (y runs down the bone on these rigs — the stretch axis for a blade).
 
 export const CHARACTER_MORPHS = {
-  mahito: {
-    // The heavies land with a club arm: the whole striking arm swollen from
-    // the shoulder, hand included.
-    sideHeavy:  [{ bone: "RightArm", scale: 1.55 }],
-    upHeavy:    [{ bone: "RightArm", scale: 1.55 }],
-    downHeavy:  [{ bone: "RightArm", scale: 1.6 }],
-    // The special draws the forearm out into a blade: long and thin past the
-    // elbow, the hand flattened into the tip.
-    specialNeutral: [
-      { bone: "RightForeArm", scale: [0.7, 1.9, 0.7] },
-      { bone: "RightHand", scale: [0.8, 1.3, 0.5] },
-    ],
-    // The charge gathers mass in BOTH arms — visibly mid-transfiguration.
-    charge: [
-      { bone: "RightArm", scale: 1.3 },
-      { bone: "LeftArm", scale: 1.3 },
-    ],
-  },
+  // Empty: this layer existed for ONE fighter whose body was the weapon and
+  // changed shape per attack. No mech does that — a mech's silhouette is
+  // fabricated steel and holds its dimensions — so no rig here declares morphs
+  // and `morphBones()` answers with the empty set for everyone.
 };
 
 /** Every bone this fighter's morphs ever touch — the reset set. */

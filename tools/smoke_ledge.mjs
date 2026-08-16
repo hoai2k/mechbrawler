@@ -13,7 +13,7 @@
 //   node server.mjs   then:   node tools/smoke_ledge.mjs [baseUrl]
 
 import { chromium } from "playwright";
-import { pressStart } from "./smoke_boot.mjs";
+import { pressStart, pickAnyFighter } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
@@ -41,9 +41,7 @@ page.on("pageerror", (e) => console.log(`  page error: ${String(e).slice(0, 200)
 try {
   await page.goto(`${BASE}/?camera=flat`);
   await pressStart(page);
-  await page.waitForSelector("[data-character]", { timeout: 120000 });
-  await page.locator("[data-character]").first().click();
-  await page.waitForTimeout(300);
+  await pickAnyFighter(page);
   await page.click("#startButton");
   await page.waitForSelector(".stage-card", { timeout: 15000 });
   await page.locator(".stage-card").nth(0).click();

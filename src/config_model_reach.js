@@ -13,8 +13,47 @@
 //     node tools/derive_attack_envelopes.mjs
 // tools/audit_hitboxes.mjs fails while this file is stale (--check).
 
-// TODO(C2/K4): empty since the JJK rigs were deleted — the mech rigs have not
-// been measured yet. Re-run the derive tool (above) against the mech manifest
-// to fill this in; until then silhouette.js keeps its sprite/metric fallback
-// for every mech (absent here == fallback, by design).
-export const MODEL_REACH = {};
+export const MODEL_REACH = {
+  "colossus": {"reach":71,"states":{"light":{"fwd":71,"top":204},"sideHeavy":{"fwd":61,"top":199},"upHeavy":{"fwd":63,"top":171},"downHeavy":{"fwd":62,"top":164},"crouchAttack":{"fwd":66,"top":184},"airLight":{"fwd":64,"top":262}}},
+  "cranky": {"reach":119,"states":{"light":{"fwd":96,"top":189},"sideHeavy":{"fwd":119,"top":189},"upHeavy":{"fwd":97,"top":183},"downHeavy":{"fwd":98,"top":181},"crouchAttack":{"fwd":97,"top":192},"airLight":{"fwd":98,"top":234}}},
+  "fenrir": {"reach":50,"states":{"light":{"fwd":50,"top":150},"sideHeavy":{"fwd":47,"top":119},"upHeavy":{"fwd":46,"top":121},"downHeavy":{"fwd":47,"top":110},"crouchAttack":{"fwd":44,"top":129},"airLight":{"fwd":50,"top":210}}},
+  "frogger": {"reach":60,"states":{"light":{"fwd":60,"top":154},"sideHeavy":{"fwd":52,"top":149},"upHeavy":{"fwd":52,"top":149},"downHeavy":{"fwd":57,"top":127},"crouchAttack":{"fwd":47,"top":137},"airLight":{"fwd":59,"top":145}}},
+  "glacier": {"reach":80,"states":{"light":{"fwd":67,"top":197},"sideHeavy":{"fwd":80,"top":164},"upHeavy":{"fwd":80,"top":164},"downHeavy":{"fwd":73,"top":154},"crouchAttack":{"fwd":64,"top":196},"airLight":{"fwd":59,"top":272}}},
+  "inferno": {"reach":75,"states":{"light":{"fwd":75,"top":177},"sideHeavy":{"fwd":61,"top":146},"upHeavy":{"fwd":61,"top":146},"downHeavy":{"fwd":61,"top":141},"crouchAttack":{"fwd":59,"top":173},"airLight":{"fwd":57,"top":247}}},
+  "jerry": {"reach":89,"states":{"light":{"fwd":82,"top":255},"sideHeavy":{"fwd":82,"top":244},"upHeavy":{"fwd":73,"top":247},"downHeavy":{"fwd":80,"top":243},"crouchAttack":{"fwd":73,"top":253},"airLight":{"fwd":89,"top":266}}},
+  "konga": {"reach":77,"states":{"light":{"fwd":76,"top":168},"sideHeavy":{"fwd":74,"top":137},"upHeavy":{"fwd":76,"top":153},"downHeavy":{"fwd":77,"top":148},"crouchAttack":{"fwd":60,"top":164},"airLight":{"fwd":76,"top":223}}},
+  "nullbot": {"reach":78,"states":{"light":{"fwd":47,"top":177},"sideHeavy":{"fwd":78,"top":175},"upHeavy":{"fwd":47,"top":140},"downHeavy":{"fwd":46,"top":134},"crouchAttack":{"fwd":40,"top":157},"airLight":{"fwd":45,"top":180}}},
+  "rhino": {"reach":71,"states":{"light":{"fwd":69,"top":185},"sideHeavy":{"fwd":64,"top":172},"upHeavy":{"fwd":64,"top":172},"downHeavy":{"fwd":61,"top":161},"crouchAttack":{"fwd":71,"top":173},"airLight":{"fwd":64,"top":171}}},
+  "saurion": {"reach":85,"states":{"light":{"fwd":80,"top":133},"sideHeavy":{"fwd":78,"top":130},"upHeavy":{"fwd":46,"top":116},"downHeavy":{"fwd":78,"top":117},"crouchAttack":{"fwd":83,"top":132},"airLight":{"fwd":85,"top":134}}},
+  "tempest": {"reach":105,"states":{"light":{"fwd":42,"top":164},"sideHeavy":{"fwd":105,"top":159},"upHeavy":{"fwd":42,"top":126},"downHeavy":{"fwd":42,"top":118},"crouchAttack":{"fwd":40,"top":158},"airLight":{"fwd":44,"top":153}}},
+  "titanus": {"reach":80,"states":{"light":{"fwd":64,"top":196},"sideHeavy":{"fwd":80,"top":185},"upHeavy":{"fwd":69,"top":159},"downHeavy":{"fwd":69,"top":153},"crouchAttack":{"fwd":71,"top":172},"airLight":{"fwd":70,"top":243}}},
+  "tritone": {"reach":125,"states":{"light":{"fwd":125,"top":174},"sideHeavy":{"fwd":98,"top":159},"upHeavy":{"fwd":98,"top":159},"downHeavy":{"fwd":98,"top":190},"crouchAttack":{"fwd":98,"top":185},"airLight":{"fwd":98,"top":259}}},
+  "viper": {"reach":66,"states":{"light":{"fwd":40,"top":147},"sideHeavy":{"fwd":66,"top":130},"upHeavy":{"fwd":53,"top":144},"downHeavy":{"fwd":59,"top":101},"crouchAttack":{"fwd":59,"top":117},"airLight":{"fwd":65,"top":217}}},
+  "vulcan": {"reach":67,"states":{"light":{"fwd":67,"top":180},"sideHeavy":{"fwd":65,"top":150},"upHeavy":{"fwd":65,"top":150},"downHeavy":{"fwd":61,"top":140},"crouchAttack":{"fwd":58,"top":174},"airLight":{"fwd":59,"top":260}}},
+  "wraith": {"reach":76,"states":{"light":{"fwd":63,"top":141},"sideHeavy":{"fwd":58,"top":140},"upHeavy":{"fwd":54,"top":118},"downHeavy":{"fwd":55,"top":110},"crouchAttack":{"fwd":76,"top":127},"airLight":{"fwd":73,"top":204}}},
+};
+
+export const ENVELOPE_INPUTS = {
+  "manifest": "23a7c1d909ff",
+  "sprites": "missing",
+  "poses": "90195bc614ce",
+  "models": {
+    "colossus": "31a727cf1855",
+    "cranky": "1915fcbd5d8d",
+    "fenrir": "eb2bccd4a431",
+    "frogger": "cdbfccbe1696",
+    "glacier": "9d36aee309ed",
+    "inferno": "e512874fac50",
+    "jerry": "c36eb4e8a8d0",
+    "konga": "f8db35ab228a",
+    "nullbot": "1c9cea4811d0",
+    "rhino": "1d94edddeefc",
+    "saurion": "0ddfd272cf5b",
+    "tempest": "598eb2943228",
+    "titanus": "3dd976fa84b1",
+    "tritone": "51c95eeb62b9",
+    "viper": "98d075f72ec5",
+    "vulcan": "e31bdff7d906",
+    "wraith": "44437ed74400"
+  }
+};

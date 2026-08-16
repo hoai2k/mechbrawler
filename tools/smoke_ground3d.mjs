@@ -13,38 +13,44 @@
 // rig, and why it was the same on every raised platform.
 //
 // So the check is: park a fighter on each platform in turn and measure the
-// lowest FOOT BONE against the platform's top. Bones, not a Box3 — the AABB
-// of a SkinnedMesh is its bind pose through the root transform, which is
-// nowhere near the posed feet, and believing it hid this bug from an earlier
-// version of the probe.
+// SOLE — the lowest drawn vertex of the posed mesh — against the platform's
+// top. Not a Box3, whose AABB for a SkinnedMesh is the bind pose through the
+// root transform and nowhere near the posed feet (believing it hid this bug
+// from an early version of the probe); and not the lowest foot BONE either,
+// which is the ankle on a mech and read as a constant 73 px of float.
 //
 // TWO BOARDS, because world y = 0 is sim y 568 and the sign of the error
-// matters. Uptown Plaza's main platform sits at 570, essentially on the
-// origin (which is why the bug looked like "every platform but the bottom
-// one"); Sky Terrace's main is at 576 with perches climbing to 345, so its
-// platforms span both sides of the origin — the case where the foot IK's
-// world-space test fires instead of silently doing nothing.
+// matters. Neon District's main platform sits at 570, all but exactly there
+// (which is why the bug looked like "every platform but the bottom one");
+// Harbor terraces from 574 up to 255, so most of its stage is on the other
+// side of the origin — the case where the foot IK's world-space test fires
+// instead of silently doing nothing.
+//
+// These were Training Bridge and Garden Steps, two JJK boards, until the arenas
+// were replaced; the pair above is chosen on the same property, measured off
+// src/stages.js rather than remembered.
+//
+// The probe measures the lowest DRAWN vertex of the posed mesh, not the lowest
+// foot bone — see the long note at the measurement itself for why that
+// distinction cost this tool its credibility on the mech roster.
 //
 // Needs playwright + Chromium (CHROMIUM_PATH to override) and the game served:
 //   node server.mjs   then:  node tools/smoke_ground3d.mjs [baseUrl]
 
 import { chromium } from "playwright";
-import { pressStart } from "./smoke_boot.mjs";
+import { pressStart, pickAnyFighter } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
-// Sim pixels the foot-bone reading may DRIFT between platforms of one board.
+// Sim pixels of slack between the sole and the platform's top.
 //
-// The reading itself (root y minus lowest foot bone) is NOT compared against
-// zero: where a rig's toe/heel joints sit relative to its origin is a fact
-// about each delivered skeleton, not about this code — the mech rigs carry
-// their foot joints ~73 px from the root in bind-space while the mesh feet
-// sit exactly on the deck (verified by eye against the rendered frame). What
-// the guarded bug produced was a reading that CHANGED with the platform's
-// world height — feet through the deck on every platform except the one at
-// world y = 0 — so the check is the spread: every platform's reading against
-// the main platform's baseline. A constant anatomy offset cancels; the ≈40 px
-// per-platform error of the original bug does not.
+// Not zero, because the sole is SAMPLED rather than scanned exhaustively (see
+// the measurement) and the CPU picks a different opponent every run. Now that
+// the probe measures the drawn mesh instead of the ankle bone the settled
+// reading is 0.04–0.26 px across both boards, so six is a wide margin rather
+// than a tuned one — and still seven times smaller than the bug it is here to
+// catch (≈40 px, the ±0.6 m clamp through the rig scale). A regression does
+// not creep in at this size; it arrives at the clamp.
 const TOLERANCE = 6;
 
 let failures = 0;
@@ -64,7 +70,7 @@ await page.goto(`${BASE}/index.html?render=3d`);
 await pressStart(page);
 
 // [stage-grid index, board key] — see the note at the top on why two.
-const BOARDS = [[2, "uptown"], [4, "skyterrace"]];
+const BOARDS = [[0, "neon"], [3, "harbor"]];
 for (const [gridIndex, board] of BOARDS) await run(gridIndex, board);
 
 await browser.close();
@@ -72,9 +78,7 @@ console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
 process.exit(failures ? 1 : 0);
 
 async function run(gridIndex, board) {
-// Whichever fighter sits first in the grid — a roster change cannot strand this.
-await page.locator("[data-character]").first().click();
-await page.waitForTimeout(300);
+await pickAnyFighter(page);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 8000 });
 await page.locator(".stage-card").nth(gridIndex).click();
@@ -102,7 +106,6 @@ check(plats.some((p) => p.kind !== "main"),
   plats.map((p) => `${p.kind}@${p.y}`).join(" "));
 
 let measured = 0;
-const readings = []; // [{ kind, y, drop }] — drop is root-y minus lowest foot bone
 for (let i = 0; i < plats.length; i++) {
   // Hold the fighter on this platform: the sim keeps running, so a one-shot
   // assignment would be walked off by the CPU before the rig is read.
@@ -141,14 +144,44 @@ for (let i = 0; i < plats.length; i++) {
       who: `${state.fighters[0].spriteChar || state.fighters[0].charKey}`
         + `/${state.fighters[0].animKey}`,
     };
+    // THE LOWEST DRAWN POINT, not the lowest bone.
+    //
+    // This used to take the lowest bone matching /foot|toe/ and call it the
+    // sole. That holds for a human rig, where the foot bone sits a centimetre
+    // inside the shoe, and it does not hold for a mech: the ankle joint is the
+    // lowest bone and the foot assembly — tracks, pads, splayed toes — hangs
+    // well below it. Every mech therefore read as floating by a constant
+    // ~73 px, on every platform of every board, which is exactly the shape a
+    // measurement error makes and not the shape of the bug this tool exists
+    // for (that one varies with platform height).
+    //
+    // Skinning happens on the GPU, so a bounding box off the geometry is the
+    // BIND pose, not the posed one. `applyBoneTransform` is three's exact
+    // CPU-side answer for one vertex, so the sole is found by asking it for
+    // vertices and keeping the lowest.
+    //
+    // SAMPLED, because a mech is tens of thousands of vertices and this runs
+    // per platform per board. The stride is chosen to look at ~3000 per mesh,
+    // which finds the sole to well inside the 6 px tolerance — the foot is a
+    // large flat region, not a single spike. A full scan would be exact and
+    // roughly twenty times slower for no change in verdict.
+    const SAMPLES = 3000;
     for (const c of models.children) {
       if (!c.visible || c.children.some((x) => x.isLight)) continue;
       c.updateWorldMatrix(true, true);
       let low = null;
+      const v = new THREE.Vector3();
       c.traverse((o) => {
-        if (!o.isBone || !/foot|toe/i.test(o.name)) return;
-        const w = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld);
-        if (low === null || w.y < low) low = w.y;
+        const pos = o.isMesh && o.geometry?.attributes?.position;
+        if (!pos) return;
+        const stride = Math.max(1, Math.floor(pos.count / SAMPLES));
+        for (let i = 0; i < pos.count; i += stride) {
+          v.fromBufferAttribute(pos, i);
+          // Skinned meshes deform; static props (a prop bone's mesh) do not.
+          if (o.isSkinnedMesh) o.applyBoneTransform(i, v);
+          o.localToWorld(v);
+          if (low === null || v.y < low) low = v.y;
+        }
       });
       if (low === null) continue;
       // World y back into sim pixels, positive = below the platform's top.
@@ -162,24 +195,15 @@ for (let i = 0; i < plats.length; i++) {
     continue;
   }
   measured++;
-  readings.push({ kind: m.kind, y: m.y, drop: m.rigs[0], who: m.who });
+  const worst = Math.max(...m.rigs.map(Math.abs));
+  check(worst <= TOLERANCE,
+    `${board} ${m.kind} platform (sim y ${m.y}): feet stand on the deck`,
+    `worst ${worst.toFixed(2)} px, tolerance ${TOLERANCE} — ${m.who}`);
 }
 await page.evaluate(() => { if (window.__pin) clearInterval(window.__pin); });
 
 check(measured >= 2, `${board}: measured a rig on more than one platform height`,
   `${measured} platform(s)`);
-
-// The spread check (see the TOLERANCE note): every platform's reading against
-// the main platform's. The guarded bug scaled with platform height; a rig's
-// own bone anatomy does not.
-const base = readings.find((r) => r.kind === "main") ?? readings[0];
-for (const r of readings) {
-  if (r === base) continue;
-  const drift = Math.abs(r.drop - base.drop);
-  check(drift <= TOLERANCE,
-    `${board} ${r.kind} platform (sim y ${r.y}): feet stand on the deck like the main's`,
-    `drift ${drift.toFixed(2)} px vs main's ${base.drop.toFixed(2)}, tolerance ${TOLERANCE} — ${r.who}`);
-}
 
 // Back to the menu for the next board.
 await page.keyboard.press("Escape");

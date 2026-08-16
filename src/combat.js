@@ -551,9 +551,10 @@ export function applyStatus(effect, owner, target, extra = {}) {
       s.silence = Math.max(s.silence || 0, 3.0);
       popup(target.x, target.y - 150, "TECHNIQUE SEALED", "#a8aeb8", 18);
       break;
-    // Dagon — soaked to the bone. No damage of its own: waterlogged clothes and
-    // a foot of standing water are a movement tax, and Dagon hits a soaked
-    // target harder (his `tideBorn` passive).
+    // Soaked to the bone — the water and ice kits' shared status (Cranky's
+    // hoses and geyser, Glacier's beam and cold snap). No damage of its own:
+    // being waterlogged is a movement tax, and a `tideBorn` passive would hit a
+    // soaked target harder — nothing on the mech roster carries one yet.
     case "drench":
       s.drench = Math.max(s.drench || 0, 3.2);
       break;
@@ -618,9 +619,6 @@ export function updateStatuses(f, dt) {
       s.infest.tick = 0.55;
       f.damage += s.infest.dmg;
       specks(f.x, f.y - 80, 5, 0.6);
-      // The colony eats for its parent: Kurourushi's hunger is fed by the
-      // infestation as well as by its own blows.
-      feedHunger(s.infest.from, s.infest.dmg);
     }
     if (s.infest.t <= 0) s.infest = null;
   }
@@ -637,19 +635,6 @@ export function updateStatuses(f, dt) {
     s.nailT -= dt;
     if (s.nailT <= 0) s.nailMarks = 0;
   }
-}
-
-/** Kurourushi's bottomless appetite: it recovers a fraction of everything it
- *  does to somebody. Called from every landed hit and from every infest tick,
- *  which is why it lives here rather than inside applyHit — the colony keeps
- *  eating long after the blow that planted it.
- *
- *  `Parthenogenesis` (its ultimate) raises the share through `installs.lifesteal`
- *  rather than adding a second path, so there is one rule for the appetite. */
-export function feedHunger(owner, dmg) {
-  if (!owner?.char || owner.char.passive.id !== "infiniteHunger" || !(dmg > 0)) return;
-  const share = 0.12 + (owner.installs?.lifesteal || 0);
-  owner.damage = Math.max(0, owner.damage - dmg * share);
 }
 
 // ------------------------------------------------------------------- hits
@@ -911,7 +896,6 @@ export function applyHit(owner, target, hit, source) {
 
   dmg = Math.round(dmg * 10) / 10;
   target.damage = Math.min(999, target.damage + dmg);
-  feedHunger(owner, dmg);  // Kurourushi eats what it hurts
   pushStale(owner, mid);   // only landed hits stale; whiffs cost nothing
 
   // meter economy
@@ -1050,15 +1034,8 @@ export function applyHit(owner, target, hit, source) {
 
   applyStatus(hit.effect, owner, target, { stunBonus: hit.stunBonus });
 
-  // Rika echoes Yuta's blows during Full Manifestation
-  if (owner.installs && owner.installs.echoDamage && source === "melee") {
-    const bonus = Math.round(dmg * owner.installs.echoDamage * 10) / 10;
-    target.damage = Math.min(999, target.damage + bonus);
-    popup(target.x + dir * 30, target.y - 190, `RIKA +${bonus}%`, "#e8ecf8", 18);
-    sparkLine(hx, hy - 30, dir, "#e8ecf8", 10);
-  }
-
-  // Jogo's Iron Mountain sears anyone who strikes him up close
+  // A `contactBurn` install sears anyone who strikes its owner up close. No
+  // mech kit sets the flag today; the install system still carries it.
   if (target.installs && target.installs.contactBurn && source === "melee") {
     applyStatus("burn", target, owner);
     burst(owner.x, owner.y - 80, "#ff7a2f", 10, 0.7);
@@ -1080,7 +1057,7 @@ const KO_CREDIT_TIME = 4;
  *
  *  Deliberately at the very end of applyHit, where a hit is known to have
  *  actually landed and `dmg` is final — every multiplier, the shield and armor
- *  branches, and Rika's echo have all had their say by here. Nothing in this
+ *  branches have all had their say by here. Nothing in this
  *  function is read back by the simulation, so it cannot desync anything. */
 function recordHit(owner, target, dmg, armored) {
   owner.tally.dealt += dmg;

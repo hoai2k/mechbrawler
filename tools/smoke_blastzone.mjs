@@ -15,7 +15,7 @@
 // elsewhere. Start the game first (node server.mjs), then:
 //   node tools/smoke_blastzone.mjs [baseUrl]
 import { chromium } from "playwright";
-import { pressStart } from "./smoke_boot.mjs";
+import { pressStart, pickAnyFighter } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
@@ -49,11 +49,7 @@ page.on("response", (r) => {
 
 await page.goto(`${BASE}/index.html?camera=flat`, { waitUntil: "load" });
 await pressStart(page);
-// Whichever fighter sits first in the grid — a roster change cannot strand this.
-await page.waitForSelector("[data-character]", { timeout: 60000 });
-const pickFighter = () => page.locator("[data-character]").first().click();
-await pickFighter();
-await page.waitForTimeout(400);
+await pickAnyFighter(page);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 5000 });
 await page.locator(".stage-card").nth(0).click();
@@ -143,8 +139,7 @@ await page.keyboard.press("Escape");
 await page.waitForTimeout(200);
 await page.click("#pauseMenuButton");
 await page.waitForTimeout(300);
-await pickFighter();
-await page.waitForTimeout(250);
+await pickAnyFighter(page);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 5000 });
 await page.locator(".stage-card").nth(4).click(); // Sky Terrace

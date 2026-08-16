@@ -103,7 +103,7 @@ screen. **Output changes** downloads `clip-edits.json`:
 
 ```json
 { "kind": "render3d-clip-edits",
-  "characters": { "gojo": { "light": {
+  "characters": { "titanus": { "light": {
     "duration": 0.167, "beat": 0.083,
     "keys": [ { "t": 0, "ease": "in",   "pose": { "Spine": [2, -14, 0], … } },
               { "t": 0.037, "ease": "snap", "pose": { … } },

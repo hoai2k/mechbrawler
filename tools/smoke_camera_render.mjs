@@ -33,7 +33,7 @@
 //   node server.mjs   then:  node tools/smoke_camera_render.mjs [baseUrl]
 
 import { chromium } from "playwright";
-import { pressStart } from "./smoke_boot.mjs";
+import { pressStart, pickAnyFighter } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
@@ -57,8 +57,7 @@ async function bootAndSettle(page, query) {
   await pressStart(page);
   await page.waitForFunction(async () =>
     (await import("/src/state.js")).state.phase === "menu", { timeout: 120000 });
-  await page.locator("[data-character]").first().click();
-  await page.waitForTimeout(300);
+  await pickAnyFighter(page);
   await page.click("#startButton");
   await page.waitForSelector(".stage-card", { timeout: 5000 });
   await page.locator(".stage-card").nth(0).click();

@@ -88,6 +88,28 @@ def referenced():
     return set(re.findall(r'"([a-z_0-9]+\.mp3)"', text))
 
 
+def source_format(path):
+    """The file's OWN sample rate and bitrate, so a re-encode can preserve them.
+
+    Without this the tool wrote every file back at a fixed 44.1 kHz / 128 kb/s,
+    which is silent damage on anything delivered leaner: the twelve arena
+    ambience beds arrive at 22 kHz / 64 kb/s — the right choice for a
+    twenty-eight-second loop nobody is listening closely to — and normalising
+    their PEAK re-encoded them up to 128 kb/s, doubling all twelve on disk and
+    over the wire for no audio anybody can hear. A lossy-to-lossy transcode
+    cannot add information; it can only spend bytes.
+
+    Falls back to the old constants when ffmpeg's report cannot be parsed, so a
+    file this fails on is still normalised rather than skipped.
+    """
+    info = subprocess.run([FFMPEG, "-hide_banner", "-i", path],
+                          capture_output=True, text=True).stderr
+    rate = re.search(r"(\d+) Hz", info)
+    kbps = re.search(r"(\d+) kb/s", info)
+    return (int(rate.group(1)) if rate else SR,
+            f"{kbps.group(1)}k" if kbps else "128k")
+
+
 def read_audio(path):
     """-> (samples, channels). Float, -1..1, channels un-mixed."""
     info = subprocess.run([FFMPEG, "-hide_banner", "-i", path],
@@ -122,7 +144,12 @@ def peak_db(x):
     return 20 * np.log10(p) if p > 0 else -np.inf
 
 
-def write_mp3(path, x):
+def write_mp3(path, x, rate=SR, bitrate="128k"):
+    """Write mono samples back, at the file's OWN rate and bitrate.
+
+    The samples arrive decoded at SR (read_audio resamples so the maths is done
+    at one rate); `-ar` puts them back down to whatever the source was.
+    """
     tmp = tempfile.mktemp(suffix=".wav")
     with wave.open(tmp, "wb") as w:
         w.setnchannels(1)
@@ -131,7 +158,8 @@ def write_mp3(path, x):
         w.writeframes((np.clip(x, -1, 1) * 32767).astype("<i2").tobytes())
     try:
         subprocess.run([FFMPEG, "-v", "error", "-y", "-i", tmp,
-                        "-codec:a", "libmp3lame", "-b:a", "128k", "-ac", "1", path],
+                        "-codec:a", "libmp3lame", "-b:a", bitrate,
+                        "-ar", str(rate), "-ac", "1", path],
                        check=True)
     finally:
         os.remove(tmp)
@@ -179,7 +207,9 @@ def main():
             print(f"  {name:32} SKIPPED — silent, nothing to normalise")
             continue
         mono = mono * (TARGET / peak)
-        write_mp3(path, mono)
+        # Read the format BEFORE overwriting the file it describes.
+        rate, bitrate = source_format(path)
+        write_mp3(path, mono, rate, bitrate)
         after = peak_db(read_audio(path)[0])
         fixed.append((name, before, after, how))
 
