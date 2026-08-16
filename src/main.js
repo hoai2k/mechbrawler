@@ -631,7 +631,7 @@ async function init() {
   // flag; a rig that fails to arrive draws the placeholder body and says so.
   initRenderBackend();
 
-  // The 2.5D perspective camera (docs/2.5d-camera-plan.md) is what the game
+  // The 2.5D perspective camera (docs/arena-polish-plan.md) is what the game
   // ships with: it carries the intro pull-out, the ultimate dolly and the
   // final-blow shot, and those are the game's presentation rather than an
   // option. `?camera=flat` opts back into the original flat framing.

@@ -23,21 +23,25 @@ const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
 // [stage key, index in the stage grid, sim seconds to run, garnish expected?]
 //
-// The clock matters: a board's cards are spawned by its own gimmick, so the
-// run has to be long enough to reach one. Crosswalk Rush launches traffic at
-// 13.6 s of its 15 s cycle, which is why it runs longest.
+// The clock matters: a board's cue-driven cards are spawned by its own
+// gimmick, so the boards sampled here lean on their AMBIENT layers (rain,
+// embers, clouds, snow, stars), which spawn within seconds. Uptown Plaza is
+// the deliberate negative: the tournament flat has no garnish system at all
+// (src/camera3d/garnish.js), and this asserts it stays that way.
 const BOARDS = [
-  ["trainingBridge", 0, 8, true],    // ambient leaves
-  ["lanternCorridor", 6, 8, true],   // ambient lanterns
-  ["crosswalkRush", 13, 14.2, true], // traffic, on the hazard's own cue
-  ["billboardRoof", 18, 5, true],    // skyline layer, spawned at match start
-  ["bridgeDuel", 10, 6, false],      // drift-follow board, no cards
-  ["domainCore", 19, 6, false],      // orbiting platforms, no cards
+  ["neon", 0, 8, true],        // ambient rain + standing hoardings/gantry
+  ["foundry", 1, 8, true],     // ambient embers
+  ["uptown", 2, 6, false],     // the tournament flat: no cards, on purpose
+  ["skyterrace", 4, 8, true],  // ambient cloud deck
+  ["frozen", 8, 6, true],      // ambient snow + standing aurora
+  ["orbital", 11, 6, true],    // ambient starfield
 ];
 
 // Boards whose cards include scenery that is placed once and then stands for
-// the whole match, and how many of those cards there should be.
-const STANDING = { crosswalkRush: 1, billboardRoof: 5 };
+// the whole match, and how many of those cards there should be. Neon's six
+// are the five hoardings plus the signal gantry (delivered art, no
+// procedural ancestor); frozen's two are the aurora curtains.
+const STANDING = { neon: 6, frozen: 2 };
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
@@ -65,7 +69,10 @@ page.on("console", (m) => {
 
 await page.goto(`${BASE}/index.html?camera=3d`, { waitUntil: "load" });
 await pressStart(page);
-await page.waitForSelector('[data-character="gojo"]', { timeout: 60000 });
+// Pick whichever fighter sits first in the grid rather than naming one, so a
+// roster change cannot strand this test (same pattern as smoke_stages.mjs).
+await page.waitForSelector("[data-character]", { timeout: 60000 });
+const pickFighter = () => page.locator("[data-character]").first().click();
 
 // Before anything else: did the mode actually take? Every check below is
 // vacuous if this silently fell back to flat.
@@ -124,7 +131,7 @@ for (const [key, index, simSeconds, wantsGarnish] of BOARDS) {
   current = key;
   const before = errors.length;
 
-  await page.click('[data-character="gojo"]');
+  await pickFighter();
   await page.waitForTimeout(250);
   await page.click("#startButton");
   await page.waitForSelector(".stage-card", { timeout: 8000 });
@@ -213,11 +220,11 @@ for (const [key, index, simSeconds, wantsGarnish] of BOARDS) {
 // has to clear the sky that is already up, not merely stop spawning into it —
 // and putting it back has to bring the cards back without a fresh match.
 current = "garnish-toggle";
-await page.click('[data-character="gojo"]');
+await pickFighter();
 await page.waitForTimeout(250);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 8000 });
-await page.locator(".stage-card").nth(0).click(); // Training Bridge: ambient leaves
+await page.locator(".stage-card").nth(0).click(); // Neon District: ambient rain
 await waitForMatch();
 await runUntil(4);
 const garnishCycle = await page.evaluate(async () => {
@@ -238,17 +245,17 @@ check(garnishCycle.off === 0, "GARNISH.enabled = false clears the cards already 
   `${garnishCycle.off} cards left`);
 
 // Garnish must not survive a change of board: a new match starts with a clean
-// sky, or Crosswalk Rush's traffic ends up driving through Domain Core.
+// sky, or Neon District's rain ends up falling through Uptown Plaza.
 current = "reset";
 await page.keyboard.press("Escape");
 await page.waitForTimeout(200);
 await page.click("#pauseMenuButton");
 await page.waitForTimeout(300);
-await page.click('[data-character="gojo"]');
+await pickFighter();
 await page.waitForTimeout(250);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 8000 });
-await page.locator(".stage-card").nth(19).click(); // Domain Core: no cards of its own
+await page.locator(".stage-card").nth(2).click(); // Uptown Plaza: no cards of its own
 await waitForMatch();
 await runUntil(1.5);
 const leftovers = await page.evaluate(async () =>

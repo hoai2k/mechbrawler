@@ -51,7 +51,7 @@ async function padPage({ pads = 2, hideFirst = false } = {}) {
   }, [pads, hideFirst]);
   await page.goto(`${BASE}/index.html?camera=flat`, { waitUntil: "load" });
   await pressStart(page);
-  await page.waitForSelector('[data-character="gojo"]', { timeout: 60000 });
+  await page.waitForSelector("[data-character]", { timeout: 60000 });
   await page.waitForTimeout(600);
   return page;
 }

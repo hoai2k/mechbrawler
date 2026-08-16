@@ -308,8 +308,11 @@ plays nothing like a platform fighter.
         pipeline; JJK-specific docs deleted. CLAUDE.md + README rewritten.
 - [ ] X3. Asset purge: JJK sprites/cards/backgrounds/music and render3d
         leftovers deleted as their replacements land.
-- [ ] X4. Tools: smoke tests updated for the new roster/stages; JJK-specific
-        checks deleted.
+- [x] X4. Tools: smoke tests updated for the new roster/stages (smoke_camera3d,
+        smoke_ground3d, smoke_camera's cue/board tables rekeyed to the 12
+        arenas; every tool now picks the first roster card instead of naming a
+        JJK fighter); JJK-specific checks deleted. Done in the arena polish
+        pass — docs/arena-polish-plan.md.
 - [ ] X5. Final sweep: boot → select → match on 3 arenas → ult → KO with no
         console errors; deploy workflow check.
 

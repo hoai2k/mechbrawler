@@ -264,6 +264,27 @@ terminator creeping.
   blast sequence start, fissure eruption, floe break, lintel fall, vine
   whip, debris pass. The 3D camera already listens (camera_mode cues).
 
+## The presentation layer (the arena polish pass)
+
+Each arena also owns a camera personality, an intro shot and a garnish set —
+authored in `src/config_camera.js` (`BOARD_CAMERA`) and
+`src/camera3d/garnish.js` (`SYSTEMS`), per docs/arena-polish-plan.md:
+
+| arena | lens | intro | garnish (front / behind) |
+|---|---|---|---|
+| neon | yaw +1.5, lookahead ×1.2 | rake down the street | rain threads, torii lantern, traffic on the train's `surge` / hoardings that flicker with it, signal gantry |
+| foundry | height +, `bloom` on the tap-hole | tight and hot | rising embers, a flurry on the bloom / — |
+| uptown | deliberately default | high crane-down | NONE — the daylight reference |
+| harbor | yaw −1.5 toward the water | off the quay | gulls / water glints |
+| skyterrace | fov +1, twitchy; close side blast zones | pull out to the cloud sea | gust wisps on the `wind` cue / drifting cloud deck |
+| scrapyard | yaw +2 stacks the fingers | across the pile | sand motes, rubble on the magnet's snap / — |
+| quarry | higher, statelier, `hush` while arming | down into the pit | detonation dust / crystal glints |
+| volcano | low and wide, `inhale` before the surge | tight and hot | edge ember columns, a storm on the vent / — |
+| frozen | glacial damping, `fog` while the floe gapes | slow wide aurora | near-lens snow, steam off the hole / breathing aurora curtains |
+| ruins | yaw −2 down the colonnade, `layout` on the fall | down the processional way | streaming sand on the gusts, masonry on the collapse / — |
+| jungle | taller frame, `bloom` on the god-ray shift | into the canopy | leaves, fireflies, a shower on the whip / god-ray shafts that flare |
+| orbital | the low-g float recipe | wide against the planet | debris glints on the pass / drifting starfield |
+
 ## What deliberately did NOT survive from MM
 
 - **Toroidal wrap, free-roam bounds, building destruction** — this is a

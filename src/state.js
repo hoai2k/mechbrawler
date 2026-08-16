@@ -36,7 +36,7 @@ export const state = {
   // committed a fighter; the match can start once every human slot is ready.
   ready: { 1: false, 2: false, 3: false, 4: false },
   activePicker: 1,
-  stageKey: "trainingBridge",
+  stageKey: "neon",
 
   fighters: [],
   platforms: [],

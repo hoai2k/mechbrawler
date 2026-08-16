@@ -41,8 +41,8 @@ page.on("pageerror", (e) => console.log(`  page error: ${String(e).slice(0, 200)
 try {
   await page.goto(`${BASE}/?camera=flat`);
   await pressStart(page);
-  await page.waitForSelector('[data-character="gojo"]', { timeout: 120000 });
-  await page.click('[data-character="gojo"]');
+  await page.waitForSelector("[data-character]", { timeout: 120000 });
+  await page.locator("[data-character]").first().click();
   await page.waitForTimeout(300);
   await page.click("#startButton");
   await page.waitForSelector(".stage-card", { timeout: 15000 });

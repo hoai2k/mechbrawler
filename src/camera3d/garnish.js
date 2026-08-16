@@ -308,121 +308,220 @@ const billboardDrawn = (i) => texture(`billboard:${i}`, 160, 128, (ctx, w, h) =>
   ctx.globalAlpha = 1;
 });
 
+/** A soft radial dot — embers, motes, snow, stars, fireflies: one texture
+ *  helper, coloured per board. The colour carries its own alpha. */
+const dotTexture = (key, color) => texture(`dot:${key}`, 64, 64, (ctx, w, h) => {
+  const g = ctx.createRadialGradient(w / 2, h / 2, 2, w / 2, h / 2, w / 2);
+  g.addColorStop(0, color);
+  g.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+});
+
+/** A soft horizontal streak fading at both ends — sand on the wind, a debris
+ *  glint crossing the deck. */
+const streakTexture = (key, color) => texture(`streak:${key}`, 256, 24, (ctx, w, h) => {
+  const g = ctx.createLinearGradient(0, 0, w, 0);
+  g.addColorStop(0, "rgba(0, 0, 0, 0)");
+  g.addColorStop(0.5, color);
+  g.addColorStop(1, "rgba(0, 0, 0, 0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, h * 0.3, w, h * 0.4);
+});
+
+/** A falling rain thread, bright at the bottom the way a lit drop reads. */
+const rainTexture = () => texture("rain", 8, 128, (ctx, w, h) => {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "rgba(180, 230, 255, 0)");
+  g.addColorStop(0.75, "rgba(190, 235, 255, 0.75)");
+  g.addColorStop(1, "rgba(240, 252, 255, 0.95)");
+  ctx.fillStyle = g;
+  ctx.fillRect(w * 0.3, 0, w * 0.4, h);
+});
+
+/** A cloud wisp: overlapping soft blobs, three variants so the deck varies. */
+const cloudTexture = (i) => artTexture("cloud_wisp") || cloudDrawn(i);
+
+const cloudDrawn = (i) => texture(`cloud:${i % 3}`, 256, 96, (ctx, w, h) => {
+  for (let k = 0; k < 7; k++) {
+    const x = w * (0.15 + 0.7 * (((k * 5 + i * 3) % 7) / 7));
+    const y = h * (0.35 + 0.3 * (((k * 3 + i) % 5) / 5));
+    const r = w * (0.1 + 0.08 * (((k + i) % 4) / 4));
+    const g = ctx.createRadialGradient(x, y, 1, x, y, r);
+    g.addColorStop(0, "rgba(255, 255, 255, 0.55)");
+    g.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+});
+
+/** The aurora: a striated green curtain, hung far behind the outpost. */
+const auroraTexture = () => artTexture("aurora_curtain") || auroraDrawn();
+
+const auroraDrawn = () => texture("aurora", 512, 256, (ctx, w, h) => {
+  for (let i = 0; i < 24; i++) {
+    const a = 0.1 + 0.16 * Math.abs(Math.sin(i * 1.7));
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, `rgba(46, 232, 154, ${a})`);
+    g.addColorStop(0.6, `rgba(46, 232, 154, ${a * 0.45})`);
+    g.addColorStop(1, "rgba(46, 232, 154, 0)");
+    ctx.fillStyle = g;
+    ctx.fillRect((i / 24) * w, 0, w / 24 + 2, h);
+  }
+});
+
+/** A god-ray shaft, widening as it falls through the canopy. */
+const rayTexture = () => artTexture("godray_shaft") || rayDrawn();
+
+const rayDrawn = () => texture("godray", 96, 512, (ctx, w, h) => {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, "rgba(214, 255, 224, 0.5)");
+  g.addColorStop(1, "rgba(160, 255, 190, 0)");
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(w * 0.32, 0);
+  ctx.lineTo(w * 0.68, 0);
+  ctx.lineTo(w * 0.95, h);
+  ctx.lineTo(w * 0.05, h);
+  ctx.closePath();
+  ctx.fill();
+});
+
+/** A gull: the two-arc silhouette every sunset painting uses. */
+const gullTexture = () => artTexture("gull") || gullDrawn();
+
+const gullDrawn = () => texture("gull", 96, 40, (ctx, w, h) => {
+  ctx.strokeStyle = "rgba(28, 20, 32, 0.9)";
+  ctx.lineWidth = 5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(4, 10);
+  ctx.quadraticCurveTo(w * 0.3, h * 0.9, w / 2, h * 0.55);
+  ctx.quadraticCurveTo(w * 0.7, h * 0.9, w - 4, 10);
+  ctx.stroke();
+});
+
 // ------------------------------------------------------------------- boards
 //
-// Each system owns two optional hooks:
-//   ambient(dt, ctx)   run every frame — spawn on a timer, from the clock
+// One system per arena (docs/arena-polish-plan.md §1). Each owns up to three
+// optional hooks:
+//   ambient(ctx)       spawn on a timer (`every` seconds), from the clock
+//   setup(ctx, settled) standing scenery, placed once per match
 //   cue(name, s, ctx)  a stage moment fired by stage_fx.js
 //
-// `ctx` gives them `spawn(card)`, the live state and the main platform. A card
-// is plain data; `update` below moves and retires every one the same way.
+// `ctx` gives them `spawn(card)`, the live card list and the main platform. A
+// card is plain data; `update` below moves and retires every one the same way.
+//
+// UPTOWN PLAZA has no entry ON PURPOSE: it is the tournament flat, the
+// daylight reference the other eleven are loud against — and the smoke test's
+// negative control. Its leaves and fountain live in stage_fx.js at z = 0.
 
 const rand = (a, b) => a + Math.random() * (b - a);
 
 const SYSTEMS = {
-  // The calmest board, and the one the plan tunes the rig on: falling leaves
-  // drifting past the lens sell depth where nothing else is happening.
-  trainingBridge: {
-    every: 0.55,
+  // -- NEON DISTRICT, the flagship. Rain threads past the lens; a paper
+  // lantern off the torii market rides the top of frame now and then; the
+  // skyline hoardings hang behind and FLICKER when the maglev passes; and the
+  // pass itself sends street traffic across the foreground — the same `surge`
+  // cue, seen from two places.
+  neon: {
+    every: 0.26,
     ambient(ctx) {
-      const near = Math.random() < 0.35;
+      if (Math.random() < 0.03) {
+        // A lantern string's stray, hanging into the top of frame so the frame
+        // crops it — a foreground element reads as foreground when it intrudes
+        // from the edge. Only its lower half hangs into view.
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        ctx.spawn({
+          x: dir > 0 ? -320 : 1600, y: rand(70, 160),
+          z: rand(1.6, 2.6),
+          w: rand(74, 110), h: 0,
+          tex: lanternTexture(),
+          alpha: 1,
+          vx: dir * rand(80, 140), vy: 0,
+          rot: 0, spin: 0,
+          sway: rand(14, 30), swayRate: rand(0.8, 1.5), swayAxis: "x",
+          tilt: rand(0.05, 0.13), tiltRate: rand(0.8, 1.5),
+          life: 70,
+        });
+        return;
+      }
+      // The rain: thin lit threads, faster and fainter the nearer the lens.
       ctx.spawn({
-        x: rand(-200, 1480), y: rand(-160, -40),
-        // A near leaf is bigger, faster and fainter — the three things that
-        // together read as "close to the lens" rather than "a big leaf".
-        z: near ? rand(2.6, 4.2) : rand(0.9, 1.8),
-        w: near ? rand(46, 74) : rand(22, 34),
-        h: 0, // set from the texture's aspect below
-        tex: leafTexture(Math.random() < 0.7 ? "#8fce7a" : "#d8c36a"),
-        alpha: near ? rand(0.4, 0.6) : rand(0.7, 0.9),
-        vx: rand(20, 62), vy: rand(70, 130),
-        rot: rand(0, Math.PI * 2), spin: rand(-2.4, 2.4),
-        sway: rand(18, 46), swayRate: rand(1.4, 2.6),
-        life: 14,
+        x: rand(-200, 1480), y: rand(-260, 200),
+        z: rand(0.8, 2.6),
+        w: rand(4, 8), h: 0,
+        tex: rainTexture(),
+        alpha: rand(0.22, 0.42),
+        vx: rand(-70, -30), vy: rand(750, 1050),
+        rot: 0.05, spin: 0,
+        additive: true,
+        life: 1.6,
       });
     },
-  },
-
-  // The instant depth showcase: lantern silhouettes swinging past the camera.
-  // They ride the TOP of the frame — the corridor's lanterns hang from the
-  // rafters — so the biggest cards in the game never cover a fighter.
-  lanternCorridor: {
-    every: 3.2,
-    ambient(ctx) {
-      const dir = Math.random() < 0.5 ? 1 : -1;
-      ctx.spawn({
-        x: dir > 0 ? -320 : 1600,
-        // High enough that the frame CROPS them: a foreground element reads as
-        // foreground when it intrudes from the edge, and a lantern hanging
-        // fully inside the picture just covers the fight. Only their lower
-        // halves hang into view, which is also what a real ceiling lamp does.
-        y: rand(70, 170),
-        z: rand(1.6, 2.6),
-        w: rand(84, 132), h: 0,
-        tex: lanternTexture(),
-        alpha: 1,
-        // Brisk, because parallax is the point: a thing this close to the lens
-        // has to outrun the background for the depth to read.
-        vx: dir * rand(80, 145), vy: 0,
-        rot: 0, spin: 0,
-        // Hanging things swing; the sway is horizontal, so it reads as a
-        // pendulum rather than as the card bobbing.
-        sway: rand(14, 30), swayRate: rand(0.8, 1.5), swayAxis: "x",
-        tilt: rand(0.05, 0.13), tiltRate: rand(0.8, 1.5),
-        life: 70,
-      });
-    },
-  },
-
-  // THE showcase. stage_fx.js cues `surge` with the traffic's direction at the
-  // exact moment it launches its cars, so these streaks are the same run of
-  // traffic — the ones that can hit you pass at ground level behind, and these
-  // pass in front of the whole fight.
-  crosswalkRush: {
-    // The signal gantry is the one card in 18F with no procedural ancestor: it
-    // was asked for as a new element rather than a replacement, so it appears
-    // only once its art exists. Static and near the lens, hanging into the top
-    // of frame the way a real signal arm does — the traffic passes under it.
     setup(ctx, settled) {
-      const tex = artTexture("signal_gantry");
-      // Not yet decoded — say so, so the caller tries again rather than
-      // leaving the board permanently bare. This card has no procedural
-      // ancestor, so once the loader has settled there is nothing to place.
-      if (!tex) return settled ? undefined : false;
-      ctx.spawn({
-        x: rand(240, 460), y: rand(-40, 40),
-        z: rand(2.2, 3.0),
-        w: rand(300, 380), h: 0,
-        tex,
-        alpha: 0.92,
-        vx: 0, vy: 0, rot: 0, spin: 0,
-        // A signal on an arm sways barely at all; enough to not read as a decal.
-        sway: 6, swayRate: 0.5, swayAxis: "x",
-        life: Infinity,
-      });
+      // Standing scenery is placed once and stands for the match, so it is
+      // worth waiting for the delivered art rather than freezing procedural
+      // hoardings in front of the player for the whole round. The signal
+      // gantry has no procedural ancestor at all — it appears only once its
+      // art exists. Not yet decoded → return false so the caller retries;
+      // once the loader has settled, whatever is missing is missing for good.
+      const gantry = artTexture("signal_gantry");
+      if (!settled && (!gantry || !artTexture("hoarding_a"))) return false;
+      if (gantry) {
+        ctx.spawn({
+          x: rand(240, 460), y: rand(-40, 40),
+          z: rand(2.2, 3.0),
+          w: rand(300, 380), h: 0,
+          tex: gantry,
+          alpha: 0.92,
+          vx: 0, vy: 0, rot: 0, spin: 0,
+          sway: 6, swayRate: 0.5, swayAxis: "x",
+          life: Infinity,
+        });
+      }
+      // The hoardings, behind the stage: depth for a backdrop that is already
+      // a wall of neon. Spread across the middle band, clear of the HUD.
+      for (let i = 0; i < 5; i++) {
+        ctx.spawn({
+          x: 235 + i * 205, y: rand(215, 330),
+          z: rand(-5.5, -3.4),
+          w: rand(120, 175), h: 0,
+          tex: billboardTexture(i),
+          alpha: rand(0.55, 0.72),
+          vx: 0, vy: 0, rot: 0, spin: 0,
+          behind: true,
+          life: Infinity,
+          flicker: 0,
+        });
+      }
     },
     cue(name, strength, ctx) {
       if (name !== "surge" || !ctx.plat) return;
+      // The district reacts to the pass: the hoardings flicker...
+      for (const c of ctx.cards) if (c.behind) c.flicker = 0.4;
+      // ...and the street traffic surges with it, crossing the foreground.
       const dir = Math.sign(strength) || 1;
       const plat = ctx.plat;
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 2; i++) {
         ctx.spawn({
-          x: dir > 0 ? plat.x - 620 - i * 700 : plat.x + plat.w + 620 + i * 700,
+          x: dir > 0 ? plat.x - 620 - i * 760 : plat.x + plat.w + 620 + i * 760,
           // A card off the gameplay plane does NOT land where the same sim y
-          // would land at z = 0: it is nearer the camera, so the small downward
-          // pitch throws it further below the centre of frame and magnifies it.
-          // These sit well above the stage in sim space to come out riding
-          // along its front edge on screen, with the roofline crossing the
-          // fighters' legs — the pass reads as happening in FRONT of them while
-          // their heads, the thing you actually read a fight from, stay clear.
+          // would land at z = 0: it is nearer the camera, so the small
+          // downward pitch throws it further below frame centre and magnifies
+          // it. These sit well above the stage in sim space to come out
+          // riding its front edge on screen, roofline crossing the fighters'
+          // LEGS — heads, the thing you read a fight from, stay clear.
           y: plat.y - rand(128, 168),
           z: rand(1.8, 2.6),
           w: rand(430, 570), h: 0,
           tex: vehicleTexture(),
           flipX: dir < 0,
-          // Solid enough that occlusion reads — that is the whole point — but
-          // held just under opaque so a fighter caught behind one is still
-          // faintly there, and it clears the screen in well under a second.
+          // Solid enough that occlusion reads, held just under opaque so a
+          // fighter behind one is still faintly there — and gone in well
+          // under a second.
           alpha: rand(0.76, 0.88),
           vx: dir * rand(2000, 2500), vy: 0,
           rot: 0, spin: 0,
@@ -432,16 +531,140 @@ const SYSTEMS = {
     },
   },
 
-  // Rubble falling toward the lens as a rooftop gives way, on the same cue
-  // that shakes the camera.
-  emptyCity: {
+  // -- IRONWORKS FOUNDRY. Embers climbing past the lens all match; the pour's
+  // white-hot telegraph (the bloom cue) sends up a flurry from the strip.
+  foundry: {
+    every: 0.4,
+    ambient(ctx) {
+      ctx.spawn({
+        x: rand(-100, 1380), y: rand(500, 760),
+        z: rand(0.6, 2.4),
+        w: rand(5, 12), h: 0,
+        tex: dotTexture("ember", "rgba(255, 180, 90, 0.9)"),
+        alpha: rand(0.35, 0.6),
+        vx: rand(-16, 16), vy: rand(-150, -70),
+        rot: 0, spin: 0,
+        sway: rand(8, 22), swayRate: rand(1.2, 2.4),
+        additive: true,
+        life: 8,
+      });
+    },
     cue(name, strength, ctx) {
-      if (name !== "rattle") return;
-      for (let i = 0; i < 7; i++) {
+      if (name !== "bloom") return;
+      for (let i = 0; i < 10; i++) {
         ctx.spawn({
-          x: rand(180, 1100), y: rand(-80, 240),
+          x: rand(180, 460), y: rand(420, 620),
+          z: rand(0.8, 2.6),
+          w: rand(6, 14), h: 0,
+          tex: dotTexture("ember", "rgba(255, 180, 90, 0.9)"),
+          alpha: rand(0.5, 0.75),
+          vx: rand(-30, 30), vy: rand(-380, -220),
+          rot: 0, spin: 0,
+          additive: true,
+          life: 2.5,
+        });
+      }
+    },
+  },
+
+  // -- HARBOR DOCKS. The water glitters behind the quay; a gull crosses the
+  // sunset now and then, in front, high in the sky band.
+  harbor: {
+    every: 0.5,
+    ambient(ctx) {
+      if (Math.random() < 0.12) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        ctx.spawn({
+          x: dir > 0 ? -120 : 1400, y: rand(60, 170),
+          z: rand(1.2, 2.2),
+          w: rand(40, 64), h: 0,
+          tex: gullTexture(),
+          flipX: dir < 0,
+          alpha: rand(0.6, 0.8),
+          vx: dir * rand(90, 150), vy: 0,
+          rot: 0, spin: 0,
+          tilt: 0.1, tiltRate: rand(1.6, 2.4), sway: 8, swayRate: rand(1.6, 2.4),
+          life: 20,
+        });
+        return;
+      }
+      const left = Math.random() < 0.5;
+      ctx.spawn({
+        x: left ? rand(0, 190) : rand(1090, 1280), y: rand(590, 690),
+        z: rand(-3.5, -1.5),
+        w: rand(14, 26), h: 0,
+        tex: dotTexture("sun-glint", "rgba(255, 217, 160, 0.85)"),
+        alpha: rand(0.3, 0.55),
+        vx: rand(-8, 8), vy: 0,
+        rot: 0, spin: 0,
+        behind: true,
+        additive: true,
+        life: rand(1.5, 2.8),
+      });
+    },
+  },
+
+  // -- SKY TERRACE. The cloud deck drifts far behind between gusts; the gust
+  // itself (the same `wind` cue that pushes the fighters) streams wisps
+  // across the foreground in its direction, fast and near-transparent.
+  skyterrace: {
+    every: 2.8,
+    ambient(ctx) {
+      ctx.spawn({
+        x: rand(-400, 1500), y: rand(430, 620),
+        z: rand(-8, -5),
+        w: rand(280, 520), h: 0,
+        tex: cloudTexture(Math.floor(rand(0, 3))),
+        alpha: rand(0.25, 0.4),
+        vx: rand(20, 45), vy: 0,
+        rot: 0, spin: 0,
+        behind: true,
+        life: 40,
+      });
+    },
+    cue(name, strength, ctx) {
+      if (name !== "wind") return;
+      const dir = Math.sign(strength) || 1;
+      for (let i = 0; i < 4; i++) {
+        ctx.spawn({
+          x: dir > 0 ? rand(-2200, -400) : rand(1680, 3480),
+          y: rand(-40, 260),
+          z: rand(1.4, 2.6),
+          w: rand(220, 380), h: 0,
+          tex: cloudTexture(i),
+          alpha: rand(0.25, 0.4),
+          vx: dir * rand(1300, 1800), vy: 0,
+          rot: 0, spin: 0,
+          life: 3,
+        });
+      }
+    },
+  },
+
+  // -- SCRAPYARD 7. Sepia dust rides the +X wind; the magnet's SNAP kicks
+  // scrap tumbling toward the lens (the proven rubble recipe).
+  scrapyard: {
+    every: 0.6,
+    ambient(ctx) {
+      ctx.spawn({
+        x: rand(-100, 1380), y: rand(80, 520),
+        z: rand(0.7, 2),
+        w: rand(4, 9), h: 0,
+        tex: dotTexture("sand-mote", "rgba(214, 176, 136, 0.8)"),
+        alpha: rand(0.2, 0.35),
+        vx: rand(40, 90), vy: rand(-6, 10),
+        rot: 0, spin: 0,
+        sway: 10, swayRate: rand(0.8, 1.6),
+        life: 10,
+      });
+    },
+    cue(name, strength, ctx) {
+      if (name !== "fangSnap") return;
+      for (let i = 0; i < 6; i++) {
+        ctx.spawn({
+          x: rand(300, 980), y: rand(-60, 200),
           z: rand(0.5, 1.6),
-          w: rand(26, 58), h: 0,
+          w: rand(24, 52), h: 0,
           tex: rubbleTexture(i),
           alpha: rand(0.65, 0.9),
           vx: rand(-70, 70), vy: rand(180, 420),
@@ -453,35 +676,321 @@ const SYSTEMS = {
     },
   },
 
-  // The skyline layer, BEHIND the stage: hoardings that catch the storm. They
-  // are static scenery, respawned once per match rather than on a timer, and
-  // the lightning cue flashes them.
-  billboardRoof: {
-    every: 0,
+  // -- CRYSTAL QUARRY. The crystals glitter behind the benches; each
+  // detonation's punch throws a little masonry dust near the lens.
+  quarry: {
+    every: 0.55,
+    ambient(ctx) {
+      ctx.spawn({
+        x: rand(80, 1200), y: rand(240, 560),
+        z: rand(-4.5, -2.2),
+        w: rand(8, 18), h: 0,
+        tex: dotTexture("crystal", "rgba(180, 107, 255, 0.9)"),
+        alpha: rand(0.35, 0.6),
+        vx: 0, vy: rand(-12, -4),
+        rot: 0, spin: 0,
+        behind: true,
+        additive: true,
+        life: rand(1.8, 3),
+      });
+    },
+    cue(name, strength, ctx) {
+      if (name !== "punch") return;
+      for (let i = 0; i < 4; i++) {
+        ctx.spawn({
+          x: rand(300, 980), y: rand(0, 220),
+          z: rand(0.6, 1.6),
+          w: rand(16, 34), h: 0,
+          tex: rubbleTexture(i),
+          alpha: rand(0.4, 0.6),
+          vx: rand(-90, 90), vy: rand(160, 360),
+          rot: rand(0, Math.PI * 2), spin: rand(-6, 6),
+          gravity: 900,
+          life: 2.5,
+        });
+      }
+    },
+  },
+
+  // -- VOLCANIC FORGE. Ember columns climb the edge bands — in front, but
+  // confined where the fight rarely lives; the lake's vent (frenzy) fills
+  // the air with them for a beat.
+  volcano: {
+    every: 0.32,
+    ambient(ctx) {
+      const left = Math.random() < 0.5;
+      const hot = Math.random() < 0.7;
+      ctx.spawn({
+        x: left ? rand(60, 300) : rand(980, 1220), y: rand(420, 720),
+        z: rand(0.7, 2.2),
+        w: rand(5, 12), h: 0,
+        tex: hot ? dotTexture("ember-hot", "rgba(255, 150, 70, 0.95)")
+                 : dotTexture("ash", "rgba(150, 150, 160, 0.7)"),
+        alpha: rand(0.4, 0.65),
+        vx: rand(-14, 14), vy: hot ? rand(-260, -140) : rand(-90, -40),
+        rot: 0, spin: 0,
+        sway: 12, swayRate: rand(1.2, 2.2),
+        additive: hot,
+        life: 6,
+      });
+    },
+    cue(name, strength, ctx) {
+      if (name !== "frenzy") return;
+      for (let i = 0; i < 10; i++) {
+        ctx.spawn({
+          x: rand(-60, 1340), y: rand(380, 700),
+          z: rand(0.8, 2.6),
+          w: rand(6, 14), h: 0,
+          tex: dotTexture("ember-hot", "rgba(255, 150, 70, 0.95)"),
+          alpha: rand(0.5, 0.75),
+          vx: rand(-40, 40), vy: rand(-420, -240),
+          rot: 0, spin: 0,
+          additive: true,
+          life: 3,
+        });
+      }
+    },
+  },
+
+  // -- FROZEN OUTPOST. The aurora hangs and breathes far behind; snow falls
+  // past the lens (near flakes bigger, faster, fainter); the floe's open
+  // hole (the fog cue) steams.
+  frozen: {
+    every: 0.32,
     setup(ctx, settled) {
-      // Placed once and standing for the match, so it is worth waiting for the
-      // drawn hoardings rather than freezing the procedural ones in front of
-      // the player for the whole round.
-      if (!settled && !artTexture("hoarding_a")) return false;
+      // Standing for the match: hold out for the painted curtain while the
+      // loader is still working; fall back for good once it has settled.
+      if (!settled && !artTexture("aurora_curtain")) return false;
+      for (let i = 0; i < 2; i++) {
+        ctx.spawn({
+          x: 300 + i * 460, y: rand(90, 140),
+          z: -9 + i,
+          w: 620 - i * 80, h: 0,
+          tex: auroraTexture(),
+          alpha: 0.35 - i * 0.07,
+          vx: 0, vy: 0, rot: 0, spin: 0,
+          sway: 26 + i * 8, swayRate: 0.12 - i * 0.03, swayAxis: "x",
+          behind: true,
+          additive: true,
+          life: Infinity,
+        });
+      }
+    },
+    ambient(ctx) {
+      const near = Math.random() < 0.3;
+      ctx.spawn({
+        x: rand(-200, 1480), y: rand(-160, -40),
+        z: near ? rand(2.4, 4) : rand(0.7, 1.6),
+        w: near ? rand(10, 20) : rand(5, 9),
+        h: 0,
+        tex: dotTexture("snow", "rgba(234, 246, 255, 0.95)"),
+        alpha: near ? rand(0.3, 0.45) : rand(0.5, 0.75),
+        vx: rand(-24, 24), vy: near ? rand(190, 280) : rand(90, 160),
+        rot: 0, spin: 0,
+        sway: rand(14, 34), swayRate: rand(0.8, 1.8),
+        life: 14,
+      });
+    },
+    cue(name, strength, ctx) {
+      if (name !== "fog") return;
       for (let i = 0; i < 5; i++) {
         ctx.spawn({
-          // Spread across the middle band, clear of the corners the HUD
-          // panels occupy — garnish must never fight the damage readout.
-          x: 235 + i * 205, y: rand(215, 330),
-          z: rand(-5.5, -3.4),
-          w: rand(120, 175), h: 0,
-          tex: billboardTexture(i),
-          alpha: rand(0.6, 0.78),
+          x: rand(430, 850), y: rand(430, 540),
+          z: rand(1, 2),
+          w: rand(120, 200), h: 0,
+          tex: cloudTexture(i),
+          alpha: 0.3,
+          vx: rand(-16, 16), vy: rand(-110, -60),
+          rot: 0, spin: 0,
+          life: 3,
+        });
+      }
+    },
+  },
+
+  // -- DESERT RUINS. Sand streams past on the wind cycle (the same signed
+  // `wind` cue as the push), and the collapse (`layout`) kicks masonry
+  // toward the lens.
+  ruins: {
+    every: 0.5,
+    ambient(ctx) {
+      ctx.spawn({
+        x: rand(-300, 1100), y: rand(120, 560),
+        z: rand(0.8, 2.2),
+        w: rand(60, 130), h: 0,
+        tex: streakTexture("sand", "rgba(230, 196, 140, 0.7)"),
+        alpha: rand(0.16, 0.3),
+        vx: rand(260, 480), vy: rand(-8, 12),
+        rot: 0, spin: 0,
+        life: 4,
+      });
+    },
+    cue(name, strength, ctx) {
+      if (name === "wind") {
+        const dir = Math.sign(strength) || 1;
+        for (let i = 0; i < 8; i++) {
+          ctx.spawn({
+            x: dir > 0 ? rand(-1400, -200) : rand(1480, 2680),
+            y: rand(100, 560),
+            z: rand(0.8, 2.4),
+            w: rand(80, 160), h: 0,
+            tex: streakTexture("sand", "rgba(230, 196, 140, 0.7)"),
+            flipX: dir < 0,
+            alpha: rand(0.2, 0.35),
+            vx: dir * rand(700, 1100), vy: rand(-10, 14),
+            rot: 0, spin: 0,
+            life: 4,
+          });
+        }
+      }
+      if (name === "layout") {
+        for (let i = 0; i < 8; i++) {
+          ctx.spawn({
+            x: rand(140, 620), y: rand(-60, 240),
+            z: rand(0.5, 1.6),
+            w: rand(26, 58), h: 0,
+            tex: rubbleTexture(i),
+            alpha: rand(0.65, 0.9),
+            vx: rand(-70, 70), vy: rand(180, 420),
+            rot: rand(0, Math.PI * 2), spin: rand(-5, 5),
+            gravity: 900,
+            life: 3.5,
+          });
+        }
+      }
+    },
+  },
+
+  // -- JUNGLE TEMPLE. God-ray shafts hang far behind and flare on the
+  // re-light (`bloom`); leaves drift past the lens; fireflies weave between;
+  // the whip's `surge` gusts a shower toward centre.
+  jungle: {
+    every: 0.5,
+    setup(ctx, settled) {
+      // Standing for the match: hold out for the painted shafts while the
+      // loader is still working; fall back for good once it has settled.
+      if (!settled && !artTexture("godray_shaft")) return false;
+      for (let i = 0; i < 3; i++) {
+        ctx.spawn({
+          x: 260 + i * 340, y: rand(120, 180),
+          z: -8 + i * 0.5,
+          w: rand(140, 190), h: 0,
+          tex: rayTexture(),
+          alpha: 0.35,
           vx: 0, vy: 0, rot: 0, spin: 0,
+          sway: 8, swayRate: 0.05, swayAxis: "x",
           behind: true,
+          additive: true,
           life: Infinity,
           flicker: 0,
         });
       }
     },
+    ambient(ctx) {
+      if (Math.random() < 0.25) {
+        ctx.spawn({
+          x: rand(-60, 1340), y: rand(160, 520),
+          z: rand(0.3, 1.2),
+          w: rand(5, 8), h: 0,
+          tex: dotTexture("firefly", "rgba(98, 255, 154, 0.95)"),
+          alpha: rand(0.5, 0.85),
+          vx: rand(-24, 24), vy: rand(-14, 14),
+          rot: 0, spin: 0,
+          sway: 16, swayRate: rand(0.8, 1.4),
+          additive: true,
+          life: rand(3, 5),
+        });
+        return;
+      }
+      const near = Math.random() < 0.35;
+      ctx.spawn({
+        x: rand(-200, 1480), y: rand(-160, -40),
+        // A near leaf is bigger, faster and fainter — the three things that
+        // together read as "close to the lens" rather than "a big leaf".
+        z: near ? rand(2.6, 4.2) : rand(0.9, 1.8),
+        w: near ? rand(46, 74) : rand(22, 34),
+        h: 0,
+        tex: leafTexture(Math.random() < 0.85 ? "#8fce7a" : "#d8c36a"),
+        alpha: near ? rand(0.4, 0.6) : rand(0.7, 0.9),
+        vx: rand(20, 62), vy: rand(70, 130),
+        rot: rand(0, Math.PI * 2), spin: rand(-2.4, 2.4),
+        sway: rand(18, 46), swayRate: rand(1.4, 2.6),
+        life: 14,
+      });
+    },
+    cue(name, strength, ctx) {
+      if (name === "bloom") {
+        for (const c of ctx.cards) if (c.behind) c.flicker = 0.6;
+      }
+      if (name === "surge") {
+        for (let i = 0; i < 8; i++) {
+          ctx.spawn({
+            x: rand(900, 2200), y: rand(-80, 300),
+            z: rand(1.2, 3),
+            w: rand(28, 50), h: 0,
+            tex: leafTexture("#8fce7a"),
+            alpha: rand(0.5, 0.75),
+            vx: rand(-520, -320), vy: rand(60, 160),
+            rot: rand(0, Math.PI * 2), spin: rand(-6, 6),
+            life: 4,
+          });
+        }
+      }
+    },
+  },
+
+  // -- ORBITAL PLATFORM. The starfield drifts far behind, patient; the
+  // debris pass (`lightning`) sends glint streaks through the upper lane in
+  // front — the same event as the chunks that can hit you.
+  orbital: {
+    every: 0.7,
+    ambient(ctx) {
+      if (Math.random() < 0.12) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        ctx.spawn({
+          x: dir > 0 ? -160 : 1440, y: rand(0, 240),
+          z: rand(0.8, 1.8),
+          w: rand(60, 110), h: 0,
+          tex: streakTexture("star-glint", "rgba(200, 235, 255, 0.8)"),
+          flipX: dir < 0,
+          alpha: rand(0.25, 0.4),
+          vx: dir * rand(180, 300), vy: rand(10, 40),
+          rot: 0, spin: 0,
+          additive: true,
+          life: 8,
+        });
+        return;
+      }
+      ctx.spawn({
+        x: rand(-100, 1380), y: rand(-40, 420),
+        z: rand(-10, -6),
+        w: rand(3, 7), h: 0,
+        tex: dotTexture("star", "rgba(240, 248, 255, 0.95)"),
+        alpha: rand(0.4, 0.8),
+        vx: -6, vy: 0, rot: 0, spin: 0,
+        behind: true,
+        additive: true,
+        life: 26,
+      });
+    },
     cue(name, strength, ctx) {
       if (name !== "lightning") return;
-      for (const c of ctx.cards) if (c.behind) c.flicker = 0.5;
+      for (let i = 0; i < 2; i++) {
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        ctx.spawn({
+          x: dir > 0 ? rand(-800, -200) : rand(1480, 2080),
+          y: rand(-60, 120),
+          z: rand(1.2, 2),
+          w: rand(160, 260), h: 0,
+          tex: streakTexture("star-glint", "rgba(200, 235, 255, 0.8)"),
+          flipX: dir < 0,
+          alpha: rand(0.4, 0.55),
+          vx: dir * rand(2200, 2600), vy: rand(120, 220),
+          rot: 0, spin: 0,
+          additive: true,
+          life: 1.5,
+        });
+      }
     },
   },
 };

@@ -19,11 +19,11 @@
 // version of the probe.
 //
 // TWO BOARDS, because world y = 0 is sim y 568 and the sign of the error
-// matters. Training Bridge's main platform sits exactly there (which is why
-// the bug looked like "every platform but the bottom one"); Garden Steps
-// terraces from 584 up to 294, so its whole stage is on the other side of the
-// origin — the case where the foot IK's world-space test fires instead of
-// silently doing nothing.
+// matters. Uptown Plaza's main platform sits at 570, essentially on the
+// origin (which is why the bug looked like "every platform but the bottom
+// one"); Sky Terrace's main is at 576 with perches climbing to 345, so its
+// platforms span both sides of the origin — the case where the foot IK's
+// world-space test fires instead of silently doing nothing.
 //
 // Needs playwright + Chromium (CHROMIUM_PATH to override) and the game served:
 //   node server.mjs   then:  node tools/smoke_ground3d.mjs [baseUrl]
@@ -62,7 +62,7 @@ await page.goto(`${BASE}/index.html?render=3d`);
 await pressStart(page);
 
 // [stage-grid index, board key] — see the note at the top on why two.
-const BOARDS = [[0, "trainingBridge"], [5, "gardenSteps"]];
+const BOARDS = [[2, "uptown"], [4, "skyterrace"]];
 for (const [gridIndex, board] of BOARDS) await run(gridIndex, board);
 
 await browser.close();
@@ -70,7 +70,8 @@ console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
 process.exit(failures ? 1 : 0);
 
 async function run(gridIndex, board) {
-await page.click('[data-character="nobara"]');
+// Whichever fighter sits first in the grid — a roster change cannot strand this.
+await page.locator("[data-character]").first().click();
 await page.waitForTimeout(300);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 8000 });

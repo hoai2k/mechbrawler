@@ -801,7 +801,11 @@ export function ringOut(f) {
 // keep falling forever: no KO, no stock lost, and the round never ends.
 // Returns true when the fighter was rung out and the caller must stop.
 function checkBlastZones(f) {
-  if (f.y > BLAST.bottom || f.x < BLAST.left || f.x > BLAST.right || f.y < BLAST.top) {
+  // Per-stage overrides (stages.js `blast`, merged in initStageFx): Sky
+  // Terrace pulls its side zones in. The constant is the fallback so headless
+  // drivers that never ran a match reset still get sane bounds.
+  const B = state.blast || BLAST;
+  if (f.y > B.bottom || f.x < B.left || f.x > B.right || f.y < B.top) {
     ringOut(f);
     return true;
   }

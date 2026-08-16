@@ -57,7 +57,7 @@ async function bootAndSettle(page, query) {
   await pressStart(page);
   await page.waitForFunction(async () =>
     (await import("/src/state.js")).state.phase === "menu", { timeout: 120000 });
-  await page.click('[data-character="gojo"]');
+  await page.locator("[data-character]").first().click();
   await page.waitForTimeout(300);
   await page.click("#startButton");
   await page.waitForSelector(".stage-card", { timeout: 5000 });
