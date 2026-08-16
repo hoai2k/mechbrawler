@@ -54,6 +54,21 @@ function texture(key, w, h, paint) {
   return tex;
 }
 
+/** Pick a number by whether the PAINTED plate is the one being drawn.
+ *
+ *  A procedural card and its delivered painting are not interchangeable at the
+ *  same alpha. The drawings here are thin by construction — a few translucent
+ *  gradient bands — while a painted plate is a finished picture with its own
+ *  internal density and its own bright core. Handed the same additive alpha,
+ *  the painting reads several times heavier: the aurora that was a suggestion
+ *  behind the outpost became a green wash over the whole arena the day its
+ *  plate landed.
+ *
+ *  So the spawn states BOTH numbers rather than one, and the fallback keeps
+ *  the values it was tuned at. Same card, same motion, same depth — only the
+ *  weight differs, because the two textures genuinely differ. */
+const byArt = (name, painted, drawn) => (artTexture(name) ? painted : drawn);
+
 /** The delivered card for this element, or null if nobody has drawn it.
  *
  *  Round 18F is optional by construction: every card below has a procedural
@@ -568,15 +583,22 @@ const SYSTEMS = {
   },
 
   // -- HARBOR DOCKS. The water glitters behind the quay; a gull crosses the
-  // sunset now and then, in front, high in the sky band.
+  // sunset now and then, high in the sky band and BEHIND the play space.
   harbor: {
     every: 0.5,
     ambient(ctx) {
-      if (Math.random() < 0.12) {
+      if (Math.random() < 0.06) {
         const dir = Math.random() < 0.5 ? 1 : -1;
         ctx.spawn({
-          x: dir > 0 ? -120 : 1400, y: rand(60, 170),
-          z: rand(1.2, 2.2),
+          // BEHIND, not in front. A near-lens card is magnified and pushed
+          // away from the frame's centre by the perspective, and a card that
+          // is already near the top of the world is pushed clean off the top
+          // of the screen: the gulls spawned, flew and retired without ever
+          // being drawn where anyone could see them (`debugStats().garnish`
+          // counted them the whole time). Deep in the sunset they read the way
+          // a distant bird should — small, slow, and behind the fight.
+          x: dir > 0 ? -120 : 1400, y: rand(150, 300),
+          z: rand(-2.5, -1.2),
           w: rand(40, 64), h: 0,
           tex: gullTexture(),
           flipX: dir < 0,
@@ -765,9 +787,9 @@ const SYSTEMS = {
         ctx.spawn({
           x: 300 + i * 460, y: rand(90, 140),
           z: -9 + i,
-          w: 620 - i * 80, h: 0,
+          w: byArt("aurora_curtain", 470, 620) - i * 80, h: 0,
           tex: auroraTexture(),
-          alpha: 0.35 - i * 0.07,
+          alpha: byArt("aurora_curtain", 0.17, 0.35) - i * (0.07 * byArt("aurora_curtain", 0.5, 1)),
           vx: 0, vy: 0, rot: 0, spin: 0,
           sway: 26 + i * 8, swayRate: 0.12 - i * 0.03, swayAxis: "x",
           behind: true,
@@ -874,9 +896,20 @@ const SYSTEMS = {
         ctx.spawn({
           x: 260 + i * 340, y: rand(120, 180),
           z: -8 + i * 0.5,
-          w: rand(140, 190), h: 0,
+          // The painting is a WIDE cone (about 1.6 tall per unit wide) where
+          // the drawing was a narrow shaft (5.3), so taking its height from
+          // its aspect gives a stub of light that stops in mid-air instead of
+          // a beam falling through the canopy. The shaft states its own height
+          // when the plate is in play — a soft vertical gradient stretches
+          // without artefact, and the length IS the read.
+          w: byArt("godray_shaft", rand(200, 270), rand(140, 190)),
+          h: byArt("godray_shaft", rand(460, 560), 0),
           tex: rayTexture(),
-          alpha: 0.35,
+          // The plate is painted very pale — a light shaft, not a light. Against
+          // a canopy backdrop that is already bright green, additive at the
+          // drawing's 0.35 added nothing visible; this is the value the shafts
+          // actually read at. `bloom` still flickers them brighter from here.
+          alpha: byArt("godray_shaft", 0.8, 0.35),
           vx: 0, vy: 0, rot: 0, spin: 0,
           sway: 8, swayRate: 0.05, swayAxis: "x",
           behind: true,

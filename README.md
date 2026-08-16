@@ -91,5 +91,5 @@ Mid-conversion from JJK Brawler II. The live plan and progress tracker is
 - [The roster](docs/characters.md) — every mech's kit and why it is that way
 - [The arenas](docs/arenas.md) — every stage and its hazard
 - [Game mechanics](docs/game-mechanics.md)
-- [Image requests](docs/image-requests.md) — open art round
+- [Image requests](docs/image-requests.md) — the art surface (nothing outstanding today; the delivered briefs are in [the archive](docs/image-requests-history.md))
 - [mechs/PROVENANCE.md](mechs/PROVENANCE.md) — where the models come from

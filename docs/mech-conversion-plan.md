@@ -503,6 +503,36 @@ plays nothing like a platform fighter.
         this seam — 25 checks over both flags, the live switch, the reload and
         the deferral.
 
+- [x] K14. THE LAST ART ROUND LANDED (owner delivered into assets/intake/):
+        the neon mech-head favicon, the results backdrop, and the four arena
+        garnish cards. **docs/image-requests.md is now empty of requests** —
+        every optional asset in src/assets.js resolves (41 effect plates, 16
+        hazard plates, 18 garnish cards), and nothing in the game draws a
+        placeholder.
+
+        `tools/site_identity.py` is new and does the non-sprite half: it crops
+        the 1024px mark to its own ink (a favicon has to survive 16px, and 15%
+        empty border is 15% less glyph) and writes the whole icon set index.html
+        and site.webmanifest name, plus the backdrop copy. The garnish cards
+        went through `tools/effects_intake.py`, which grew a third source for
+        them.
+
+        THREE WIRING FIXES the delivery exposed, all in camera3d/garnish.js: a
+        painted plate is denser than the gradient card it replaces (the aurora
+        washed out the whole arena at the drawing's alpha — spawns now state
+        both values via `byArt`); a painted plate has its own aspect, and the
+        god-ray cone is 1.6 tall per unit wide where the drawn shaft was 5.3
+        (the jungle spawn states its height); and the harbor gulls had been
+        spawning, flying and retiring off the top of the frame the whole time,
+        because near-lens depth magnifies a card and pushes it away from centre
+        — they fly behind the play space now.
+
+        Also fixed here, spotted on the VS splash while checking the art: all
+        34 roster quote strings carried their own straight quotes while the UI
+        wraps them in curly ones, so every intro and victory line was shown
+        double-quoted (`""...""`). The UI owns the punctuation; the data no
+        longer does.
+
 ## Decisions taken
 
 - mechs/lib/ (robotworld's animation runtime) stays REFERENCE ONLY; render3d

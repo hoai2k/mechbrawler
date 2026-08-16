@@ -45,6 +45,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SOURCES = [
     ("effects", ROOT / "assets/intake/effects", ROOT / "assets/sprites/effects"),
     ("ui", ROOT / "assets/intake/ui", ROOT / "assets/ui"),
+    # Garnish cards want exactly the same treatment: they are keyed plates the
+    # 3D camera's garnish layer draws by WIDTH, taking their height from the
+    # plate's aspect (`h: 0` at every spawn site), so untrimmed margin does not
+    # just waste memory — it shrinks the drawing inside its own card and skews
+    # the aspect the height is computed from.
+    ("garnish", ROOT / "assets/intake/garnish", ROOT / "assets/sprites/garnish"),
 ]
 
 # The untouched plates, kept so a trim can be redone.

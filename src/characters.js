@@ -120,8 +120,8 @@ export const CHARACTERS = {
     ai: { style: "heavy", range: 280 },
     blurb: "A decommissioned siege engine that refused to power down. Slow as a glacier, hits like the end of the world. Speaks rarely — mostly in earthquakes.",
     quotes: {
-      intro: "\"I am the wall. I am the wrecking ball.\"",
-      win: "\"Demolition complete. Anything else need... flattening?\"",
+      intro: "I am the wall. I am the wrecking ball.",
+      win: "Demolition complete. Anything else need... flattening?",
     },
   },
 
@@ -174,8 +174,8 @@ export const CHARACTERS = {
     ai: { style: "zoner", range: 460 },
     blurb: "Ex-military fire-support platform with a laugh setting stuck on maniacal. Believes every problem is just insufficient ammunition.",
     quotes: {
-      intro: "\"Say hello to my six little friends!\"",
-      win: "\"HAHAHA! Reload and repeat! WHO'S NEXT?!\"",
+      intro: "Say hello to my six little friends!",
+      win: "HAHAHA! Reload and repeat! WHO'S NEXT?!",
     },
   },
 
@@ -226,8 +226,8 @@ export const CHARACTERS = {
     ai: { style: "rush", range: 260 },
     blurb: "A prototype infiltration unit that developed a taste for theatrics. Strikes from angles geometry teachers refuse to acknowledge.",
     quotes: {
-      intro: "\"Shall we dance? You won't hear the music.\"",
-      win: "\"Ssso predictable. You never even sssaw me.\"",
+      intro: "Shall we dance? You won't hear the music.",
+      win: "Ssso predictable. You never even sssaw me.",
     },
   },
 
@@ -280,8 +280,8 @@ export const CHARACTERS = {
     ai: { style: "heavy", range: 280 },
     blurb: "One horn. One direction. Zero brakes. RHINO once charged through four buildings to win an argument he was already winning.",
     quotes: {
-      intro: "\"You look like something worth flattening.\"",
-      win: "\"HRRNGH! Next time — bring a wall that works!\"",
+      intro: "You look like something worth flattening.",
+      win: "HRRNGH! Next time — bring a wall that works!",
     },
   },
 
@@ -332,8 +332,8 @@ export const CHARACTERS = {
     ai: { style: "balanced", range: 340 },
     blurb: "A weather-control unit that discovered showmanship. Every battle is a concert, every lightning bolt a chord. The crowd goes wild; the crowd is usually on fire.",
     quotes: {
-      intro: "\"Lights up! The show starts NOW.\"",
-      win: "\"⚡ ENCORE? No? Suit yourselves. I was ELECTRIC.\"",
+      intro: "Lights up! The show starts NOW.",
+      win: "⚡ ENCORE? No? Suit yourselves. I was ELECTRIC.",
     },
   },
 
@@ -394,8 +394,8 @@ export const CHARACTERS = {
     ai: { style: "rush", range: 280 },
     blurb: "An autonomous hunter-frame that slipped its leash decades ago. Runs with no pack, answers to no handler, howls at every full moon — and every explosion.",
     quotes: {
-      intro: "\"I smell fear-coolant. It's yours.\"",
-      win: "\"*low growl* ...The hunt was short. Run faster next time.\"",
+      intro: "I smell fear-coolant. It's yours.",
+      win: "*low growl* ...The hunt was short. Run faster next time.",
     },
   },
 
@@ -450,8 +450,8 @@ export const CHARACTERS = {
     ai: { style: "zoner", range: 440 },
     blurb: "A firebase that learned to walk, then learned chess. Plays the long game: every shell placed three moves ahead of where you plan to be.",
     quotes: {
-      intro: "\"Range confirmed. This will be educational.\"",
-      win: "\"Checkmate was eight shells ago. You just heard it now.\"",
+      intro: "Range confirmed. This will be educational.",
+      win: "Checkmate was eight shells ago. You just heard it now.",
     },
   },
 
@@ -507,8 +507,8 @@ export const CHARACTERS = {
     ai: { style: "zoner", range: 520 },
     blurb: "Officially, this unit was scrapped years ago. Officially, nobody is picking off mechs from 800 meters. Officially, you are perfectly safe.",
     quotes: {
-      intro: "\"*static* ...target acquired.\"",
-      win: "\"...you were dead before the round began.\"",
+      intro: "*static* ...target acquired.",
+      win: "...you were dead before the round began.",
     },
   },
 
@@ -561,8 +561,8 @@ export const CHARACTERS = {
     ai: { style: "balanced", range: 340 },
     blurb: "A demolition unit whose safety governor \"fell off\" — twice. Finds fire genuinely hilarious. The laughter you hear over the flames? That's him having the best day ever.",
     quotes: {
-      intro: "\"Who ordered the flame-grilled special?!\"",
-      win: "\"AHAHA! TOASTY! Anyone else cold? ANYONE?\"",
+      intro: "Who ordered the flame-grilled special?!",
+      win: "AHAHA! TOASTY! Anyone else cold? ANYONE?",
     },
   },
 
@@ -615,8 +615,8 @@ export const CHARACTERS = {
     ai: { style: "zoner", range: 460 },
     blurb: "Guardian of a polar research station, promoted to war machine by boredom. Devastating in combat, insufferable at parties — every joke is about ice, and he thinks they all land.",
     quotes: {
-      intro: "\"Chill out. No? Fine — I'll handle it.\"",
-      win: "\"Ice to beat you. ...I'm contractually obligated to say that.\"",
+      intro: "Chill out. No? Fine — I'll handle it.",
+      win: "Ice to beat you. ...I'm contractually obligated to say that.",
     },
   },
 
@@ -669,8 +669,8 @@ export const CHARACTERS = {
     ai: { style: "heavy", range: 340 },
     blurb: "A deep-sea salvage rig that got tired of being salvaged. Waddled ashore trailing kelp and grudges, shell first, questions never. The claws are non-negotiable.",
     quotes: {
-      intro: "\"You look... crackable.\"",
-      win: "\"*bubbling chuckle* Shell: 1. Everything else: 0.\"",
+      intro: "You look... crackable.",
+      win: "*bubbling chuckle* Shell: 1. Everything else: 0.",
     },
   },
 
@@ -734,8 +734,8 @@ export const CHARACTERS = {
     ai: { style: "rush", range: 270 },
     blurb: "Unit MX-7, grown in a black-site lab by a corporation that wanted to end wars by ending everything else. It ate the lab, filed itself as CEO, and went hunting.",
     quotes: {
-      intro: "\"Clever girl? No. Clever MACHINE.\"",
-      win: "\"*metallic shriek* Target archive updated: extinct.\"",
+      intro: "Clever girl? No. Clever MACHINE.",
+      win: "*metallic shriek* Target archive updated: extinct.",
     },
   },
 
@@ -790,8 +790,8 @@ export const CHARACTERS = {
     ai: { style: "zoner", range: 420 },
     blurb: "Vat-grown smart-slime poured into a bounce-frame with four gunk guns and no indoor voice. Jumps like gravity is a suggestion, lands like a lawsuit.",
     quotes: {
-      intro: "\"Four arms. Zero mercy. MAXIMUM GUNK.\"",
-      win: "\"Ribbit means gg. Look it up.\"",
+      intro: "Four arms. Zero mercy. MAXIMUM GUNK.",
+      win: "Ribbit means gg. Look it up.",
     },
   },
 
@@ -859,8 +859,8 @@ export const CHARACTERS = {
     ai: { style: "balanced", range: 340 },
     blurb: "Dredged from a flooded aquaculture lab, JERRY is a colony pretending to be a mech. The cannons are full of something alive. He would like you to hold still.",
     quotes: {
-      intro: "\"They’re hungry. I’m generous.\"",
-      win: "\"*wet clicking* ...the swarm is fed. For now.\"",
+      intro: "They’re hungry. I’m generous.",
+      win: "*wet clicking* ...the swarm is fed. For now.",
     },
   },
 
@@ -917,8 +917,8 @@ export const CHARACTERS = {
     ai: { style: "rush", range: 300 },
     blurb: "Nobody built NULLBOT. It was simply found in the arena's memory one morning, already undefeated. Where it walks, textures tear, audio stutters, and the scoreboard reads NaN.",
     quotes: {
-      intro: "\"> fatal exception 0x00NULLBOT :: you will be nullified\"",
-      win: "\"SEGMENTATION FAULT. core dumped. ...that was you.\"",
+      intro: "> fatal exception 0x00NULLBOT :: you will be nullified",
+      win: "SEGMENTATION FAULT. core dumped. ...that was you.",
     },
   },
 
@@ -974,8 +974,8 @@ export const CHARACTERS = {
     ai: { style: "heavy", range: 280 },
     blurb: "Half the mountain gorilla they started with, half the ordnance they bolted on afterward. The engineers called the arm-graft a success. KONGA calls it the smaller fist.",
     quotes: {
-      intro: "\"*drums chest* ...Come closer. I want to reach you.\"",
-      win: "\"You brought armor. I brought both arms.\"",
+      intro: "*drums chest* ...Come closer. I want to reach you.",
+      win: "You brought armor. I brought both arms.",
     },
   },
 
@@ -1031,8 +1031,8 @@ export const CHARACTERS = {
     ai: { style: "heavy", range: 340 },
     blurb: "Three horns, two cannons, one direction. TRITONE was rebuilt as a mobile gun platform, but nobody told the animal underneath — it still prefers to solve things at a full gallop.",
     quotes: {
-      intro: "\"*low bellow* ...Move, or be moved.\"",
-      win: "\"The horns were enough. The guns were courtesy.\"",
+      intro: "*low bellow* ...Move, or be moved.",
+      win: "The horns were enough. The guns were courtesy.",
     },
   },
 };
