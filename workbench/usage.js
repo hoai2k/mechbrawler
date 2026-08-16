@@ -100,6 +100,11 @@ function build() {
           slotLabel: SLOT_LABEL[slot] || slot,
           anim: SLOT_ANIM[slot] || "idle",
           move: def.name || slot,
+          // The handler that spawns it (specials.js SPECIALS / ultimates.js).
+          // The Preview needs it to know whether this drawing FLIES — a
+          // `projectile` has a speed and a lifetime the preview can integrate,
+          // while a `burst` is a flash the handler paints itself.
+          type: def.type || null,
           p: def.p || null,
         });
       }

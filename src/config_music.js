@@ -6,11 +6,15 @@
 // battle loops serve as the fallback pool. Menu screens play the upstream menu
 // suite at a reduced volume.
 //
-// THE TITLE SCREEN IS SILENT ON PURPOSE. Mech Mayhem's title has no music —
-// its audio signature is the neon sign buzzing (assets/sfx/neon_buzz.mp3,
-// played by the tube-flicker watcher in ui.js), and a track under it would
-// bury the one sound the screen is about. TITLE_TRACK is null and audio.js
-// treats that as "menu track, but let the buzz through".
+// THE MUSIC STARTS ON THE TITLE. The splash and the fighter select are the
+// same menu phase (MENU_PHASES in audio.js), so MENU_TRACK begins the moment
+// the cabinet wakes and plays straight through the hand-over rather than
+// restarting at select. The neon sign still buzzes over it — that is a sound
+// effect on its own element, not a track, so the two coexist.
+//
+// TITLE_TRACK gives the splash a track of its OWN (at full battle volume, not
+// the menu mix) and is null because it should be: a second source means a cut
+// at the hand-over, however well the two pieces match.
 //
 // BOARD_TRACKS is the manifest of what actually exists in assets/music/boards/:
 // a browser cannot list a directory, so the filenames are listed here. After
@@ -33,7 +37,7 @@ export const MENU_TRACK = {
   volumeScale: 0.5,
 };
 
-// The title screen: no track — see the header. The neon buzz is the signature.
+// A splash-only track. Null: the title runs the menu track through — see above.
 export const TITLE_TRACK = null;
 
 // The Music setting, in the order it cycles. `default` plays each stage's own

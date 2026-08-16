@@ -99,7 +99,13 @@ const BOARD_TRACK_SET = new Set(BOARD_TRACKS);
 
 // Menu screens share one track; "playing" gets the battle track; loading and
 // pause stay silent (pause holds the match track rather than switching away).
-const MENU_PHASES = new Set(["menu", "stageSelect", "moves", "settings", "roundOver"]);
+// The TITLE is a menu phase, and that is the whole trick: the splash and the
+// fighter select play the SAME track at the SAME volume, so the music starts
+// the moment the cabinet wakes and then keeps playing straight through the
+// hand-over instead of restarting from 0:00 at select. A separate title track
+// (which is what shipped here before) cannot do that — two sources means a cut,
+// however well the two pieces match.
+const MENU_PHASES = new Set(["title", "menu", "stageSelect", "moves", "settings", "roundOver"]);
 
 // Screens that can be opened FROM a live match without leaving it. Reached that
 // way they behave like pause — the element stops where it is and the battle
@@ -499,17 +505,17 @@ export function syncMusic(phase) {
   // element is only paused, never re-sourced.
   const hold = MATCH_HOLD_PHASES.has(phase) && (matchLive || titleLive);
   const menu = !hold && MENU_PHASES.has(phase);
-  // The title screen is deliberately NOT a menu phase: with TITLE_TRACK null
-  // its src resolves to null and the splash stays silent under the sign buzz;
-  // were a track ever configured again it would play at full battle volume.
-  const title = !hold && phase === "title";
+  // A track configured for the title overrides the menu one for that screen
+  // alone (and plays at battle volume, unscaled). TITLE_TRACK is null today —
+  // the splash runs the menu track through, see MENU_PHASES.
+  const title = !hold && phase === "title" && TITLE_SRC;
   const src = hold ? null
     : phase === "playing" ? battleSrc
     : title ? TITLE_SRC
     : menu ? MENU_SRC
     : null;
   const off = (MUSIC_MODES[audioSettings.musicMode] || MUSIC_MODES[0]).key === "off";
-  const volume = audioSettings.musicVolume * (menu ? MENU_TRACK.volumeScale : 1);
+  const volume = audioSettings.musicVolume * (menu && !title ? MENU_TRACK.volumeScale : 1);
 
   musicEl.muted = audioSettings.muted;
   if (!src || off || audioSettings.muted || audioSettings.musicVolume <= 0) {
