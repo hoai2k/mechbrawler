@@ -186,7 +186,11 @@ export function spawnProjectileScaled(owner, cfg) {
   // A verified muzzle (body_points.js, the "muzzle-points" review) wins; with
   // none, this is the reference offsets scaled by height, exactly as before.
   const key = owner.spriteChar || owner.charKey;
-  const m = muzzlePoint(key, bodyMetrics(key).height, cfg.ox ?? 70, cfg.oy ?? -86);
+  // `cfg.ox`/`cfg.oy` RAW, not defaulted here: muzzlePoint distinguishes "the
+  // handler is placing this shot" from "ask the body where its barrel is", and
+  // defaulting them at the call site would make every spawn look placed and
+  // throw away the muzzle the rig actually carries.
+  const m = muzzlePoint(key, bodyMetrics(key).height, cfg.ox, cfg.oy);
   return spawnProjectile(owner, { ...cfg, ox: m.x, oy: m.y });
 }
 

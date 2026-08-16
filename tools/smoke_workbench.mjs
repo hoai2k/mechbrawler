@@ -142,7 +142,36 @@ check(scaled, `the muzzle is scaled onto the body (kit ${Math.round(spawn.raw.fo
 check(spawn.facts.includes(`${Math.round(spawn.muzzle.x)}px forward`),
   "the panel reports the spawn point the game uses, not the kit's raw offsets");
 check(/muzzle/i.test(spawn.facts),
-  "the panel says whether that muzzle was verified for this mech");
+  "the panel says where that muzzle came from");
+
+// THE RESTORED MUZZLES. MM's exporter ships an `anchor_muzzle*` node per mech
+// and nothing read it until tools/derive_muzzles.mjs, so every gun in the game
+// fired from a reference chest offset scaled by height. The pipeline is a
+// generated config plus a precedence rule, and both are easy to lose quietly —
+// so: the shot leaves a real barrel, and it is NOT the old default.
+const muzzles = await page.evaluate(async () => {
+  const { muzzlePoint, muzzleSource } = await import("/src/body_points.js");
+  const { MODEL_MUZZLES } = await import("/src/config_model_muzzles.js");
+  const { headHeightTarget } = await import("/src/heights.js");
+  const { HEIGHT_BASE_PX } = await import("/src/config_tuning.js");
+  const out = { count: Object.keys(MODEL_MUZZLES).length, mismatched: [], defaulted: [], waveKept: null };
+  for (const [key, m] of Object.entries(MODEL_MUZZLES)) {
+    const p = muzzlePoint(key, headHeightTarget(key));
+    if (Math.round(p.x) !== m.x || Math.round(p.y) !== m.y) out.mismatched.push(key);
+    if (muzzleSource(key).kind !== "model") out.defaulted.push(key);
+  }
+  // A handler that places its own spawn still gets the scaled reference — the
+  // wave ult spaces its walls along the floor and must not collapse them all
+  // onto one barrel.
+  const k = headHeightTarget("glacier") / HEIGHT_BASE_PX;
+  const placed = muzzlePoint("glacier", headHeightTarget("glacier"), 60 + 2 * 54, -86);
+  out.waveKept = Math.abs(placed.x - (60 + 2 * 54) * k) < 1;
+  return out;
+});
+check(muzzles.count >= 15, `${muzzles.count} mechs fire from their own rig anchor`);
+check(!muzzles.mismatched.length, `muzzlePoint returns the measured muzzle${muzzles.mismatched.length ? `: ${muzzles.mismatched.join(", ")} disagree` : ""}`);
+check(!muzzles.defaulted.length, `and reports it as measured${muzzles.defaulted.length ? `: ${muzzles.defaulted.join(", ")} do not` : ""}`);
+check(muzzles.waveKept, "a handler that places its own spawn still overrides the muzzle");
 
 // NO DRAWING IS LEFT WITH A DEAD CONTROL. `nudge: false` on a draw site means
 // the handler paints that art itself and never reads `sharedAdjust`, so X/Y and

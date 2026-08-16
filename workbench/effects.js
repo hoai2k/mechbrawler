@@ -50,7 +50,7 @@ import {
   clearSharedRegistry,
 } from "../src/shared_sprites.js";
 import { EFFECT_PLACEMENT } from "../src/config_effects.js";
-import { muzzlePoint, muzzleIsVerified } from "../src/body_points.js";
+import { muzzlePoint, muzzleSource } from "../src/body_points.js";
 import { STATES, clipNameFor } from "../render3d/src/states.js";
 import { firingUse, referenceMech, LAUNCH_TIME } from "./usage.js";
 import {
@@ -193,8 +193,15 @@ function spawnPointFor(card) {
     return { x: launch.forward, y: launch.y, scaled: false, verified: false };
   }
   const charKey = referenceFor(card).charKey;
-  const m = muzzlePoint(charKey, mechHeightPx(charKey), launch.forward, launch.y);
-  return { x: m.x, y: m.y, scaled: true, verified: muzzleIsVerified(charKey) };
+  // The kit's numbers only when the kit gave them: `muzzlePoint` reads a given
+  // `ox`/`oy` as the handler placing the shot and otherwise answers with this
+  // mech's own muzzle, and passing the registry's defaulted pair would ask the
+  // wrong one of those two questions on every ordinary gun.
+  const m = launch.declared
+    ? muzzlePoint(charKey, mechHeightPx(charKey), launch.forward, launch.y)
+    : muzzlePoint(charKey, mechHeightPx(charKey));
+  return { x: m.x, y: m.y, scaled: true, declared: !!launch.declared,
+           src: muzzleSource(charKey) };
 }
 
 /** Where the drawing sits, in game pixels relative to the mech's feet, before
@@ -744,16 +751,22 @@ function factLines(card) {
   if (info?.launch) {
     const spawn = spawnPointFor(card);
     const at = `${Math.round(spawn.x)}px forward, ${Math.round(-spawn.y)}px up`;
-    // Say WHICH point this is. The kit's raw pair is the reference body's, and
-    // on a mech who is not that size the number the game uses is a different
-    // one — so the fact carries both, and names the reason they differ.
-    out.push(["leaves at", spawn.scaled && !spawn.verified
-      ? `${at} — the reference muzzle (${Math.round(info.launch.forward)}, ${Math.round(info.launch.y)}) scaled to this mech's height`
+    // Say WHICH point this is — the three answers muzzlePoint can give are
+    // three different degrees of "somebody meant this", and a bare number
+    // cannot tell them apart.
+    out.push(["leaves at", spawn.declared
+      ? `${at} — the move's own offset (${Math.round(info.launch.forward)}, ${Math.round(info.launch.y)}) scaled to this mech's height`
       : at]);
     if (spawn.scaled) {
-      out.push([spawn.verified ? "muzzle" : "⚠ muzzle", spawn.verified
-        ? `verified for ${use?.charName || "this mech"} — src/config_body_points.js`
-        : `NOT verified for ${use?.charName || "this mech"}: nobody has said where their barrel is, so the game spawns from the reference body's chest line scaled by height (src/config_body_points.js is empty)`]);
+      const who = use?.charName || "this mech";
+      const kind = spawn.declared ? null : spawn.src?.kind;
+      if (kind === "model") {
+        out.push(["muzzle", `${who}'s own — ${spawn.src.anchor} on the rig, posed in ${spawn.src.clip} (Mech Mayhem's anchor, tools/derive_muzzles.mjs)`]);
+      } else if (kind === "pinned") {
+        out.push(["muzzle", `pinned for ${who} by hand — src/config_body_points.js`]);
+      } else if (kind === "reference") {
+        out.push(["⚠ muzzle", `NO muzzle for ${who}: their rig's anchor was rejected as unusable, so the shot leaves the reference body's chest line scaled by height. Pin one in src/config_body_points.js.`]);
+      }
     }
   }
   if (info?.hit) {

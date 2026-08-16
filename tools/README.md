@@ -50,6 +50,11 @@ if yours is elsewhere).
 - `derive_attack_envelopes.mjs` — measures per-mech attack reach from the
   rigs into src/config_model_reach.js (pending a mech re-run; the table is
   empty since the JJK rigs were deleted).
+- `derive_muzzles.mjs` — measures where each mech's shot leaves it from the
+  `anchor_muzzle*` nodes MM's exporter ships, into src/config_model_muzzles.js.
+  `--check` (no browser) fails while that file is stale; `npm run check` runs
+  it. Anchors that land behind the centre line or under the floor are rejected
+  and named, not shipped — see docs/mm-exporter-notes.md.
 - `blender_*.py`, `bake_*.py`, `*_model_*` — Blender/GLB surgery utilities.
 
 The JJK-era rigs (voice-take audits, the audio workbench bench, sprite-era

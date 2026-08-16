@@ -77,6 +77,47 @@ frame. If a transform has to be applied, apply it above the joints.**
 
 ---
 
+## Fix 3 — two mechs' muzzle anchors are not on a muzzle
+
+The `anchor_<name>` empties are the best thing in this export: `core`,
+`overhead`, `boostL/R` and `muzzleL/R` per mech, parented to the bones that
+carry them, so they follow the animation. This game now reads the muzzles —
+`tools/derive_muzzles.mjs` poses each rig in its own shoot clip and takes the
+anchor, and every shot in the game spawns there. Fifteen of the seventeen land
+exactly where the art says a barrel is: Wraith's on his rifle tip 82% of a body
+forward, Tritone's on the barrels at 98%, Vulcan's on the gatling at 56%.
+
+Two do not, and both look like the exporter rather than the model.
+
+**Nullbot — both anchors are the hips fallback.** `muzzleR` and `muzzleL` are
+parented to `hips`, they are within 2px of each other, they are **12px below
+the foot line**, and they do not move in ANY clip (idle, shoot, lunge and the
+ult all read 18, +12). That is the signature of the search for a weapon bone
+failing and something parenting to the root instead. A shot leaving there comes
+out of the floor between his feet.
+
+**Colossus — the anchors are on the rear artillery tubes.** `muzzleR`/`muzzleL`
+sit **behind the centre line in every pose measured** — -17px in idle, -40px at
+the release beat of `brace`, -53px at the deepest point of the ult, all of them
+about 1.2 body-heights up. Read against the model, that is the pair of tubes
+over his back, and it may be exactly right for MM, where a mech is seen from
+any angle and artillery can fire over its own shoulder. It is unusable in a
+side-on fighter: the shell would appear behind him and fly out through his
+chest. If those tubes are what he fires, this game needs a second anchor on
+whatever faces forward; if they are not, the anchors are on the wrong bone.
+
+Both mechs are excluded from the generated config and fall back to a
+roster-wide default, so they are the only two whose guns still fire out of the
+middle of the machine.
+
+**The rule to keep: an anchor should be somewhere a thing can come OUT of, and
+a fallback should be absent rather than wrong.** An anchor that quietly lands on
+the hips is worse than no anchor at all — the importer cannot tell it from a
+real one without measuring it against the body, which is what this game now has
+to do.
+
+---
+
 ## Advice for anyone exporting from a procedural animation system
 
 These are not exporter bugs; they are the traps this conversion fell into. They

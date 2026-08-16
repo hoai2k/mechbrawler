@@ -98,8 +98,18 @@ plays nothing like a platform fighter.
 - [x] M5. Relative sizing (manifest heightM + characters heightCm) (heightM in manifest; characters.js heightCm pending): heightM per mech from the export feeding the
         existing height-compression curve, so the roster keeps its real
         ordering (a 4 m frog next to a 12+ m artillery walker).
-- [ ] M6. Anchors: muzzle/boost/core/overhead as FX attachment points for
-        the new powers.
+- [~] M6. Anchors: muzzle/boost/core/overhead as FX attachment points for
+        the new powers. MUZZLES DONE — the exporter has always shipped
+        `anchor_muzzleL/R` per mech and nothing read them, so every gun in the
+        game fired from a reference chest offset scaled by height (58% up the
+        body, for all seventeen). `tools/derive_muzzles.mjs` now poses each rig
+        in its own shoot clip, takes whichever muzzle points further forward,
+        and writes src/config_model_muzzles.js; body_points.muzzlePoint reads it
+        below a hand-pinned point and above the old default. 15/17 restored —
+        Colossus's anchors are on his rear artillery tubes and Nullbot's are the
+        exporter's hips fallback, both reported in docs/mm-exporter-notes.md and
+        both still on the fallback. Still to do: boost/core/overhead (jet flame,
+        install aura and status pips are still placed by hand).
 
 ## Phase 4 — the arenas
 

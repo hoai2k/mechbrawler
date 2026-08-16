@@ -449,6 +449,47 @@ export function measureIdleHeight(charKey, rigEntry = null, clip = null) {
 }
 
 /**
+ * WHERE AN EXPORTED ANCHOR IS, posed — the instrument behind
+ * tools/derive_muzzles.mjs.
+ *
+ * Every mech leaves MM's exporter with a set of empty nodes named
+ * `anchor_<name>` (mechs/<key>.json lists them): `core` on the torso,
+ * `overhead` on the head, `boostL`/`boostR` on the feet, and `muzzleL`/
+ * `muzzleR` on whatever fires — a cannon, a hand, a rifle tip. They are the
+ * game's own statement about where a shot leaves that machine, they are
+ * parented to the bones that carry them, and so they move with the animation.
+ *
+ * Nothing read them until now: tools/mech_intake.mjs imports geometry, height
+ * and clips, and plan task M6 ("Anchors: muzzle/boost/core/overhead as FX
+ * attachment points") was never started — so combat.js spawned every shot in
+ * the game from a reference offset scaled by height instead.
+ *
+ * Returns `{ f, u }` per requested anchor in METRES in the rig's own frame
+ * (+z forward, +y up, origin at the feet), the same frame and units
+ * `measureAttackReach` reports its strike points in, so a caller converts with
+ * the same `targetPx * renderScale / heightM`.
+ */
+export function measureAnchors(charKey, names, state = "idle", t = 0) {
+  const rig = RIGS.get(charKey);
+  if (!rig || rig.isMannequin) return null;
+  const resolved = resolveClip(charKey, state) || resolveClip(charKey, "idle");
+  if (!resolved) return null;
+  // Posed, not in bind: a muzzle rides the arm that raises it, and the pose a
+  // shot leaves from is the one worth measuring.
+  poseRig(rig, state, t, resolved.clip, { charKey, stanceDeg: rig.stanceDeg || 0 });
+  rig.root.updateMatrixWorld(true);
+  const out = {};
+  for (const name of names) {
+    const node = rig.root.getObjectByName(`anchor_${name}`);
+    if (!node) continue;
+    const world = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld);
+    const local = rig.root.worldToLocal(world);
+    out[name] = { f: local.z, u: local.y };
+  }
+  return { clip: resolved.clip, source: resolved.source, anchors: out };
+}
+
+/**
  * Measure how far forward (and how high) a rig's attack clips actually reach,
  * in METRES from the root origin — the instrument behind
  * tools/derive_attack_envelopes.mjs.

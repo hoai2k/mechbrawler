@@ -480,10 +480,19 @@ function buildRegistry() {
   // This is what lets the workbench stand the drawing where the move actually
   // puts it, beside the pose that throws it, instead of alone in the middle of
   // a canvas: a beam can be lined up with the hand that fires it.
+  //
+  // `declared` says whether those numbers are the KIT's or the default. It
+  // matters because combat.spawnProjectileScaled asks body_points.muzzlePoint,
+  // which reads them as the caller placing the shot itself and otherwise
+  // answers with the mech's own muzzle — the anchor MM's exporter ships. A
+  // viewer that could not tell the two apart would draw the default where the
+  // game draws a barrel.
   const LAUNCH = {
-    projectile: (n) => ({ forward: n.ox ?? 70, y: n.oy ?? -86 }),
-    // The wave handler overrides ox itself, one wave per 54px: `ox: 60 + i * 54`.
-    wave: (n) => ({ forward: 60, y: n.oy ?? -86 }),
+    projectile: (n) => ({ forward: n.ox ?? 70, y: n.oy ?? -86,
+                          declared: Number.isFinite(n.ox) || Number.isFinite(n.oy) }),
+    // The wave handler overrides ox itself, one wave per 54px: `ox: 60 + i * 54`
+    // — placed by the handler, so never the muzzle.
+    wave: (n) => ({ forward: 60, y: n.oy ?? -86, declared: true }),
     // spawnSummonFlash: on the ground at the fighter's feet (`owner.y + 12`),
     // `forward` px ahead of them, each handler passing its own.
     swap: () => ({ forward: 0, y: 12 }),
