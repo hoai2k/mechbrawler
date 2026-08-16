@@ -90,9 +90,10 @@ export const audioSettings = {
 // Filenames carry spaces, so every src is encoded before it reaches the element.
 const trackUrl = (dir, file) => new URL(encodeURI(`${dir}${file}${MUSIC_EXT}`), ASSET_BASE).href;
 const MENU_SRC = trackUrl(MUSIC_DIR, MENU_TRACK.file);
-// The title screen's own track. A battle track, played at battle volume — see
-// TITLE_TRACK in config_music.js: null means the title screen is SILENT —
-// its audio signature is the neon buzz, not a track.
+// A track for the title screen ALONE, played at battle volume rather than the
+// menu mix — see TITLE_TRACK in config_music.js. Null (as it is today) means
+// the splash runs the menu track straight through into the fighter select
+// instead, so there is no cut at the hand-over.
 const TITLE_SRC = TITLE_TRACK ? trackUrl(MUSIC_DIR, TITLE_TRACK.file) : null;
 const FALLBACK_SRCS = FALLBACK_TRACKS.map((t) => trackUrl(MUSIC_DIR, t.file));
 const BOARD_TRACK_SET = new Set(BOARD_TRACKS);

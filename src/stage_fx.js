@@ -24,7 +24,7 @@ import { burst, dust, popup, banner, ring, sparkLine, spriteFlash } from "./part
 import { getImage } from "./assets.js";
 import { hitboxRect, shieldBreak } from "./combat.js";
 import { sharedAdjust, stageFxSpec } from "./shared_sprites.js";
-import { clamp, sign } from "./utils.js";
+import { clamp, lerp, sign } from "./utils.js";
 // Camera cues: each gimmick pokes the 2.5D rig at its big moment. A no-op in
 // flat mode (camera_mode.js swallows the call when no rig is listening), so
 // nothing here needs to know which renderer is running.
@@ -47,8 +47,24 @@ export function initStageFx() {
 
   if (stage.mods) Object.assign(state.stageMods, stage.mods);
 
+  // Scheduled platform motion comes from the platforms themselves (stages.js
+  // `sway`/`traverse`/`waypoints`), so a board can move a platform without a
+  // line of code here. It rides in the SAME entity as the hazard rather than
+  // one of its own, which keeps two things true: motion steps before the
+  // hazard reads a platform's position, and a board is still exactly one
+  // owner-less entity however many of its platforms move.
+  const motion = platformMotion(state.platforms);
   const make = STAGE_FX[stage.key];
-  if (make) state.entities.push({ owner: null, ...make(stage) });
+  const fx = make ? make(stage) : null;
+  if (!fx && !motion) return;
+  state.entities.push({
+    owner: null,
+    ...fx,
+    update(dt) {
+      motion?.(dt);
+      fx?.update(dt);
+    },
+  });
 }
 
 // ----------------------------------------------------------------- helpers
@@ -129,6 +145,105 @@ function movePlatform(plat, nx, ny) {
 }
 
 const smoothstep = (t) => t * t * (3 - 2 * t);
+
+// ------------------------------------------- declarative platform motion
+//
+// Three boards move a platform on a schedule, and all three used to do it by
+// hand at the top of their hazard's update: the foundry's hook swinging on its
+// chain, the harbor's spreader traversing its gantry, the orbital arm gliding
+// between three stops. The MOTION is now data on the platform itself
+// (stages.js `sway` / `traverse` / `waypoints`) driven by the one updater
+// below, so a board that wants a moving platform is a few numbers in stages.js
+// rather than another hand-rolled loop — and each hazard keeps only the code
+// that is actually about the hazard.
+//
+// Event-driven movement stays imperative and belongs to its gimmick: the
+// ruins' lintel falls because somebody broke a column, not because the clock
+// came round. This is for platforms that move whether or not anyone is
+// watching.
+//
+// Every mode here is a pure function of state.matchTime — the one exception is
+// the sway's weight dip, which has to ease toward its target — so winding the
+// clock forward (tools/smoke_stages.mjs does exactly that) puts a platform
+// where that moment says it belongs, instead of wherever an integration had
+// drifted to.
+
+// How fast a laden platform settles onto its suspension, per second.
+const DIP_EASE = 8;
+
+/** Where a `traverse` platform's left edge sits at time `t`. Legs alternate
+ *  direction; `pause` is dwell time split across the two ends of each leg, so
+ *  the platform arrives, waits, and sets off again. */
+function traverseX({ x1, x2, period, pause = 0 }, t) {
+  const half = period / 2;
+  const leg = Math.floor(t / half);
+  const k = smoothstep(clamp(((t % half) - pause / 2) / (half - pause), 0, 1));
+  return leg % 2 === 0 ? x1 + (x2 - x1) * k : x2 - (x2 - x1) * k;
+}
+
+/** Where a `waypoints` platform sits at time `t`: one stop per leg, easing in
+ *  over `ease` seconds and then holding there for the rest of the leg. */
+function waypointAt({ points, period, ease = 2 }, t, home) {
+  const n = points.length;
+  const legDur = period / n;
+  const leg = Math.floor(t / legDur);
+  const to = points[leg % n];
+  // The first leg sets off from wherever the board authored the platform;
+  // after that, from the stop the previous leg arrived at.
+  const from = leg === 0 ? home : points[(leg - 1) % n];
+  const k = smoothstep(clamp((t % legDur) / ease, 0, 1));
+  return { x: lerp(from.x, to.x, k), y: lerp(from.y, to.y, k) };
+}
+
+/** Build the per-match motion runner for `platforms`, or null when this board
+ *  has nothing that moves. Called once from initStageFx; the runner it returns
+ *  is stepped every frame BEFORE the stage's hazard, so a hazard that reads a
+ *  moving platform's position (the harbor's drop waits for its spreader to
+ *  reach the middle) sees where the platform is now, not where it was. */
+function platformMotion(platforms) {
+  const moving = platforms.filter((p) => p.sway || p.traverse || p.waypoints);
+  if (!moving.length) return null;
+  for (const p of moving) {
+    // The authored position is home: every mode is expressed against it, and
+    // these are the per-match platform COPIES (main.js), so writing here
+    // cannot leak into the stage table.
+    p.homeX = p.x;
+    p.homeY = p.y;
+    p.dipNow = 0;
+  }
+  return (dt) => {
+    const t = state.matchTime;
+    for (const p of moving) {
+      // Where the platform's mounting is this instant...
+      let x = p.homeX;
+      let y = p.homeY;
+      if (p.traverse) x = traverseX(p.traverse, t);
+      if (p.waypoints) {
+        const at = waypointAt(p.waypoints, t, { x: p.homeX, y: p.homeY });
+        x = at.x;
+        y = at.y;
+      }
+      // ...and how the platform itself hangs off it. Sway is an offset, so a
+      // board can hang a swinging platform from a traversing gantry.
+      if (p.sway) {
+        const { ampX = 0, rate = 1, ampY = 0, rateY = rate, dip = 0 } = p.sway;
+        x += Math.sin(t * rate) * ampX;
+        y += Math.sin(t * rateY) * ampY;
+        if (dip) {
+          const laden = fighters().some((f) => f.grounded && f.currentPlatform === p);
+          p.dipNow += ((laden ? dip : 0) - p.dipNow) * Math.min(1, dt * DIP_EASE);
+          y += p.dipNow;
+        }
+      }
+      // A mistuned config (a `pause` as long as its own leg) can divide by
+      // zero, and a NaN here would ride straight into the position of every
+      // fighter standing on the platform and hang the match. Leaving it parked
+      // instead is both survivable and loud: a platform that declares motion
+      // and never moves is what tools/smoke_stages.mjs fails on.
+      if (Number.isFinite(x) && Number.isFinite(y)) movePlatform(p, x, y);
+    }
+  };
+}
 
 /**
  * A delivered hazard plate, drawn over the procedural hazard it dresses.
@@ -344,21 +459,16 @@ const STAGE_FX = {
   foundry(stage) {
     const PERIOD = 20, TELEGRAPH = 1.2, POUR = 1.5, COOL = 4;
     const plat = mainPlatform(state.platforms);
+    // The hook's swing and its suspension are the platform's own `sway`
+    // (stages.js); this board only needs to know where it ended up, to hang
+    // the chain off it.
     const hook = state.platforms[2]; // the hanging hook platform (stages.js)
-    const hookBase = { x: hook.x, y: hook.y };
-    let hookDip = 0;
     const strip = { x: plat.x + 24, w: 210 };
     let warned = -1, poured = -1;
     let patchUntil = -1e9;
     const embers = Array.from({ length: 14 }, (_, i) => ({ seed: i * 71.3, t: 0 }));
     return {
       update(dt) {
-        // hook suspension + gentle sway
-        const laden = fighters().some((f) => f.grounded && f.currentPlatform === hook);
-        hookDip += ((laden ? 6 : 0) - hookDip) * Math.min(1, dt * 8);
-        const sway = Math.sin(state.matchTime * 0.9) * 10;
-        movePlatform(hook, hookBase.x + sway, hookBase.y + hookDip + Math.sin(state.matchTime * 1.7) * 2);
-
         const n = Math.floor(state.matchTime / PERIOD);
         const t = state.matchTime % PERIOD;
         const pourAt = PERIOD - POUR - 0.1;
@@ -528,9 +638,12 @@ const STAGE_FX = {
   // it — crush, strong spike — and the container remains as temporary
   // terrain until it takes 3 hits.
   harbor(stage) {
-    const CYCLE = 14, PAUSE = 2;
     const spreader = state.platforms[5]; // the crane spreader (stages.js)
-    const X_MIN = 210, X_MAX = 670;
+    // The spreader's traverse is the platform's own (stages.js `traverse`).
+    // The container schedule counts its LEGS, so it reads the cycle off that
+    // same config rather than keeping a second copy of the number: retune the
+    // gantry in stages.js and the horn still sounds on the right pass.
+    const CYCLE = spreader.traverse.period;
     let pass = 0, lastLeg = -1;
     let carrying = false;
     let dropped = null;   // falling container { x, y, vy, landY }
@@ -560,19 +673,14 @@ const STAGE_FX = {
           g.y += Math.sin(g.t * 1.7) * 14 * dt;
           if (g.x < -80 || g.x > 1360) gulls.splice(i, 1);
         }
-        // traversal: pause | cross | pause | cross, one leg per CYCLE/2
-        const leg = Math.floor(state.matchTime / (CYCLE / 2)); // even: L→R, odd: R→L
-        const legT = state.matchTime % (CYCLE / 2);
-        const goingRight = leg % 2 === 0;
+        // one leg per half-cycle: every third leg carries a container
+        const leg = Math.floor(state.matchTime / (CYCLE / 2));
         if (leg !== lastLeg) {
           lastLeg = leg;
           pass += 1;
           carrying = pass % 3 === 0 && !dropped && !block;
           if (carrying) playSfx("hazardBell", 0.75, 0.5); // the horn
         }
-        const k = smoothstep(clamp((legT - PAUSE / 2) / (CYCLE / 2 - PAUSE), 0, 1));
-        const nx = goingRight ? X_MIN + (X_MAX - X_MIN) * k : X_MAX - (X_MAX - X_MIN) * k;
-        movePlatform(spreader, nx, spreader.y);
 
         // the drop, over the middle
         const mid = spreader.x + spreader.w / 2;
@@ -1623,13 +1731,9 @@ const STAGE_FX = {
   // brackets on two entry points (1.5s), then two satellite chunks streak
   // through the upper platform zone — the high ground is periodically
   // artillery country.
+  // (The arm's three-stop drift is the platform's own `waypoints` in
+  // stages.js — nothing here has to run it.)
   orbital(stage) {
-    const arm = state.platforms[1]; // the robotic arm's forearm (stages.js)
-    const ARM_STOPS = [{ x: 280, y: 430 }, { x: 540, y: 405 }, { x: 760, y: 435 }];
-    const ARM_LOOP = 16, GLIDE = 2;
-    let armLeg = -1;
-    let glide = null;
-
     const PERIOD = 30, TELEGRAPH = 1.5, PASS = 0.7;
     const LANE = { yMin: 260, yMax: 460 };
     let chunks = null; // [{ x, y, vx, vy, hit:Set }]
@@ -1637,21 +1741,6 @@ const STAGE_FX = {
     let entries = null; // the two telegraphed entry points
     return {
       update(dt) {
-        // the arm's three-stop drift
-        const leg = Math.floor(state.matchTime / (ARM_LOOP / 3));
-        if (leg !== armLeg) {
-          armLeg = leg;
-          const to = ARM_STOPS[leg % 3];
-          glide = { from: { x: arm.x, y: arm.y }, to, t: 0 };
-        }
-        if (glide) {
-          glide.t += dt;
-          const k = smoothstep(Math.min(1, glide.t / GLIDE));
-          movePlatform(arm, glide.from.x + (glide.to.x - glide.from.x) * k,
-            glide.from.y + (glide.to.y - glide.from.y) * k);
-          if (glide.t >= GLIDE) glide = null;
-        }
-
         // the debris pass
         const n = Math.floor(state.matchTime / PERIOD);
         const t = state.matchTime % PERIOD;

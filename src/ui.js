@@ -6,9 +6,11 @@ import { cpuLevelName } from "./ai.js";
 import { METER_MAX, TIME_OPTIONS, INHERENT_ENERGY } from "./constants.js";
 import { clamp } from "./utils.js";
 import { padsMenuState, padsMenuStates } from "./input.js";
-import { preloadChar } from "./render_backend.js";
+import { preloadChar, frameStyle, setFrameStyle, renderStyle, setRenderStyle } from "./render_backend.js";
 import { previewCharacter, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
 import { CHARACTER_QUOTES, QUOTE_INTRO, QUOTE_WIN, RANDOM_GROUP, TEXT } from "./config_menus.js";
+import { cardFocus } from "./config_cards.js";
+import { ROSTER_ASPECTS } from "./config_menus.js";
 import { CONTROL_ROWS, rowAtPad } from "./config_controls.js";
 import { MATCH_MODES, MAX_FIGHTERS, matchPlan, modeLabel, HUMAN_TEAM } from "./modes.js";
 
@@ -24,6 +26,26 @@ let movesReturnPhase = "menu";
 // each player actually wants is their OWN fighter, not a tour of the roster.
 let movesMode = "players";
 let settingsReturnPhase = "menu";
+// A shading choice made mid-match, waiting for the page to come back up.
+let pendingRenderStyle = null;
+
+/** Is there a fight to lose by reloading? Paused counts — the pause screen is
+ *  the usual way into Settings from a match. */
+function matchInProgress() {
+  return (state.phase === "playing" || state.phase === "paused"
+    || settingsReturnPhase === "playing" || settingsReturnPhase === "paused")
+    && (state.fighters?.length || 0) > 0;
+}
+
+/** Come back up in the chosen shading style. The preference is stored, so the
+ *  URL only needs pinning when it already pins the OTHER style — a `?render=`
+ *  left over from a comparison link outranks the setting (style.js), and a
+ *  reload that visibly ignored the button would read as a bug. */
+function reloadForRenderStyle(style) {
+  const url = new URL(location.href);
+  if (url.searchParams.has("render")) url.searchParams.set("render", style);
+  location.replace(url.toString());
+}
 
 const STOCK_OPTIONS = [1, 2, 3, 5];
 const PLAYER_IDS = [1, 2, 3, 4];
@@ -61,7 +83,8 @@ export function initUi(cb) {
     "movesModeButton",
     "randomStageButton", "stageBackButton", "roundKicker", "winnerText", "rematchButton", "menuButton",
     "resumeButton", "pauseResetButton", "pauseMenuButton",
-    "settingsSfxButton", "settingsMusicButton", "settingsCpuButton", "settingsStocksButton", "settingsTimeButton", "settingsBoardsButton", "musicVolumeRange", "musicVolumeLabel",
+    "settingsSfxButton", "settingsMusicButton", "settingsCpuButton", "settingsStocksButton", "settingsTimeButton", "settingsBoardsButton",
+    "settingsFramesButton", "settingsRenderButton", "musicVolumeRange", "musicVolumeLabel",
     "sfxVolumeRange", "sfxVolumeLabel", "settingsBackButton",
   ]) {
     els[id] = $(id);
@@ -338,6 +361,24 @@ function heroCardSrc(key) {
   return `assets/cards/${key}_card.jpg`;
 }
 
+/** A card's crop focus (src/config_cards.js) as an inline custom property.
+ *  Eight differently-shaped holes crop these paintings and styles.css aims
+ *  every one of them off this single number — `object-position: 50%
+ *  var(--card-focus, 0%)`. Emitted only when it is not the 0 default, so a card
+ *  nobody has tuned still produces exactly the markup it always did. */
+function cardFocusStyle(key) {
+  const focus = cardFocus(key);
+  return focus ? ` style="--card-focus:${focus}%"` : "";
+}
+
+/** The same, for an <img> the caller already holds. Always writes, even for 0:
+ *  these elements are REUSED as the fighter changes, so an unset property would
+ *  leave the previous character's focus aiming this one's crop. */
+function setHeroCard(img, key) {
+  img.src = heroCardSrc(key);
+  img.style.setProperty("--card-focus", `${cardFocus(key)}%`);
+}
+
 /** A fighter's spoken line for one SCREEN. The VS splash asks for their
  *  walk-on (`intro`), the results podium for their victory line (`win`) —
  *  characters.js writes both, and asking for the wrong one is how every mech's
@@ -364,7 +405,7 @@ function buildCharacterCard(key) {
   btn.dataset.character = key;
   btn.innerHTML = random
     ? `<b class="random-glyph">${TEXT.slot.randomGlyph}</b><span>${name}</span>`
-    : `<img src="${rosterTileSrc(key)}" alt="${name}"><span>${name}</span>`;
+    : `<img src="${rosterTileSrc(key)}"${cardFocusStyle(key)} alt="${name}"><span>${name}</span>`;
   btn.addEventListener("click", () => {
     const slot = steeredSlot(state.activePicker);
     if (slot !== state.activePicker) { setPickerCursor(slot, key); return; }
@@ -386,10 +427,6 @@ function buildCharacterCard(key) {
 // so buys wider cards, at the cost of height.
 const MIN_ROSTER_ROWS = 2;
 const MAX_ROSTER_ROWS = 5;
-
-// Portrait shapes the fitter may fall back to, tallest first — cropping the art
-// is how a row count that is otherwise right survives a short window.
-const ROSTER_ASPECTS = ["3 / 4", "1 / 1", "5 / 4", "3 / 2", "2 / 1"];
 
 // Under this, the name plate starts losing characters, so a layout this narrow
 // is only ever taken as a last resort.
@@ -781,6 +818,26 @@ function bindMenuButtons() {
     state.activeBoards = !state.activeBoards;
     updateMenuButtons();
   });
+  // Animation frame style: live, both ways, mid-match included. The pose cache
+  // is dropped for us (render3d backend.setFrameStyle) so the change shows on
+  // the very next frame rather than as poses age out.
+  els.settingsFramesButton.addEventListener("click", () => {
+    setFrameStyle(frameStyle() === "twos" ? "smooth" : "twos");
+    updateMenuButtons();
+  });
+  // Shading style: the one setting that cannot take effect in place — the
+  // materials are converted when a rig loads and the light rig is built when
+  // the scene inits, so the page has to come back up. Out of a fight that is a
+  // reload the moment it is chosen; DURING one it is remembered and the label
+  // says "(on restart)", because dropping a live match to change a shader is
+  // not a trade anyone asked for.
+  els.settingsRenderButton.addEventListener("click", () => {
+    const next = (pendingRenderStyle ?? renderStyle()) === "toon" ? "pbr" : "toon";
+    const needsReload = setRenderStyle(next);
+    pendingRenderStyle = needsReload ? next : null;
+    updateMenuButtons();
+    if (needsReload && !matchInProgress()) reloadForRenderStyle(next);
+  });
   const musicClick = () => {
     cycleMusicMode();
     updateMenuButtons();
@@ -905,6 +962,10 @@ export function updateMenuButtons() {
   );
   els.settingsBoardsButton.textContent = TEXT.settings.activeBoards(state.activeBoards);
   els.settingsSfxButton.textContent = TEXT.settings.sfxEnabled(state.sfxEnabled);
+  els.settingsFramesButton.textContent = TEXT.settings.frames(frameStyle());
+  els.settingsRenderButton.textContent = pendingRenderStyle
+    ? TEXT.settings.renderPending(pendingRenderStyle)
+    : TEXT.settings.render(renderStyle());
 }
 
 // Stat bars for the hero cards, normalized against the full roster so a bar
@@ -989,9 +1050,24 @@ function markedKey(id) {
  *  than one player's colour winning and the others vanishing. The rings are
  *  built here instead of in CSS because the combinations are the power set of
  *  four seats; the stylesheet just consumes --mark-rings. */
+/** Does this slot's marker belong on the roster yet?
+ *
+ *  Every human's does, always — it is their cursor. The CPU's is different: it
+ *  is not a selector at all until Player 1 locks in and their selector starts
+ *  steering it (steeredSlot). Drawn before that, a red ring and a CPU tag sat
+ *  on the Random tile from the moment the screen opened, next to a player who
+ *  had picked nothing — and it reads as a second cursor belonging to the person
+ *  holding the pad, which is the one thing it is not. The opponent is still
+ *  shown the whole time, on the CPU's own hero card in the matchup bar, where
+ *  it is labelled and cannot be mistaken for something to move. */
+function marksRoster(id) {
+  return !isCpuSlot(id) || steeringCpu();
+}
+
 function renderRosterMarkers() {
   const marks = new Map();
   for (const id of pickedSlots()) {
+    if (!marksRoster(id)) continue;
     const key = markedKey(id);
     if (!key) continue;
     if (!marks.has(key)) marks.set(key, []);
@@ -1050,7 +1126,7 @@ function updateSpotlight() {
   spotlightFlip = !spotlightFlip;
   hide.classList.remove("is-on");
   if (!key) { show.classList.remove("is-on"); return; }
-  show.src = heroCardSrc(key);
+  setHeroCard(show, key);
   show.classList.add("is-on");
 }
 
@@ -1074,7 +1150,7 @@ export function updateSelectionUi() {
     els[`p${id}PickCard`].classList.toggle("is-empty", !key);
     els[`p${id}PickImage`].classList.toggle("hidden", !char);
     els[`p${id}PickRandomArt`].classList.toggle("hidden", !random);
-    if (char) els[`p${id}PickImage`].src = heroCardSrc(key);
+    if (char) setHeroCard(els[`p${id}PickImage`], key);
     else els[`p${id}PickImage`].removeAttribute("src");
     // The hero card is the one place with room for the character's full name;
     // roster tiles and the in-match HUD stay on the short form.
@@ -1343,7 +1419,7 @@ function renderPauseStandings() {
       `<b class="${i < f.stocks ? "" : "is-lost"}"></b>`).join("");
     return `
     <div class="pause-chip" style="--seat:${f.char.theme}">
-      <img src="${heroCardSrc(f.charKey)}" alt="">
+      <img src="${heroCardSrc(f.charKey)}"${cardFocusStyle(f.charKey)} alt="">
       <span class="pause-chip-info">
         <strong>${f.char.name}</strong>
         <span class="pause-chip-row"><i>${Math.round(f.damage)}%</i><span class="pause-chip-stocks">${dots}</span></span>
@@ -1407,7 +1483,7 @@ export function showBattleIntro(entrants, { loading = false } = {}) {
         const char = CHARACTERS[e.key];
         return `
         <div class="intro-panel" style="--seat:${char.theme}; --i:${i}">
-          <img src="${heroCardSrc(e.key)}" alt="${char.name}">
+          <img src="${heroCardSrc(e.key)}"${cardFocusStyle(e.key)} alt="${char.name}">
           <div class="intro-plate">
             <i class="intro-seat">${seat(e)}</i>
             <b class="intro-name">${char.name}</b>
@@ -1681,7 +1757,7 @@ export function updateHud() {
     hudSet(`${id}:cpuSide`, teamMatch && f.team !== HUMAN_TEAM, (on) =>
       panel.classList.toggle("fighter-status--cpu-side", on));
     hudSet(`${id}:name`, f.char.name, (name) => { els[`p${id}Name`].textContent = name; });
-    hudSet(`${id}:portrait`, f.charKey, (key) => { els[`p${id}Portrait`].src = heroCardSrc(key); });
+    hudSet(`${id}:portrait`, f.charKey, (key) => setHeroCard(els[`p${id}Portrait`], key));
     hudSet(`${id}:damage`, Math.round(f.damage), (dmg) => {
       els[`p${id}Damage`].textContent = `${dmg}%`;
       els[`p${id}Damage`].style.color = damageColor(dmg);
@@ -1789,7 +1865,7 @@ function renderPodium(winner, side = null) {
   if (!winner) { els.victoryPodium.innerHTML = ""; return; }
   const hero = (f) => `
     <figure class="victory-hero" style="--card-theme:${f.char.theme}">
-      <img class="victory-hero-art" src="${heroCardSrc(f.charKey)}" alt="${f.char.name}">
+      <img class="victory-hero-art" src="${heroCardSrc(f.charKey)}"${cardFocusStyle(f.charKey)} alt="${f.char.name}">
       <figcaption class="victory-hero-plate">
         <i>${TEXT.roundOver.winnerBadge}</i>
         <b>${f.char.name}</b>
@@ -1798,7 +1874,7 @@ function renderPodium(winner, side = null) {
     </figure>`;
   const slat = (f, badge) => `
     <figure class="victory-card victory-card--loser" style="--card-theme:${f.char.theme}">
-      <img src="${heroCardSrc(f.charKey)}" alt="${f.char.name}">
+      <img src="${heroCardSrc(f.charKey)}"${cardFocusStyle(f.charKey)} alt="${f.char.name}">
       <figcaption><i>${badge}</i><b>${f.char.name}</b></figcaption>
     </figure>`;
   const ranked = rankFighters(winner);

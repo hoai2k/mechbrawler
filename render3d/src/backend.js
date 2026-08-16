@@ -35,6 +35,7 @@ import { comFrac } from "../../src/body_points.js";
 import { artReach } from "../../src/silhouette.js";
 import { state } from "../../src/state.js";
 import { WORLD } from "../../src/constants.js";
+import { RENDER_STYLE, FRAME_STYLE, storeRenderStyle, storeFrameStyle } from "./style.js";
 
 let ready = false;
 let initFailed = false;
@@ -166,6 +167,43 @@ export function preload(charKey, commit = false) {
       hintBusy = false;
     }
   })();
+}
+
+// ------------------------------------------------------- presentation styles
+//
+// The two Settings-screen looks (style.js owns the preferences and says why
+// they behave differently): the animation frame style is LIVE — one dial and a
+// cache drop — while the render style is fixed for the page's life, because
+// materials are converted at rig load and the light rig is built at scene init.
+// So the setter here only remembers it, and the UI reloads.
+
+/** "smooth" | "twos" — the style being posed right now. Before init the dial
+ *  does not exist yet, so the booted preference is the honest answer. */
+export function frameStyle() {
+  return (pose ? pose.DIALS.onTwos : FRAME_STYLE === "twos") ? "twos" : "smooth";
+}
+
+/** Switch the animation frame style, now. Persisted, so it survives a reload
+ *  the same way the render style does. */
+export function setFrameStyle(style) {
+  const twos = style === "twos";
+  storeFrameStyle(twos ? "twos" : "smooth");
+  if (!ready) return;   // init reads the stored value on its own
+  pose.setOnTwos(twos);
+  scene.clearCache();
+}
+
+/** "pbr" | "toon" — what this page is drawing with. */
+export function renderStyle() {
+  return RENDER_STYLE;
+}
+
+/** Remember a render style for the next load. Returns true when that is a
+ *  CHANGE, i.e. when the caller needs to reload for it to take effect. */
+export function setRenderStyle(style) {
+  const next = style === "toon" ? "toon" : "pbr";
+  storeRenderStyle(next);
+  return next !== RENDER_STYLE;
 }
 
 export function currentFrame(charKey, animKey, animTime) {

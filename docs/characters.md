@@ -77,8 +77,13 @@ do in the air": come down.
 
 ### Charge heavies
 
-Side heavies charge, as smashes always have. **TITANUS and COLOSSUS charge
-everything** — their light strings are hold-to-release haymakers too
+Side heavies charge, as smashes always have, and every mech charges to the
+SAME cap (`HEAVY_CHARGE_CAP`, 2.4s — Mech Mayhem's own `heavyHoldCap`, which
+is one shared number upstream too). No kit overrides it: a per-mech heavy
+hold would be our invention, not MM's.
+
+What the two heavyweights actually own is the LIGHT. **TITANUS and COLOSSUS
+charge everything** — their light strings are hold-to-release haymakers too
 *(punchHold/heavyHold, the only two mechs with the capability)*, they may
 WALK while charging the light, and their charge glow runs up the arms
 (`chargeGlow: 'arms'`). Nobody else charges lights. This is the whole

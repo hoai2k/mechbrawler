@@ -1,0 +1,347 @@
+# The Mech Mayhem export fix — apply to the `robotworld` repo
+
+This game's mechs come out of robotworld's `tools/export-mech.mjs`. Two defects
+in that exporter are why a mech tore itself apart the moment it moved; the
+diagnosis is written up under K15 in docs/mech-conversion-plan.md, and the
+tools that found it are tools/probe_clip_coverage.mjs and
+tools/verify_clip_fidelity.mjs in this repo.
+
+This patch lives here because the two games are separate repositories and this
+one is the one that ships the broken asset. Apply it upstream:
+
+    cd <robotworld>
+    git apply <mechbrawler>/docs/mm-export-fix.patch
+    npx vite --port 5175 &
+    node tools/export-mech.mjs --all --out public/models/export
+    # then, in mechbrawler:
+    python3 tools/fold_export.py <robotworld>/public/models/export/*.glb --apply
+
+What it changes:
+
+  * every clip is sampled for EVERY bone (`keep` was already passed for the
+    held poses; actions and gaits pass it now), so a clip determines the whole
+    skeleton instead of leaving the bones it does not move whereever the last
+    one left them;
+  * the sampler folds the root bone's yaw the same way `bakeModelTransform`
+    folds the rest, for anyone who still wants a folded export; and
+  * `?nofold` exports in the build's own frame, which is the mode this game
+    uses — the transform then goes on the armature node (tools/fold_export.py)
+    where it applies rigidly and cannot deform anything.
+
+---
+
+diff --git a/src/dev/export.js b/src/dev/export.js
+index efb1d7f..40cb035 100644
+--- a/src/dev/export.js
++++ b/src/dev/export.js
+@@ -100,46 +100,87 @@ function installAnchors(scene, anchors, renames = {}) {
+ }
+ 
+ // ---- animation sampling ----------------------------------------------------
+-// Read every bone's LOCAL transform each frame off the real build. Rotations
+-// transfer to the baked skeleton unchanged; POSITIONS do not — the build's
+-// bones are in the file's native units under a scaled container, the baked
+-// ones are in game units — so a position track is scaled by the same factor
+-// the transform bake applied.
+-function sampler(mech, scale, renames = {}) {
+-  const bones = [];
+-  mech.group.traverse((o) => { if (o.isBone) bones.push(o); });
++// Read every bone's LOCAL transform each frame off the real build, and put it
++// in the BAKED skeleton's frame — which is not the build's, because the export
++// folds the game transform (yawOffset x modelScale x heightScale) into the
++// model. bakeModelTransform does that fold in two halves, and a sample has to
++// answer both of them or it describes a body that no longer exists:
++//
++//   SCALE   every bone's rest offset is multiplied by S, so a sampled POSITION
++//           is too. (This was always here.)
++//   YAW     the geometry is rotated by R, and the ROOT bone's rest rotation is
++//           premultiplied by it — a child's offset is already expressed in its
++//           rotated parent's frame, so only the root carries it.
++//
++// Sampling the root's raw build rotation therefore wrote a track that UNDID the
++// fold the moment it played: the skeleton swung back to the unfolded frame
++// while the mesh stayed folded, and the skin tore itself apart on every clip —
++// worse the further the pose travelled from bind, which is why a mech looked
++// fine standing and came apart the instant he threw a punch. The fix is to fold
++// the sample the same way the rest was folded: R * q on the root, and R applied
++// to its scaled position.
++//
++// The five held poses (samplePose) hid this: they write every bone, so the body
++// stayed internally consistent and merely faced the wrong way, which no one
++// reads as a bug.
++function sampler(mech, scale, renames = {}, yawDeg = 0) {
++  // ONE bone per NAME. A build can carry more bone objects than the baked
++  // skeleton has (titanus: 66 vs 26 — helper rigs), and the per-name maps
++  // below would silently double their samples if two shared a name.
++  const bones = [], seen = new Set();
++  mech.group.traverse((o) => {
++    if (o.isBone && !seen.has(o.name)) { seen.add(o.name); bones.push(o); }
++  });
+   const rot = new Map(), pos = new Map(), rest = new Map();
+   for (const b of bones) {
+     rot.set(b.name, []); pos.set(b.name, []);
+     rest.set(b.name, b.position.clone());
+   }
++  // The fold's rotation, and who takes it: the bones with no BONE parent, the
++  // same test bakeModelTransform uses on the rest pose.
++  const R = yawDeg ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0),
++    yawDeg * Math.PI / 180) : null;
++  const isRoot = new Map(bones.map((b) => [b.name, !b.parent?.isBone]));
++  const _q = new THREE.Quaternion(), _p = new THREE.Vector3();
+   return {
+     bones, times: [],
+     grab(t) {
+       this.times.push(t);
+       for (const b of bones) {
+-        rot.get(b.name).push(b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w);
+-        pos.get(b.name).push(b.position.x * scale, b.position.y * scale, b.position.z * scale);
++        _q.copy(b.quaternion);
++        _p.copy(b.position).multiplyScalar(scale);
++        if (R && isRoot.get(b.name)) { _q.premultiply(R); _p.applyQuaternion(R); }
++        rot.get(b.name).push(_q.x, _q.y, _q.z, _q.w);
++        pos.get(b.name).push(_p.x, _p.y, _p.z);
+       }
+     },
+-    // A track per bone, dropping the ones that never move — a 15-bone mech with
+-    // 46 bones would otherwise carry 46 constant position tracks per clip.
++    // A track per bone. EVERY sampler passes `keep` now (sampleClip says why),
++    // so in practice this writes all of them, constant or not: a clip that does
++    // not state a joint is a clip that lets the importer's leftovers state it.
+     //
+     // NAMED FOR THE BAKED SKELETON, not the one sampled. A glTF track binds to
+     // its node BY NAME and the bake renames bones, so tracks recorded off the
+     // unbaked build name `bone_36` and bind to nothing — and GLTFExporter drops
+     // an unbindable track without a word. Saurion exported 25 clips and the
+     // file came back with `animations: 0`.
+-    tracks(name) {
++    // `keep` (a Set of BAKED bone names) does two jobs. It keeps the constant
++    // tracks — a held POSE (jumpRise, crouch — see samplePose) is nothing BUT
++    // constant tracks, and an ACTION's constant tracks are the standing half of
++    // its pose. And it is a SET rather than a blanket because a build carries
++    // bones the baked skeleton does not (titanus: 66 vs 26), and GLTFExporter
++    // drops the WHOLE clip on the first track that binds to nothing.
++    tracks(name, keep = null) {
+       const out = [];
+       const times = Float32Array.from(this.times);
+       if (times.length < 2) return out;
+       for (const b of bones) {
+         const target = renames[b.name] || b.name;
++        const keepThis = keep ? keep.has(target) : null;
++        if (keep && !keepThis) continue;
+         const r = rot.get(b.name);
+-        if (varies(r, 4, 1e-5)) out.push(new THREE.QuaternionKeyframeTrack(`${target}.quaternion`, times, Float32Array.from(r)));
++        if (keepThis || varies(r, 4, 1e-5)) out.push(new THREE.QuaternionKeyframeTrack(`${target}.quaternion`, times, Float32Array.from(r)));
+         const p = pos.get(b.name);
+-        if (varies(p, 3, 1e-4)) out.push(new THREE.VectorKeyframeTrack(`${target}.position`, times, Float32Array.from(p)));
++        if (keepThis || varies(p, 3, 1e-4)) out.push(new THREE.VectorKeyframeTrack(`${target}.position`, times, Float32Array.from(p)));
+       }
+       return out;
+     },
+@@ -190,20 +231,76 @@ function varies(a, stride, eps) {
+   return false;
+ }
+ 
+-// Play one action clip through the animator and sample it.
+-function sampleClip(mech, animator, clipName, scale, renames) {
++// THE NEUTRAL EVERY CLIP MUST DEPART FROM.
++//
++// The animator is a SMOOTHER over an integrator, not a pose function: `cur`
++// eases toward the frame target, the pelvis follows the measured sole
++// clearance at SOLE_FOLLOW_RATE, the readyK carriage layer damps in, and the
++// leg smoothing is scaled by body size. None of that is at its resting value
++// the instant you call it — it converges over ~1-3 seconds.
++//
++// So a clip sampled from a COLD animator does not open on the mech's neutral
++// stance. It opens on whatever the previous clip left behind, still sliding.
++// That was the digitigrade idle mismatch: `battleIdle` settles for 90 frames
++// before it records (samplePose), so it exports the mech's real ready
++// carriage, while every ACTION clip recorded frame 0 mid-transient — legs
++// further into their crouch and the feet lifted half a unit off the floor —
++// and an importer that cross-fades idle -> attack saw the legs SNAP at the
++// first frame of every strike.
++//
++// Settling here, at the same context and for the same 3 seconds `samplePose`
++// uses, makes every clip start from the identical converged neutral. Idle and
++// the attacks then agree about the mech's neutral leg carriage by
++// construction, because it is literally the same settled pose.
++const NEUTRAL_CTX = { grounded: true, speed: 0, maxSpeed: 1, vy: 0, alwaysReady: true };
++function settle(mech, animator, frames = 90) {
++  animator.stop(0);
++  const dt = 1 / FPS;
++  for (let i = 0; i < frames; i++) {
++    animator.update(dt, NEUTRAL_CTX);
++    mech.postAnimate();
++    mech.group.updateMatrixWorld(true);
++  }
++}
++
++// EVERY CLIP MUST DETERMINE THE WHOLE SKELETON.
++//
++// The animator this samples is a POSE FUNCTION over the entire body: a clip
++// key names the handful of joints it moves, and the base — the ready carriage,
++// the gait, the breath — supplies the rest, every frame, for every joint. So
++// "the joints this clip mentions" is never the pose; the pose is all 26 of
++// them, and only the receiving engine having the same animator would make the
++// difference invisible.
++//
++// Nothing outside this game has that animator. An importer gets an
++// AnimationMixer, which writes the bones a clip has tracks for and leaves the
++// others exactly where they were — at the file's rest pose, which is the raw
++// authored bind (mech at the origin, yaw unfolded) and not a pose any body
++// ever stands in. Pruning the constant tracks therefore did not compress the
++// clip; it DELETED the standing half of it, and every attack imported as an
++// upper body welded onto a bind-pose skeleton four units away. It looked, on
++// the receiving end, like the geometry tearing itself apart.
++//
++// So `keep` is the baked bone set for actions and gaits exactly as it already
++// was for the held poses (samplePose): every clip carries all 26 bones, the
++// pose is a function of the clip alone, and an importer with a plain mixer
++// reproduces Mech Mayhem's composed pose bone for bone. The cost is real and
++// small — a few hundred KB of constant tracks per mech against 8 MB of mesh —
++// and it buys the one property an exported clip has to have.
++function sampleClip(mech, animator, clipName, scale, renames, keep = null, yawDeg = 0) {
++  settle(mech, animator);
+   const dur = animator.play(clipName, { fade: 0 });
+   if (!dur || !isFinite(dur) || dur <= 0) return null;
+-  const s = sampler(mech, scale, renames);
++  const s = sampler(mech, scale, renames, yawDeg);
+   const dt = 1 / FPS;
+   const n = Math.max(2, Math.ceil(dur * FPS) + 1);
+   for (let i = 0; i < n; i++) {
+-    animator.update(i === 0 ? 1e-4 : dt, { grounded: true, speed: 0, maxSpeed: 1, vy: 0, alwaysReady: true });
++    animator.update(i === 0 ? 1e-4 : dt, NEUTRAL_CTX);
+     mech.postAnimate();
+     mech.group.updateMatrixWorld(true);
+     s.grab(i * dt);
+   }
+-  const tracks = s.tracks(clipName);
++  const tracks = s.tracks(clipName, keep);
+   animator.stop(0);
+   return tracks.length ? new THREE.AnimationClip(clipName, s.times[s.times.length - 1], tracks) : null;
+ }
+@@ -211,8 +308,8 @@ function sampleClip(mech, animator, clipName, scale, renames) {
+ // The gait, as one full cycle at a fixed ground speed. Sampled by PHASE rather
+ // than by wall time so the clip loops seamlessly: the cycle's period is 2*PI of
+ // animator phase, whatever the cadence dial says the speed is.
+-function sampleGait(mech, animator, label, speed, maxSpeed, scale, renames) {
+-  const s = sampler(mech, scale, renames);
++function sampleGait(mech, animator, label, speed, maxSpeed, scale, renames, keep = null, yawDeg = 0) {
++  const s = sampler(mech, scale, renames, yawDeg);
+   const ctx = { speed, maxSpeed, grounded: true, vy: 0, alwaysReady: true };
+   const dt = 1 / FPS;
+   for (let i = 0; i < 400; i++) animator.update(dt, ctx);   // settle the smoother
+@@ -230,10 +327,37 @@ function sampleGait(mech, animator, label, speed, maxSpeed, scale, renames) {
+     while (turned < 0) turned += Math.PI * 2;
+     if (turned >= Math.PI * 2 - 1e-3) break;
+   }
+-  const tracks = s.tracks(label);
++  const tracks = s.tracks(label, keep);
+   return tracks.length ? new THREE.AnimationClip(label, t, tracks) : null;
+ }
+ 
++// A PROCEDURAL LAYER, held. Jump, hover and crouch have never been clips — they
++// are animator layers keyed off the frame context (the airborne rising-tuck /
++// falling-spread + airReach + hover jet pose, and the duck layer — see
++// src/mechs/animator.js). An export has no animator to run them, so each one is
++// sampled here as a SHORT held clip: feed the animator a synthetic ctx (vy>0,
++// vy<0, hovering, duck at this mech's own duckDepth), let the pose smoothers
++// settle onto it, then record ~0.5s. Grounded crouch keeps the idle breath on
++// top, airborne poses hold nearly still — either way the clip loops as a hold.
++// Sampled keeping the constant tracks (a held pose IS its constant tracks),
++// restricted to `bakedBones` — the names that exist on the exported skeleton.
++function samplePose(mech, animator, label, poseCtx, scale, renames, bakedBones, dur = 0.5, yawDeg = 0) {
++  animator.stop(0);
++  const ctx = { grounded: true, speed: 0, maxSpeed: 1, vy: 0, alwaysReady: true, ...poseCtx };
++  const s = sampler(mech, scale, renames, yawDeg);
++  const dt = 1 / FPS;
++  for (let i = 0; i < 90; i++) animator.update(dt, ctx);   // settle the smoothers (~3s)
++  const n = Math.ceil(dur * FPS) + 1;
++  for (let i = 0; i < n; i++) {
++    animator.update(dt, ctx);
++    mech.postAnimate();
++    mech.group.updateMatrixWorld(true);
++    s.grab(i * dt);
++  }
++  const tracks = s.tracks(label, bakedBones);
++  return tracks.length ? new THREE.AnimationClip(label, s.times[s.times.length - 1], tracks) : null;
++}
++
+ export async function runExport(id) {
+   window.__exportReady = false;
+   window.__exportErr = null;
+@@ -242,9 +366,10 @@ export async function runExport(id) {
+     if (!def) throw new Error(`no roster mech "${id}"`);
+ 
+     // 1) the model, with EVERYTHING folded in — including the transform
+-    const baked = await bakeMechScene(id, { transform: true });
++    const baked = await bakeMechScene(id, { transform: !new URLSearchParams(location.search).has('nofold') });
+     if (!baked) throw new Error(`no GLB manifest entry for "${id}"`);
+     const scale = baked.transform?.scale ?? 1;
++    const yawDeg = baked.transform?.yawOffset ?? 0;
+ 
+     // 2) a real build, which is the only thing that knows where the anchors are
+     //    and the only thing that can play an animation
+@@ -258,22 +383,47 @@ export async function runExport(id) {
+     const animator = mech.premadeAnimator;
+     const names = mechClips(def, mech.animProfile || profileFor(id));
+     const clips = [], failed = [];
++    // The names that exist on the EXPORTED skeleton. Every sampler is given
++    // this set: it keeps the constant tracks (see sampleClip) and drops tracks
++    // for build-only bones, which bind to nothing on the way out and make
++    // GLTFExporter discard the whole clip without a word.
++    const bakedBones = new Set();
++    baked.model.traverse((o) => { if (o.isBone) bakedBones.add(o.name); });
+     for (const n of names) {
+       try {
+-        const c = sampleClip(mech, animator, n, scale, baked.renames);
++        const c = sampleClip(mech, animator, n, scale, baked.renames, bakedBones, yawDeg);
+         if (c) clips.push(c); else failed.push(n);
+       } catch (e) { failed.push(`${n} (${String(e).slice(0, 60)})`); }
+     }
+     const top = moveSpeedFor(def);
+     for (const [label, sp] of [['walk', top * 0.45], ['run', top]]) {
+       try {
+-        const c = sampleGait(mech, animator, label, sp, top, scale, baked.renames);
++        const c = sampleGait(mech, animator, label, sp, top, scale, baked.renames, bakedBones, yawDeg);
++        if (c) clips.push(c); else failed.push(label);
++      } catch (e) { failed.push(`${label} (${String(e).slice(0, 60)})`); }
++    }
++    // …and the procedural jump/hover/crouch layers, held (see samplePose)
++    const duckDepth = def.stats?.duck ?? 0.55;
++    // battleIdle is the READY STANCE itself: grounded, still, alwaysReady, no
++    // block/fire — the readyK combat-carriage layer fully engaged (for a GLB
++    // that is the authored bind carriage plus any profile combatPose) with the
++    // idle breath/sway alive on top, so it gets a full second of sample.
++    const poses = [
++      ['jumpRise', { grounded: false, vy: 8 }, 0.5],
++      ['jumpFall', { grounded: false, vy: -8 }, 0.5],
++      ['hover', { grounded: false, hovering: true, speed: top, maxSpeed: top }, 0.5],
++      ['crouch', { grounded: true, duck: duckDepth }, 0.5],
++      ['battleIdle', { grounded: true, speed: 0, vy: 0 }, 1.0],
++    ];
++    for (const [label, pctx, dur] of poses) {
++      try {
++        const c = samplePose(mech, animator, label, pctx, scale, baked.renames, bakedBones, dur, yawDeg);
+         if (c) clips.push(c); else failed.push(label);
+       } catch (e) { failed.push(`${label} (${String(e).slice(0, 60)})`); }
+     }
+ 
+     // 4) feet on the floor — nothing re-grounds an export
+-    const grounded = groundModel(baked.model);
++    const grounded = new URLSearchParams(location.search).has('noground') ? null : groundModel(baked.model);
+ 
+     // 5) out
+     const exporter = new GLTFExporter();
+diff --git a/tools/export-mech.mjs b/tools/export-mech.mjs
+index 8dc7088..0529121 100644
+--- a/tools/export-mech.mjs
++++ b/tools/export-mech.mjs
+@@ -71,7 +71,7 @@ try {
+     page.on('pageerror', (e) => errs.push(String(e).slice(0, 200)));
+     let res;
+     try {
+-      await page.goto(`http://127.0.0.1:${PORT}/?export=${id}`, { waitUntil: 'networkidle' });
++      await page.goto(`http://127.0.0.1:${PORT}/?export=${id}${process.env.EXTRA||''}`, { waitUntil: 'networkidle' });
+       await waitGlobal(page, '__exportReady');
+       res = await page.evaluate(() => ({ err: window.__exportErr, base64: window.__exportGlb?.base64,
+         byteLength: window.__exportGlb?.byteLength, report: window.__exportGlb?.report }));

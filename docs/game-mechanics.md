@@ -428,6 +428,28 @@ hazard can never KO by itself. The CPU steps out of telegraphed zones. See
   seated on sight, up to four.
 - Pause (Start), Move List in the pause menu, hitbox debug on `` ` ``.
 
+### Presentation styles
+
+Two Settings entries change how the mechs are DRAWN, and nothing else — no
+gameplay number moves, so a matchup plays identically whatever they are set to
+(`src/render_backend.js` is the seam; `render3d/src/style.js` owns both
+preferences and remembers them between sessions).
+
+- **Animation** — *Smooth* (default) or *On Twos*. Smooth samples the clips the
+  way Mech Mayhem plays them, at 30 Hz. *On Twos* is JJK Brawler's own frame
+  style: clip time quantised to ~13 Hz so motion holds and snaps like limited
+  animation drawn on twos, with the contact frame of every attack preserved
+  exactly (a strike still shows the instant its hitbox goes live). Takes effect
+  on the next frame drawn, mid-match included. `?frames=twos` pins it.
+- **Shading** — *Neon Metal* (default) or *Anime Toon*. Neon Metal renders each
+  mech's own baked metal/rough materials under an MM-style light rig and ACES
+  grade — how these bodies were painted to look. Anime Toon is the engine's
+  drawn pass: a two-band ramp with a painted shade tint, and ink outline
+  shells. Materials are converted when a rig loads and the light rig is built
+  when the scene starts, so this one takes a **page reload** — chosen out of a
+  match it reloads immediately, and chosen mid-match it waits and says
+  "(on restart)". `?render=toon` pins it.
+
 ### The clock, and sudden death
 
 A stock match with no clock cannot be made to end: two players who refuse to

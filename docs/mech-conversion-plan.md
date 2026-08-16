@@ -478,6 +478,135 @@ plays nothing like a platform fighter.
         mechs stand correctly on the deck, and the fix is to measure the lowest
         skinned vertex instead.
 
+- [x] K13. THE TWO LOOKS ARE SETTINGS (owner): "note the animation frame style
+        used in jjkbrawler and provide that along with toon rendering as
+        options in the settings".
+
+        The JJK frame style is ON-TWOS SAMPLING — pose.js `DIALS.onTwos` /
+        `sampleHz: 13`, clip time quantised so motion holds and snaps like
+        limited animation, with the contact beat always landing on a sampled
+        frame. M3 turned it off for the mechs (MM animates smoothly) and K6
+        put toon behind `?render=toon`; both were live dials with no way to
+        reach them from the game.
+
+        DONE: `render3d/src/style.js` owns both preferences (URL flag >
+        localStorage > default), toon.js and pose.js read it at load, and
+        `backend.js` exposes them through the render_backend seam. Settings
+        gains "Animation: Smooth / On Twos" — live, cache dropped so the
+        change shows on the next frame rather than as poses age out — and
+        "Shading: Neon Metal / Anime Toon", which reloads the page because
+        materials convert at rig load and the light rig is built at scene
+        init; mid-match it defers and the button reads "(on restart)".
+        `tools/smoke_render_backend.mjs` was the retired backend REGISTRY
+        test (it called `renderBackendName`, gone since the sprite/billboard
+        removal, so it had been failing on every run); it is now the check for
+        this seam — 25 checks over both flags, the live switch, the reload and
+        the deferral.
+
+- [x] K14. THE LAST ART ROUND LANDED (owner delivered into assets/intake/):
+        the neon mech-head favicon, the results backdrop, and the four arena
+        garnish cards. **docs/image-requests.md is now empty of requests** —
+        every optional asset in src/assets.js resolves (41 effect plates, 16
+        hazard plates, 18 garnish cards), and nothing in the game draws a
+        placeholder.
+
+        `tools/site_identity.py` is new and does the non-sprite half: it crops
+        the 1024px mark to its own ink (a favicon has to survive 16px, and 15%
+        empty border is 15% less glyph) and writes the whole icon set index.html
+        and site.webmanifest name, plus the backdrop copy. The garnish cards
+        went through `tools/effects_intake.py`, which grew a third source for
+        them.
+
+        THREE WIRING FIXES the delivery exposed, all in camera3d/garnish.js: a
+        painted plate is denser than the gradient card it replaces (the aurora
+        washed out the whole arena at the drawing's alpha — spawns now state
+        both values via `byArt`); a painted plate has its own aspect, and the
+        god-ray cone is 1.6 tall per unit wide where the drawn shaft was 5.3
+        (the jungle spawn states its height); and the harbor gulls had been
+        spawning, flying and retiring off the top of the frame the whole time,
+        because near-lens depth magnifies a card and pushes it away from centre
+        — they fly behind the play space now.
+
+        Also fixed here, spotted on the VS splash while checking the art: all
+        34 roster quote strings carried their own straight quotes while the UI
+        wraps them in curly ones, so every intro and victory line was shown
+        double-quoted (`""...""`). The UI owns the punctuation; the data no
+        longer does.
+
+- [x] K15. THE MECHS TORE THEMSELVES APART (owner: "even his normal punch
+        causes his geometry to do all sorts of weird things"). Two real defects
+        in Mech Mayhem's exporter, both found by comparing against MM's own
+        animator rather than by eye.
+
+        DEFECT 1 — SPARSE CLIPS. The exporter pruned every track whose value
+        never changed, so an action clip carried only the joints it moved:
+        titanus's `punchHold1` drove 11 of 26 bones, `block` 7. That is correct
+        for MM, whose animator writes every joint from a base every frame, and
+        wrong for anyone else: an AnimationMixer leaves an untracked bone where
+        the last clip left it. Only the five held poses (battleIdle, crouch,
+        hover, jumpRise, jumpFall) were full-body, which is why the idle always
+        looked right and every attack did not.
+
+        DEFECT 2 — THE TRANSFORM FOLD, and the one that tore the skin. The
+        export folds yaw+scale into the vertices and the root bone's rest, but
+        samples the animation from the LIVE BUILD, which is in neither frame.
+        The mesh is then bound in the folded frame while the clip drives the
+        skeleton toward the unfolded one, and every joint below the root
+        deforms its skin through a rotation the vertices never took. Standing
+        still it reads as a mech facing slightly wrong; a punch pulls the arm
+        into taffy, and the further the pose travels from bind the worse it
+        gets. Proven by exporting with the fold disabled: same clips, same
+        mesh, clean body.
+
+        THE FIX, in two halves. The exporter samples every bone (`keep` is now
+        passed for actions and gaits, as it always was for the held poses) and
+        exports UNFOLDED, so model, skeleton and animation share one frame by
+        construction. `tools/fold_export.py` then puts the yaw and scale on the
+        node ABOVE the joints — where glTF already has a place for it, and
+        where it applies rigidly after the skin has deformed. The file keeps
+        its contract (game units, +z forward) and nothing downstream changes.
+
+        THE TOOLS THAT FOUND IT, both kept because neither failure is visible
+        in a still: `tools/probe_clip_coverage.mjs` poses a state from two
+        different histories and reports the bones that disagree (a clip that is
+        not a function of itself), and `tools/verify_clip_fidelity.mjs` drives
+        BOTH games — MM's animator and our .glb — and diffs every bone at five
+        points in all 35 clips, dividing out the scale and the folded yaw by
+        fitting them. That is the check that says our mapping is exact.
+
+- [x] K16. THE JAB THAT NEVER LANDED (owner: titanus "seems to do a wind-up
+        pose, but never actually does the walking punch at all").
+
+        A clip-mapping bug, and a small state-contract hole under it.
+
+        `punchHold1` is a LOOP of the cocked fist quaking at the hip. In Mech
+        Mayhem it plays only while X is down, and `punchRelease1` throws the
+        punch FROM that chamber — its first frame IS the hold pose, which is
+        why MM hands over between them with no cross-fade at all. The intake
+        table preferred the hold, and titanus and colossus are the only two
+        mechs with no `light1` to fall through to, so their jab mapped to the
+        wind-up and the strike was never on screen. Every other mech was fine,
+        which is why it took a play-test to find.
+
+        `light` is `punchRelease1` now, in the manifest and in the intake
+        table's preference list, so a re-intake cannot bring it back.
+
+        AND THE HOLD ITSELF WAS THE WRONG HOLD. Banking a jab and winding up a
+        smash were one `charge` state, which mapped to `poundHold` — the
+        two-hand overhead load — so a banked jab showed a mech loading an
+        overhead slam and then throwing a hook. `chargeLight` is now its own
+        state (states.js says why it cannot be an alias), fighter.js picks it
+        by the charging variant, and the two banking mechs map it to
+        `punchHold1`. The other fifteen map it to the same clip as `charge` and
+        never reach it.
+
+        `tools/probe_light_chain.mjs` is the check: it drives the fighter's own
+        state machine through press -> hold -> release and prints the animation
+        key on every frame it changes, because the failure is a SEQUENCE and no
+        still frame of it looks wrong. Titanus and colossus read
+        `chargeLight -> light`; everyone else `light`. Reach envelopes
+        re-derived (the punch reaches 1-5 px further than the hold did).
+
 ## Decisions taken
 
 - mechs/lib/ (robotworld's animation runtime) stays REFERENCE ONLY; render3d

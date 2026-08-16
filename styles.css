@@ -240,7 +240,7 @@ html, body {
   height: 52px;
   border-radius: 3px;
   object-fit: cover;
-  object-position: top;
+  object-position: 50% var(--card-focus, 0%);
   border: 1px solid var(--line);
 }
 
@@ -999,7 +999,7 @@ html, body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: top;
+  object-position: 50% var(--card-focus, 0%);
 }
 
 /* Most of the card art is painted low-key, and at tile size against a dark
@@ -1156,7 +1156,7 @@ html, body {
   width: var(--hero-art-w);
   height: var(--hero-art-h);
   object-fit: cover;
-  object-position: top;
+  object-position: 50% var(--card-focus, 0%);
   border-radius: 3px;
 }
 
@@ -1988,7 +1988,7 @@ html, body {
   width: clamp(120px, 24vh, 190px);
   aspect-ratio: 3 / 4;
   object-fit: cover;
-  object-position: top;
+  object-position: 50% var(--card-focus, 0%);
   border-radius: 4px;
   border: 2px solid var(--card-theme, var(--line));
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55), 0 0 30px var(--card-theme, transparent);
@@ -2055,7 +2055,7 @@ html, body {
   width: 124%;
   height: 100%;
   object-fit: cover;
-  object-position: top;
+  object-position: 50% var(--card-focus, 0%);
   transform: var(--unskew);
   opacity: 0.52;
   filter: saturate(1.05) brightness(0.8);
@@ -2151,7 +2151,7 @@ html, body {
   height: 100%;
   aspect-ratio: auto;
   object-fit: cover;
-  object-position: top;
+  object-position: 50% var(--card-focus, 0%);
   border: none;
   border-radius: 0;
   transform: var(--unskew);
@@ -2240,7 +2240,7 @@ html, body {
   width: 134%;
   height: 100%;
   object-fit: cover;
-  object-position: top;
+  object-position: 50% var(--card-focus, 0%);
   transform: var(--unskew);
 }
 
@@ -2462,7 +2462,7 @@ html, body {
   height: 44px;
   border-radius: 3px;
   object-fit: cover;
-  object-position: top;
+  object-position: 50% var(--card-focus, 0%);
   border: 1px solid var(--line);
 }
 

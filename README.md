@@ -33,11 +33,22 @@ about where that pose came from printed beside it. A state that resolves to no
 clip says so in red, which is the failure it exists to find. The URL carries the
 mech and the state, so a bad pose can be pasted into a bug report as a link.
 
-Both are built for a phone as well as a desk: below 820px (or on a short
-landscape handset) the viewer takes the whole screen and everything else —
+<http://127.0.0.1:5174/workbench/?edit=cards> — the **card workbench**: where
+each mech's painted card gets cropped. The UI squeezes one 3:4 painting into
+eight differently-shaped holes — a 52px square beside the damage, the 3:4 select
+tile, the wide victory hero — and `object-fit: cover` throws away whatever does
+not fit. Drag the line to the height that must survive (usually the head) and
+every one of those eight holes re-crops beside it as it moves, at its real size.
+**Export JSON**, then `node tools/apply_card_focus.mjs <file> --apply` rewrites
+`CARD_FOCUS` in `src/config_cards.js`. A card nobody has tuned crops at the top,
+exactly as the whole roster did before the tool existed.
+
+The first two are built for a phone as well as a desk: below 820px (or on a
+short landscape handset) the viewer takes the whole screen and everything else —
 the roster, the state list, the grid of drawings, the parameters, the toolbar —
 moves behind the buttons along the bottom, one bottom sheet at a time. Drag to
-orbit, pinch to zoom.
+orbit, pinch to zoom. The card tool stacks instead: the strip of cards, the
+painting, then the holes.
 
 ## Controls
 
@@ -91,5 +102,5 @@ Mid-conversion from JJK Brawler II. The live plan and progress tracker is
 - [The roster](docs/characters.md) — every mech's kit and why it is that way
 - [The arenas](docs/arenas.md) — every stage and its hazard
 - [Game mechanics](docs/game-mechanics.md)
-- [Image requests](docs/image-requests.md) — open art round
+- [Image requests](docs/image-requests.md) — the art surface (nothing outstanding today; the delivered briefs are in [the archive](docs/image-requests-history.md))
 - [mechs/PROVENANCE.md](mechs/PROVENANCE.md) — where the models come from

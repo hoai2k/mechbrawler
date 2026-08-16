@@ -28,8 +28,9 @@ line sits where each painting's empty foreground is.
 Music: per-arena tracks from Mech Mayhem (assets/music/boards/<name> N.mp3),
 2-3 takes each, shuffled without repeats. Ironworks Foundry has no arena
 track upstream and runs the general battle rotation (Steel Titans / Titan
-Clash / Titan Forge loops). Menu theme: Bohemian Cello Flame Hybrid Suite.
-The title screen is silent except the neon buzz.
+Clash / Titan Forge loops). Title and menu theme: Moonlit Go-Go v2 — one
+track from the moment the cabinet wakes, playing through to the fighter
+select rather than restarting, with the neon sign buzzing over it.
 
 ---
 

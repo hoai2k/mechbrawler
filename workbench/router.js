@@ -1,18 +1,27 @@
-// THE WORKBENCH ROUTER — two tools, one address.
+// THE WORKBENCH ROUTER — three tools, one address.
 //
-// Both live at /workbench/ and `?edit=` picks between them: no query is the
-// EFFECT workbench (the one that was here first, so a bookmark still lands
-// where it did), `?edit=pose` is the POSE workbench. One address because they
-// share a renderer boot, a stylesheet and rig_view.js, and because the dev
-// server resolves a directory to its index.html — a second folder would be a
-// second copy of all three.
+// All of them live at /workbench/ and `?edit=` picks between them: no query is
+// the EFFECT workbench (the one that was here first, so a bookmark still lands
+// where it did), `?edit=pose` is the POSE workbench, `?edit=cards` is the CARD
+// workbench. One address because they share a stylesheet — and the first two a
+// renderer boot and rig_view.js — and because the dev server resolves a
+// directory to its index.html, so a second folder would be a second copy of all
+// of it.
 //
 // The tools are dynamically imported, so the one you did not ask for is never
-// fetched, parsed or booted.
+// fetched, parsed or booted. The card tool pulls no renderer at all, which is
+// why it opens instantly next to the other two.
 
 const TOOLS = {
   "": () => import("./effects.js"),
   pose: () => import("./pose.js"),
+  cards: () => import("./cards.js"),
+};
+
+const TITLES = {
+  "": "Effect workbench",
+  pose: "Pose workbench",
+  cards: "Card workbench",
 };
 
 async function main() {
@@ -21,8 +30,7 @@ async function main() {
   const root = document.getElementById("app");
   try {
     const mod = await load();
-    document.title = which === "pose"
-      ? "Pose workbench — Mech Brawler" : "Effect workbench — Mech Brawler";
+    document.title = `${TITLES[which] || TITLES[""]} — Mech Brawler`;
     await mod.boot(root);
   } catch (err) {
     // A tool that fails to boot must SAY so on the page: this is a workbench,

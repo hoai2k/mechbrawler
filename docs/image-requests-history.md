@@ -137,9 +137,38 @@ generate now, they will be used somewhere even if the mechanic moves.
 | `vs_flash.png` | the VS splash slash: a diagonal neon energy tear |
 | `stock_chip.png` | a small mech-head silhouette chip for the stock counter, works at 24px |
 
-## 5 — OPEN requests
+## 5 — Site identity + arena garnish — DELIVERED
 
-Moved to the live list: [docs/image-requests.md](image-requests.md).
+The last open round: two site-identity plates that were still carrying JJK art,
+and the four garnish cards the arena-polish pass added. All six arrived in
+`assets/intake/` and were landed by tool — `python3 tools/site_identity.py
+--apply` for the first two, `python3 tools/effects_intake.py --apply` for the
+garnish, which trims each plate to its own alpha.
+
+| file | what was asked for | where it landed |
+|---|---|---|
+| `favicon_mech.png` | a square neon mech-head glyph on `#05070c`, readable at 16px, replacing the whole JJK icon set | cropped to its own ink, then `favicon.ico` (16/32/48), `favicon-16x16`, `favicon-32x32`, `apple-touch-icon` (180), `android-chrome-192x192`, `android-chrome-512x512` |
+| `victory_backdrop.jpg` | a neon hangar / winner's podium scene in the arena palette, 2048×1152 | `assets/backgrounds/victory.jpg` — and its painted podium sits behind the results screen's own podium |
+| `gull.png` | a gull glide silhouette, near-black against sunset, shallow-M glide pose, warm rim light on the upper edge | `assets/sprites/garnish/gull.png` (harbor) |
+| `cloud_wisp.png` | a soft horizontal cloud wisp, white with a cool shadowed underside, feathered all round | `assets/sprites/garnish/cloud_wisp.png` (skyterrace's cloud deck, and dimmed as frozen's steam) |
+| `aurora_curtain.png` | a wide aurora curtain, vertical striations, aurora green `#2ee89a` fading out at the bottom and edges, painted for additive blending | `assets/sprites/garnish/aurora_curtain.png` (frozen) |
+| `godray_shaft.png` | a single god-ray shaft widening downward, pale green-white `#d6ffe0` fading out at the foot, painted for additive blending | `assets/sprites/garnish/godray_shaft.png` (jungle) |
+
+**What the wiring pass had to change, and why** — worth keeping, because it is
+the general lesson about swapping a painting in for a procedural drawing:
+
+- A painted plate is DENSER than the gradient card it replaces. At the alpha
+  the drawings were tuned to, the aurora became a green wash over the whole
+  arena. Both spawns now state a painted value and a drawn one (`byArt` in
+  garnish.js), so the fallback keeps the numbers it was tuned at.
+- A painted plate has its OWN aspect, and cards take their height from it
+  (`h: 0`). The god-ray painting is a wide cone (1.6 tall per unit wide) where
+  the drawing was a narrow shaft (5.3), so the jungle spawn states its height
+  explicitly when the plate is in play — the length of a beam is the read.
+- The gulls were spawning, flying and retiring without ever being drawn where
+  anyone could see them: near-lens depth plus a high sky band put them off the
+  top of the frame. They fly BEHIND the play space now, which is also what a
+  distant bird should do.
 
 ## Notes for the generator
 
