@@ -319,6 +319,7 @@ function shell() {
         <strong>Pose workbench</strong>
         <span class="muted">${MECHS.length} mechs · ${POSE_STATES.length} states</span>
         <a class="bar-link" href="./">← effect workbench</a>
+        <a class="bar-link" href="?edit=cards">card workbench →</a>
       </div>
       <div class="bar-tools bar-tools--desk">
         <label class="tool">Mech <select id="mech">${mechOpts}</select></label>

@@ -9,6 +9,7 @@ import { padsMenuState, padsMenuStates } from "./input.js";
 import { preloadChar, frameStyle, setFrameStyle, renderStyle, setRenderStyle } from "./render_backend.js";
 import { previewCharacter, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
 import { CHARACTER_QUOTES, QUOTE_INTRO, QUOTE_WIN, RANDOM_GROUP, TEXT } from "./config_menus.js";
+import { cardFocus } from "./config_cards.js";
 import { CONTROL_ROWS, rowAtPad } from "./config_controls.js";
 import { MATCH_MODES, MAX_FIGHTERS, matchPlan, modeLabel, HUMAN_TEAM } from "./modes.js";
 
@@ -359,6 +360,24 @@ function heroCardSrc(key) {
   return `assets/cards/${key}_card.jpg`;
 }
 
+/** A card's crop focus (src/config_cards.js) as an inline custom property.
+ *  Eight differently-shaped holes crop these paintings and styles.css aims
+ *  every one of them off this single number — `object-position: 50%
+ *  var(--card-focus, 0%)`. Emitted only when it is not the 0 default, so a card
+ *  nobody has tuned still produces exactly the markup it always did. */
+function cardFocusStyle(key) {
+  const focus = cardFocus(key);
+  return focus ? ` style="--card-focus:${focus}%"` : "";
+}
+
+/** The same, for an <img> the caller already holds. Always writes, even for 0:
+ *  these elements are REUSED as the fighter changes, so an unset property would
+ *  leave the previous character's focus aiming this one's crop. */
+function setHeroCard(img, key) {
+  img.src = heroCardSrc(key);
+  img.style.setProperty("--card-focus", `${cardFocus(key)}%`);
+}
+
 /** A fighter's spoken line for one SCREEN. The VS splash asks for their
  *  walk-on (`intro`), the results podium for their victory line (`win`) —
  *  characters.js writes both, and asking for the wrong one is how every mech's
@@ -385,7 +404,7 @@ function buildCharacterCard(key) {
   btn.dataset.character = key;
   btn.innerHTML = random
     ? `<b class="random-glyph">${TEXT.slot.randomGlyph}</b><span>${name}</span>`
-    : `<img src="${rosterTileSrc(key)}" alt="${name}"><span>${name}</span>`;
+    : `<img src="${rosterTileSrc(key)}"${cardFocusStyle(key)} alt="${name}"><span>${name}</span>`;
   btn.addEventListener("click", () => {
     const slot = steeredSlot(state.activePicker);
     if (slot !== state.activePicker) { setPickerCursor(slot, key); return; }
@@ -1095,7 +1114,7 @@ function updateSpotlight() {
   spotlightFlip = !spotlightFlip;
   hide.classList.remove("is-on");
   if (!key) { show.classList.remove("is-on"); return; }
-  show.src = heroCardSrc(key);
+  setHeroCard(show, key);
   show.classList.add("is-on");
 }
 
@@ -1119,7 +1138,7 @@ export function updateSelectionUi() {
     els[`p${id}PickCard`].classList.toggle("is-empty", !key);
     els[`p${id}PickImage`].classList.toggle("hidden", !char);
     els[`p${id}PickRandomArt`].classList.toggle("hidden", !random);
-    if (char) els[`p${id}PickImage`].src = heroCardSrc(key);
+    if (char) setHeroCard(els[`p${id}PickImage`], key);
     else els[`p${id}PickImage`].removeAttribute("src");
     // The hero card is the one place with room for the character's full name;
     // roster tiles and the in-match HUD stay on the short form.
@@ -1388,7 +1407,7 @@ function renderPauseStandings() {
       `<b class="${i < f.stocks ? "" : "is-lost"}"></b>`).join("");
     return `
     <div class="pause-chip" style="--seat:${f.char.theme}">
-      <img src="${heroCardSrc(f.charKey)}" alt="">
+      <img src="${heroCardSrc(f.charKey)}"${cardFocusStyle(f.charKey)} alt="">
       <span class="pause-chip-info">
         <strong>${f.char.name}</strong>
         <span class="pause-chip-row"><i>${Math.round(f.damage)}%</i><span class="pause-chip-stocks">${dots}</span></span>
@@ -1452,7 +1471,7 @@ export function showBattleIntro(entrants, { loading = false } = {}) {
         const char = CHARACTERS[e.key];
         return `
         <div class="intro-panel" style="--seat:${char.theme}; --i:${i}">
-          <img src="${heroCardSrc(e.key)}" alt="${char.name}">
+          <img src="${heroCardSrc(e.key)}"${cardFocusStyle(e.key)} alt="${char.name}">
           <div class="intro-plate">
             <i class="intro-seat">${seat(e)}</i>
             <b class="intro-name">${char.name}</b>
@@ -1726,7 +1745,7 @@ export function updateHud() {
     hudSet(`${id}:cpuSide`, teamMatch && f.team !== HUMAN_TEAM, (on) =>
       panel.classList.toggle("fighter-status--cpu-side", on));
     hudSet(`${id}:name`, f.char.name, (name) => { els[`p${id}Name`].textContent = name; });
-    hudSet(`${id}:portrait`, f.charKey, (key) => { els[`p${id}Portrait`].src = heroCardSrc(key); });
+    hudSet(`${id}:portrait`, f.charKey, (key) => setHeroCard(els[`p${id}Portrait`], key));
     hudSet(`${id}:damage`, Math.round(f.damage), (dmg) => {
       els[`p${id}Damage`].textContent = `${dmg}%`;
       els[`p${id}Damage`].style.color = damageColor(dmg);
@@ -1834,7 +1853,7 @@ function renderPodium(winner, side = null) {
   if (!winner) { els.victoryPodium.innerHTML = ""; return; }
   const hero = (f) => `
     <figure class="victory-hero" style="--card-theme:${f.char.theme}">
-      <img class="victory-hero-art" src="${heroCardSrc(f.charKey)}" alt="${f.char.name}">
+      <img class="victory-hero-art" src="${heroCardSrc(f.charKey)}"${cardFocusStyle(f.charKey)} alt="${f.char.name}">
       <figcaption class="victory-hero-plate">
         <i>${TEXT.roundOver.winnerBadge}</i>
         <b>${f.char.name}</b>
@@ -1843,7 +1862,7 @@ function renderPodium(winner, side = null) {
     </figure>`;
   const slat = (f, badge) => `
     <figure class="victory-card victory-card--loser" style="--card-theme:${f.char.theme}">
-      <img src="${heroCardSrc(f.charKey)}" alt="${f.char.name}">
+      <img src="${heroCardSrc(f.charKey)}"${cardFocusStyle(f.charKey)} alt="${f.char.name}">
       <figcaption><i>${badge}</i><b>${f.char.name}</b></figcaption>
     </figure>`;
   const ranked = rankFighters(winner);
