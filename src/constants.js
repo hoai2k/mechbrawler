@@ -463,3 +463,10 @@ export const CELL_FOOT_Y = 0.92;
 // Feel dials — motion amplitudes, tumble, trails, DI and move staling — live
 // in src/config_tuning.js. This file is physics, geometry and match rules: things
 // other code depends on the relationships between.
+
+// How long a side heavy may be held, seconds. UNIVERSAL — every mech charges
+// its heavy, so this is one number rather than a per-kit field. It is Mech
+// Mayhem's own `shared.melee.heavyHoldCap`, which is likewise global upstream:
+// the two mechs that carry a charge CAPABILITY there (titanus, colossus) carry
+// it for the LIGHT chain, not for the heavy everyone already had.
+export const HEAVY_CHARGE_CAP = 2.4;

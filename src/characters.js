@@ -80,7 +80,7 @@ export const CHARACTERS = {
     // while the light winds up, `lungeVx` is the half-step the release carries
     // him through the blow, and `glow` sites the charge sparks on the arms.
     // Titanus and colossus are the only two kits that declare it.
-    charge: { light: 0.7, heavy: 2.4, walk: true, lungeVx: 190, glow: "arms" },
+    charge: { light: 0.7, walk: true, lungeVx: 190, glow: "arms" },
     light: { dmg: 9.2, speed: 0.9, angle: 0.34, effect: null, label: "Haymaker String", sfx: "punch" },
     heavy: { dmg: 16.2, speed: 0.9, angle: 0.46, effect: null, label: "Overhead Pound", sfx: "punch", shieldMul: 1.8 },
     // The MM gun, on RB. A big single shell: priced near the top of the band.
@@ -410,7 +410,7 @@ export const CHARACTERS = {
     stats: { speed: 364, airSpeed: 298, accel: 2200, jump: 844, airJumps: 1, weight: 1.24, friction: 0.9 },
     // The titanus charge contract, with artillery patience: he banks a beat
     // longer than titanus does and gets a little less out of the step.
-    charge: { light: 0.8, heavy: 2.4, walk: true, lungeVx: 160, glow: "arms" },
+    charge: { light: 0.8, walk: true, lungeVx: 160, glow: "arms" },
     light: { dmg: 8.4, speed: 0.9, angle: 0.34, effect: null, label: "Banked Haymaker", sfx: "punch" },
     heavy: { dmg: 15.4, speed: 0.9, angle: 0.46, effect: null, label: "Thunderclap Pound", sfx: "punch", shieldMul: 1.8 },
     // The MM gun, on RB. The biggest single shell in the game: priced to match.
