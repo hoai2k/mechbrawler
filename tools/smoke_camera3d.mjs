@@ -28,13 +28,19 @@ const BASE = process.argv[2] || "http://127.0.0.1:5174";
 // embers, clouds, snow, stars), which spawn within seconds. Uptown Plaza is
 // the deliberate negative: the tournament flat has no garnish system at all
 // (src/camera3d/garnish.js), and this asserts it stays that way.
+// Sim-second targets are set by what each board needs to demonstrate — every
+// ambient layer here spawns within the first couple of seconds — and bounded
+// by what software GL can simulate inside the wall-clock deadline: neon and
+// foundry are the heaviest boards (rain + embers + the effect layer), and
+// asking them for 8 sim seconds ran out the clock without testing anything
+// the first 4 had not.
 const BOARDS = [
-  ["neon", 0, 8, true],        // ambient rain + standing hoardings/gantry
-  ["foundry", 1, 8, true],     // ambient embers
-  ["uptown", 2, 6, false],     // the tournament flat: no cards, on purpose
-  ["skyterrace", 4, 8, true],  // ambient cloud deck
-  ["frozen", 8, 6, true],      // ambient snow + standing aurora
-  ["orbital", 11, 6, true],    // ambient starfield
+  ["neon", 0, 4, true],        // ambient rain + standing hoardings/gantry
+  ["foundry", 1, 5, true],     // ambient embers
+  ["uptown", 2, 5, false],     // the tournament flat: no cards, on purpose
+  ["skyterrace", 4, 6, true],  // ambient cloud deck
+  ["frozen", 8, 5, true],      // ambient snow + standing aurora
+  ["orbital", 11, 5, true],    // ambient starfield
 ];
 
 // Boards whose cards include scenery that is placed once and then stands for
