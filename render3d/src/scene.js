@@ -480,8 +480,8 @@ function withStance(rig, layers) {
   return deg ? { ...layers, stanceDeg: deg } : layers;
 }
 
-export function poseToken(charKey, animKey, animTime, layers) {
-  const s = sampleTime(animKey, animTime, layers.beat);
+export function poseToken(charKey, animKey, animTime, layers, clipDur = 0) {
+  const s = sampleTime(animKey, animTime, layers.beat, clipDur);
   const q = Math.round(s * 720); // exact at any sane sample rate
   // A move-synced contact beat moves the snapped sample AND the reach/morph
   // ramps, so it is part of the pose. Moves' delays are a small discrete set
@@ -564,7 +564,7 @@ export function __cam() { return camera; }
 export function posePreview(charKey, animKey, animTime, rig, resolved, layers = {}) {
   if (!rig || !resolved) return false;
   layers = withStance(rig, layers);
-  const sampled = sampleTime(animKey, animTime, layers.beat);
+  const sampled = sampleTime(animKey, animTime, layers.beat, resolved.clip?.duration);
   poseRig(rig, animKey, sampled, resolved.clip, { ...layers, charKey });
   swayChains(rig.root, sampled, charKey);
   frameCamera(rig.height, (layers.parallaxDeg || 0) * Math.PI / 180);
@@ -603,7 +603,7 @@ export function renderPose(charKey, animKey, animTime, rig, resolved, layers = {
   // rig here means the game, the workbench and the 2.5D camera all get it
   // without three copies of the same lookup drifting apart.
   layers = withStance(rig, layers);
-  const token = poseToken(charKey, animKey, animTime, layers);
+  const token = poseToken(charKey, animKey, animTime, layers, resolved?.clip?.duration);
   // Simulated chains carry state, so the same token draws different pixels by
   // design — such a fighter neither reads nor writes the cache. props.js
   // simulateChains states the trade; the note in billboards/src/renderer.js
@@ -620,7 +620,7 @@ export function renderPose(charKey, animKey, animTime, rig, resolved, layers = {
   if (!rig || !resolved || !renderer) return null;
 
   syncStageLight();
-  const sampled = sampleTime(animKey, animTime, layers.beat);
+  const sampled = sampleTime(animKey, animTime, layers.beat, resolved.clip?.duration);
   poseRig(rig, animKey, sampled, resolved.clip, { ...layers, charKey });
   // Secondary motion on the same quantised clock as the pose — cache-honest.
   swayChains(rig.root, sampled, charKey);

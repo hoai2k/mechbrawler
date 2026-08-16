@@ -11,7 +11,16 @@
 //   jump     = 690 + MMjump × 14
 //   airJumps = 1 (everyone — jets, not flights; docs/characters.md)
 //   weight   = round2(0.78 + MMweight × 0.33 + MMarmor × 0.55)
-//   friction = MMweight >= 0.9 ? 0.9 : 0.86
+//   friction = clamp(round2(0.84 − (weight − 0.88) × 0.139), 0.78, 0.86)
+//              — HEAVIER PLANTS HARDER. This was `weight >= 0.9 ? 0.9 : 0.86`,
+//              which put the whole roster at or above the slipperiest fighter
+//              the JJK engine ever shipped AND ran the wrong way round: the
+//              six heaviest mechs had the highest value, so a 40-ton walker
+//              skidded further than a scout. `friction` is the per-frame decay
+//              base (fighter.js `vx *= friction^(dt*60)`), so a LOWER number
+//              grips harder. The band and its direction are the JJK roster's
+//              (0.78–0.87, heavy = grippy): a heavy now coasts ~28px off a
+//              released stick where it used to carry ~62px, a light ~51px.
 //   heightCm = measured export height (units) × 26, rounded
 //   light.dmg = round1(MM light dmg[0] / 5)
 //   heavy.dmg = round1(MM heavy dmg / 6.5)
@@ -73,7 +82,7 @@ export const CHARACTERS = {
     heightCm: 191,     // 7.35 units × 26
     theme: "#ffa832",
     shadow: "rgba(255, 168, 50, 0.36)",
-    stats: { speed: 377, airSpeed: 309, accel: 2200, jump: 858, airJumps: 1, weight: 1.23, friction: 0.9 },
+    stats: { speed: 377, airSpeed: 309, accel: 2200, jump: 858, airJumps: 1, weight: 1.23, friction: 0.79 },
     // MM light 46/50/68 with triple the roster's knockback. THE CHARGE CONTRACT
     // (docs/characters.md): `charge` is read by fighter.js — `light` and
     // `heavy` are the seconds to a full bank, `walk` lets him keep walking
@@ -133,7 +142,7 @@ export const CHARACTERS = {
     heightCm: 169,     // 6.51 units × 26
     theme: "#ff8c30",
     shadow: "rgba(255, 140, 48, 0.36)",
-    stats: { speed: 421, airSpeed: 345, accel: 2656, jump: 872, airJumps: 1, weight: 1.04, friction: 0.86 },
+    stats: { speed: 421, airSpeed: 345, accel: 2656, jump: 872, airJumps: 1, weight: 1.04, friction: 0.82 },
     light: { dmg: 6.0, speed: 1.0, angle: 0.3, effect: null, label: "Muzzle Jab", sfx: "punch" },
     heavy: { dmg: 12.0, speed: 1.0, angle: 0.44, effect: null, label: "Barrel Club", sfx: "punch", shieldMul: 1.6 },
     // The MM gun, on RB. The cheapest, most rapid gun in the game.
@@ -187,7 +196,7 @@ export const CHARACTERS = {
     heightCm: 153,     // 5.90 units × 26
     theme: "#5aff2e",
     shadow: "rgba(90, 255, 46, 0.36)",
-    stats: { speed: 497, airSpeed: 408, accel: 3040, jump: 907, airJumps: 1, weight: 0.88, friction: 0.86 },
+    stats: { speed: 497, airSpeed: 408, accel: 3040, jump: 907, airJumps: 1, weight: 0.88, friction: 0.84 },
     light: { dmg: 6.0, speed: 1.1, angle: 0.26, effect: null, label: "Energy Daggers", sfx: "slash" },
     heavy: { dmg: 10.8, speed: 1.1, angle: 0.4, effect: null, label: "Corkscrew Drill", sfx: "slashHeavy", shieldMul: 1.5 },
     // The MM gun, on RB. Cheap and rapid — the spammable dagger.
@@ -239,7 +248,7 @@ export const CHARACTERS = {
     heightCm: 179,     // 6.87 units × 26
     theme: "#ff2a20",
     shadow: "rgba(255, 42, 32, 0.36)",
-    stats: { speed: 396, airSpeed: 325, accel: 2320, jump: 858, airJumps: 1, weight: 1.18, friction: 0.9 },
+    stats: { speed: 396, airSpeed: 325, accel: 2320, jump: 858, airJumps: 1, weight: 1.18, friction: 0.8 },
     light: { dmg: 8.0, speed: 0.95, angle: 0.32, effect: null, label: "Horn Jab", sfx: "punch" },
     heavy: { dmg: 14.6, speed: 0.95, angle: 0.44, effect: null, label: "Planted Horn", sfx: "punch", shieldMul: 1.8 },
     // The MM gun, on RB. A mid-weight shell: mid-band price.
@@ -293,7 +302,7 @@ export const CHARACTERS = {
     heightCm: 162,     // 6.22 units × 26
     theme: "#3fd8ff",
     shadow: "rgba(63, 216, 255, 0.36)",
-    stats: { speed: 459, airSpeed: 376, accel: 2896, jump: 900, airJumps: 1, weight: 0.94, friction: 0.86 },
+    stats: { speed: 459, airSpeed: 376, accel: 2896, jump: 900, airJumps: 1, weight: 0.94, friction: 0.83 },
     light: { dmg: 5.6, speed: 1.05, angle: 0.3, effect: null, label: "Static Jab", sfx: "punch" },
     heavy: { dmg: 6.5, speed: 1.05, angle: 0.42, effect: "shock", label: "Travelling Tornado", sfx: "whoosh", shieldMul: 1.5 },
     // The MM gun, on RB. Rapid lightning: cheap.
@@ -345,7 +354,7 @@ export const CHARACTERS = {
     heightCm: 161,     // 6.18 units × 26
     theme: "#6cd8ff",
     shadow: "rgba(108, 216, 255, 0.36)",
-    stats: { speed: 478, airSpeed: 392, accel: 2860, jump: 900, airJumps: 1, weight: 0.96, friction: 0.86 },
+    stats: { speed: 478, airSpeed: 392, accel: 2860, jump: 900, airJumps: 1, weight: 0.96, friction: 0.83 },
     light: { dmg: 6.0, speed: 1.05, angle: 0.28, effect: null, label: "Claw Rake", sfx: "slash" },
     heavy: { dmg: 11.7, speed: 1.05, angle: 0.44, effect: null, label: "Spike Leap", sfx: "slashHeavy", shieldMul: 1.6 },
     // The MM ranged weapon, on RB. A steady poke: cheap-mid.
@@ -407,7 +416,7 @@ export const CHARACTERS = {
     heightCm: 184,     // 7.09 units × 26
     theme: "#ffc23c",
     shadow: "rgba(255, 194, 60, 0.36)",
-    stats: { speed: 364, airSpeed: 298, accel: 2200, jump: 844, airJumps: 1, weight: 1.24, friction: 0.9 },
+    stats: { speed: 364, airSpeed: 298, accel: 2200, jump: 844, airJumps: 1, weight: 1.24, friction: 0.79 },
     // The titanus charge contract, with artillery patience: he banks a beat
     // longer than titanus does and gets a little less out of the step.
     charge: { light: 0.8, walk: true, lungeVx: 160, glow: "arms" },
@@ -463,7 +472,7 @@ export const CHARACTERS = {
     heightCm: 158,     // 6.09 units × 26
     theme: "#ff2030",
     shadow: "rgba(255, 32, 48, 0.36)",
-    stats: { speed: 449, airSpeed: 368, accel: 2980, jump: 886, airJumps: 1, weight: 0.9, friction: 0.86 },
+    stats: { speed: 449, airSpeed: 368, accel: 2980, jump: 886, airJumps: 1, weight: 0.9, friction: 0.84 },
     light: { dmg: 6.0, speed: 1.05, angle: 0.3, effect: null, label: "Stock Strike", sfx: "punch" },
     heavy: { dmg: 10.5, speed: 1.05, angle: 0.44, effect: null, label: "Wing Lasers", sfx: "slashHeavy", shieldMul: 1.5 },
     // The rifle, on RB — the one weapon everything else in the kit is spent on.
@@ -520,7 +529,7 @@ export const CHARACTERS = {
     heightCm: 172,     // 6.60 units × 26
     theme: "#ff8a1e",
     shadow: "rgba(255, 138, 30, 0.36)",
-    stats: { speed: 407, airSpeed: 334, accel: 2500, jump: 865, airJumps: 1, weight: 1.1, friction: 0.86 },
+    stats: { speed: 407, airSpeed: 334, accel: 2500, jump: 865, airJumps: 1, weight: 1.1, friction: 0.81 },
     // The string finisher sets you alight — a reward for landing the whole
     // chain, exactly the comboStatus MM gives him.
     light: { dmg: 7.2, speed: 0.95, angle: 0.32, effect: "burn", label: "Torch-Hand Combo", sfx: "punch" },
@@ -574,7 +583,7 @@ export const CHARACTERS = {
     heightCm: 180,     // 6.94 units × 26
     theme: "#7ce0ff",
     shadow: "rgba(124, 224, 255, 0.36)",
-    stats: { speed: 383, airSpeed: 314, accel: 2296, jump: 858, airJumps: 1, weight: 1.19, friction: 0.9 },
+    stats: { speed: 383, airSpeed: 314, accel: 2296, jump: 858, airJumps: 1, weight: 1.19, friction: 0.8 },
     light: { dmg: 7.6, speed: 0.95, angle: 0.32, effect: null, label: "Lance Jab", sfx: "punch" },
     heavy: { dmg: 14.2, speed: 0.95, angle: 0.44, effect: null, label: "Planted Lance", sfx: "slashHeavy", shieldMul: 1.7 },
     // The MM gun, on RB. A quick fan of shards: cheap-mid.
@@ -628,7 +637,7 @@ export const CHARACTERS = {
     heightCm: 158,     // 6.07 units × 26
     theme: "#4fc3ff",
     shadow: "rgba(79, 195, 255, 0.36)",
-    stats: { speed: 343, airSpeed: 281, accel: 2260, jump: 816, airJumps: 1, weight: 1.24, friction: 0.9 },
+    stats: { speed: 343, airSpeed: 281, accel: 2260, jump: 816, airJumps: 1, weight: 1.24, friction: 0.79 },
     light: { dmg: 8.0, speed: 0.9, angle: 0.3, effect: null, label: "Pincer Strike", sfx: "punch" },
     heavy: { dmg: 15.4, speed: 0.9, angle: 0.44, effect: null, label: "Pincer Clap", sfx: "punch", shieldMul: 1.8 },
     // The MM gun, on RB. A held hose: the cheapest shot in the game.
@@ -682,7 +691,7 @@ export const CHARACTERS = {
     heightCm: 141,     // 5.41 units × 26 — the shortest mech
     theme: "#ff2418",
     shadow: "rgba(255, 36, 24, 0.36)",
-    stats: { speed: 483, airSpeed: 396, accel: 2896, jump: 900, airJumps: 1, weight: 0.95, friction: 0.86 },
+    stats: { speed: 483, airSpeed: 396, accel: 2896, jump: 900, airJumps: 1, weight: 0.95, friction: 0.83 },
     light: { dmg: 6.4, speed: 1.1, angle: 0.26, effect: null, label: "Sickle Kicks", sfx: "slash" },
     heavy: { dmg: 12.3, speed: 1.05, angle: 0.42, effect: null, label: "Lunging Bite", sfx: "slashHeavy", shieldMul: 1.6 },
     // The MM gun, on RB. The fastest-recovering projectile here: cheap.
@@ -747,7 +756,7 @@ export const CHARACTERS = {
     heightCm: 159,     // 6.11 units × 26
     theme: "#aef23c",
     shadow: "rgba(174, 242, 60, 0.36)",
-    stats: { speed: 440, airSpeed: 361, accel: 2800, jump: 956, airJumps: 1, weight: 1.01, friction: 0.86 },
+    stats: { speed: 440, airSpeed: 361, accel: 2800, jump: 956, airJumps: 1, weight: 1.01, friction: 0.82 },
     light: { dmg: 6.0, speed: 1.05, angle: 0.3, effect: null, label: "Quad Jab", sfx: "punch" },
     heavy: { dmg: 12.0, speed: 1.0, angle: 0.44, effect: null, label: "Four-Armed Clap", sfx: "punch", shieldMul: 1.6 },
     // The MM gun, on RB. A quick lobbed glob: cheap.
@@ -806,7 +815,7 @@ export const CHARACTERS = {
     // Jump 30 upstream — the highest in the game by a clear margin.
     // TODO(engine): the jump windup (0.18s crouch before launch), wall-cling +
     // wall-jump, and the tuck-only air somersault.
-    stats: { speed: 426, airSpeed: 349, accel: 2860, jump: 1110, airJumps: 1, weight: 0.97, friction: 0.86 },
+    stats: { speed: 426, airSpeed: 349, accel: 2860, jump: 1110, airJumps: 1, weight: 0.97, friction: 0.83 },
     light: { dmg: 5.6, speed: 1.05, angle: 0.34, effect: null, label: "Claw Rakes", sfx: "slash" },
     // The Barrage pummels IN PLACE — MM gives it dmg 11 × 8 strikes with
     // knock 3 / launch 0, deliberately. One engine hit carries the full
@@ -872,7 +881,7 @@ export const CHARACTERS = {
     heightCm: 200,     // 7.69 units × 26
     theme: "#ff1f2a",
     shadow: "rgba(255, 31, 42, 0.36)",
-    stats: { speed: 434, airSpeed: 356, accel: 2740, jump: 879, airJumps: 1, weight: 1.01, friction: 0.86 },
+    stats: { speed: 434, airSpeed: 356, accel: 2740, jump: 879, airJumps: 1, weight: 1.01, friction: 0.82 },
     // GLITCH is applied by the PASSIVE, on every landed hit (combat.js), so no
     // move in this kit names it: the whole kit is stack delivery by definition.
     light: { dmg: 6.0, speed: 1.05, angle: 0.3, effect: null, label: "De-rez Combo", sfx: "punch" },
@@ -930,7 +939,7 @@ export const CHARACTERS = {
     heightCm: 170,     // 6.52 units × 26
     theme: "#ffa432",
     shadow: "rgba(255, 164, 50, 0.36)",
-    stats: { speed: 415, airSpeed: 340, accel: 2344, jump: 872, airJumps: 1, weight: 1.15, friction: 0.86 },
+    stats: { speed: 415, airSpeed: 340, accel: 2344, jump: 872, airJumps: 1, weight: 1.15, friction: 0.8 },
     light: { dmg: 8.0, speed: 1.0, angle: 0.32, effect: null, label: "Ape Haymakers", sfx: "punch" },
     heavy: { dmg: 15.1, speed: 0.95, angle: 0.46, effect: null, label: "Overhead Drive", sfx: "punch", shieldMul: 1.8 },
     // The MM gun, on RB. A four-shell ripple: mid-band price.
@@ -987,7 +996,7 @@ export const CHARACTERS = {
     heightCm: 165,     // 6.36 units × 26
     theme: "#ff8a24",
     shadow: "rgba(255, 138, 36, 0.36)",
-    stats: { speed: 400, airSpeed: 328, accel: 2200, jump: 816, airJumps: 1, weight: 1.23, friction: 0.9 },
+    stats: { speed: 400, airSpeed: 328, accel: 2200, jump: 816, airJumps: 1, weight: 1.23, friction: 0.79 },
     light: { dmg: 6.8, speed: 0.95, angle: 0.3, effect: null, label: "Gore Jabs", sfx: "punch" },
     // The Toss: MM's biggest vertical launch (13) — his kill move is a
     // launcher, so the heavy angle points at the sky.

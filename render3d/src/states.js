@@ -147,18 +147,37 @@ export function clipNameFor(state) {
 
 /** Where the clip playhead sits for a state at animTime, honouring the game
  *  clock: loops wrap, one-shots clamp just short of the end so the final pose
- *  holds instead of snapping back to frame zero. */
-export function clipTime(state, animTime) {
+ *  holds instead of snapping back to frame zero.
+ *
+ *  A LOOP WRAPS AT THE CLIP'S OWN LENGTH when the caller knows it (`clipDur`).
+ *  The durations above came from the sprite era, where a looping clip was
+ *  GENERATED at the state's duration and so was exactly one stride by
+ *  construction. Every mech now ships its own locomotion out of its export,
+ *  and those run 0.37–0.97 s against a `run` duration of 0.308 — so wrapping
+ *  at the table cut the stride off at a third of its arc and snapped the legs
+ *  back to frame zero three times a second, while the body kept travelling the
+ *  full ground distance. That is foot-skating, and it is what "the characters
+ *  slip around" was. The table stays the fallback: it is still right for a
+ *  state whose clip is missing, and for the pose-library rigs that build their
+ *  cycles to it. */
+export function clipTime(state, animTime, clipDur = 0) {
   const s = STATES[clipNameFor(state)] || STATES.idle;
-  if (s.loop) return ((animTime % s.duration) + s.duration) % s.duration;
+  if (s.loop) {
+    const dur = clipDur > 0 ? clipDur : s.duration;
+    return ((animTime % dur) + dur) % dur;
+  }
   return Math.min(Math.max(animTime, 0), s.duration - 1e-4);
 }
 
 /** Run-style states report a 4-beat cycle to motion.js (a full stride), which
- *  halves the procedural bob the same way the 4-frame sprite run does. */
-export function cycleInfo(state, animTime) {
+ *  halves the procedural bob the same way the 4-frame sprite run does. Takes
+ *  the clip's own length for the same reason clipTime does — the bob has to
+ *  count the stride the legs are actually walking, or the body bounces three
+ *  times a step. */
+export function cycleInfo(state, animTime, clipDur = 0) {
   const s = STATES[clipNameFor(state)] || STATES.idle;
-  const t = animTime / s.duration;
+  const dur = (s.loop && clipDur > 0 ? clipDur : s.duration) || 1;
+  const t = animTime / dur;
   return { phase: t - Math.floor(t), frames: state === "run" ? 4 : 2 };
 }
 

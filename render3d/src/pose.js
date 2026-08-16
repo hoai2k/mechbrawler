@@ -110,8 +110,8 @@ export function setOnTwos(on) {
  *  up-smash share the upHeavy clip at different startups) and speed-scaled
  *  per character. The game passes the delay through (render.js -> backend
  *  `layers.beat`) so full extension shows the instant the hitbox turns on. */
-export function sampleTime(animKey, animTime, beatOverride) {
-  const t = clipTime(animKey, animTime);
+export function sampleTime(animKey, animTime, beatOverride, clipDur = 0) {
+  const t = clipTime(animKey, animTime, clipDur);
   const name = clipNameFor(animKey);
   // Even "smooth" quantises — to 30 Hz, not the 13 Hz twos step. Unquantised
   // time makes every offscreen render unique and the pose cache worthless,
@@ -1505,7 +1505,7 @@ function poseOnce(rig, animKey, sampled, clip, layers = {}) {
   levelFeet(rig, animKey);
   // Body morphs (Mahito's transfiguration arms) precede aim/reach so every
   // solve sees the morphed limb.
-  if (layers.charKey) applyMorphs(rig.root, layers.charKey, animKey, clipTime(animKey, sampled), layers.beat);
+  if (layers.charKey) applyMorphs(rig.root, layers.charKey, animKey, clipTime(animKey, sampled, clip?.duration), layers.beat);
   applyPoseEdits(rig.root, layers.edits);
   if (DIALS.aim && layers.aimRad && aimable(animKey)) applyAim(rig.root, layers.aimRad);
   applyMachineReach(rig, animKey, sampled, layers);
@@ -1518,7 +1518,7 @@ function poseOnce(rig, animKey, sampled, clip, layers = {}) {
     // solve and the carry below want it already corrected.
     applyGrip(THREE, rig.root, layers.charKey, _ik);
     applyTwoHandGrip(THREE, rig.root, layers.charKey, animKey,
-      clipTime(animKey, sampled), _ik, layers.beat);
+      clipTime(animKey, sampled, clip?.duration), _ik, layers.beat);
     // ...and while TRAVELLING, the weapon is luggage rather than a statement:
     // heavy end trailing, low and behind (ik.js applyCarry). After the grip
     // solve, which is a no-op in these states anyway, so the two never argue.

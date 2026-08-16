@@ -215,7 +215,10 @@ export function currentFrame(charKey, animKey, animTime) {
 }
 
 export function cyclePhase(charKey, animKey, animTime) {
-  return cycleInfo(animKey, animTime);
+  // The procedural bob counts strides, so it has to count the clip the legs
+  // are actually walking — the state table's duration is a fallback for a
+  // character whose clip has not loaded, not the truth about this rig.
+  return cycleInfo(animKey, animTime, rigs?.resolveClip(charKey, animKey)?.clip?.duration);
 }
 
 /** The move-synced contact beat for this draw, or undefined. `opts.beat` is
@@ -356,7 +359,7 @@ export const scene3d = {
     if (!resolved) return false;
     const beat = beatOverride(animKey, opts);
     const target = pose.presentTargetDeg(animKey, animTime, beat);
-    pose.poseRig(inst, animKey, pose.sampleTime(animKey, animTime, beat), resolved.clip, {
+    pose.poseRig(inst, animKey, pose.sampleTime(animKey, animTime, beat, resolved.clip?.duration), resolved.clip, {
       charKey,
       beat,
       blend: blendLayer(charKey, animKey, animTime, opts),
