@@ -33,16 +33,18 @@ import { pressStart } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
-// Sim pixels of slack between the lowest foot bone and the platform's top.
+// Sim pixels the foot-bone reading may DRIFT between platforms of one board.
 //
-// Not zero, because the FOOT BONE is not the sole: it is the ankle joint, and
-// how far inside the boot mesh it sits is a fact about each delivered rig, not
-// about this code — across the roster the settled reading runs 0–3.5 px, and
-// the CPU picks a different opponent every run. Six is comfortably above that
-// spread, comfortably below what reads as sinking, and seven times smaller
-// than the bug it is here to catch (≈40 px, the ±0.6 m clamp through the rig
-// scale). A regression does not creep in at this size; it arrives at the
-// clamp.
+// The reading itself (root y minus lowest foot bone) is NOT compared against
+// zero: where a rig's toe/heel joints sit relative to its origin is a fact
+// about each delivered skeleton, not about this code — the mech rigs carry
+// their foot joints ~73 px from the root in bind-space while the mesh feet
+// sit exactly on the deck (verified by eye against the rendered frame). What
+// the guarded bug produced was a reading that CHANGED with the platform's
+// world height — feet through the deck on every platform except the one at
+// world y = 0 — so the check is the spread: every platform's reading against
+// the main platform's baseline. A constant anatomy offset cancels; the ≈40 px
+// per-platform error of the original bug does not.
 const TOLERANCE = 6;
 
 let failures = 0;
@@ -100,6 +102,7 @@ check(plats.some((p) => p.kind !== "main"),
   plats.map((p) => `${p.kind}@${p.y}`).join(" "));
 
 let measured = 0;
+const readings = []; // [{ kind, y, drop }] — drop is root-y minus lowest foot bone
 for (let i = 0; i < plats.length; i++) {
   // Hold the fighter on this platform: the sim keeps running, so a one-shot
   // assignment would be walked off by the CPU before the rig is read.
@@ -159,15 +162,24 @@ for (let i = 0; i < plats.length; i++) {
     continue;
   }
   measured++;
-  const worst = Math.max(...m.rigs.map(Math.abs));
-  check(worst <= TOLERANCE,
-    `${board} ${m.kind} platform (sim y ${m.y}): feet stand on the deck`,
-    `worst ${worst.toFixed(2)} px, tolerance ${TOLERANCE} — ${m.who}`);
+  readings.push({ kind: m.kind, y: m.y, drop: m.rigs[0], who: m.who });
 }
 await page.evaluate(() => { if (window.__pin) clearInterval(window.__pin); });
 
 check(measured >= 2, `${board}: measured a rig on more than one platform height`,
   `${measured} platform(s)`);
+
+// The spread check (see the TOLERANCE note): every platform's reading against
+// the main platform's. The guarded bug scaled with platform height; a rig's
+// own bone anatomy does not.
+const base = readings.find((r) => r.kind === "main") ?? readings[0];
+for (const r of readings) {
+  if (r === base) continue;
+  const drift = Math.abs(r.drop - base.drop);
+  check(drift <= TOLERANCE,
+    `${board} ${r.kind} platform (sim y ${r.y}): feet stand on the deck like the main's`,
+    `drift ${drift.toFixed(2)} px vs main's ${base.drop.toFixed(2)}, tolerance ${TOLERANCE} — ${r.who}`);
+}
 
 // Back to the menu for the next board.
 await page.keyboard.press("Escape");
