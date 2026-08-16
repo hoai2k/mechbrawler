@@ -3,8 +3,8 @@
 //
 // The soundtrack is Mech Mayhem's, imported whole from robotworld: each arena
 // plays its own theme (take 1 of the upstream per-arena set), and the general
-// battle loops serve as the fallback pool. Menu screens play the upstream menu
-// suite at a reduced volume.
+// battle loops serve as the fallback pool. Menu screens play the title theme
+// at a reduced volume.
 //
 // THE MUSIC STARTS ON THE TITLE. The splash and the fighter select are the
 // same menu phase (MENU_PHASES in audio.js), so MENU_TRACK begins the moment
@@ -31,7 +31,7 @@ export const MUSIC_EXT = ".mp3";
 // Menu, stage select, move list, settings and the results screen.
 export const MENU_TRACK = {
   label: "Menu",
-  file: "Bohemian Cello Flame Hybrid Suite",
+  file: "Moonlit Go-Go v2",
   // Menu music sits under the battle music: the master volume slider still
   // applies, this is the extra scaling on top of it.
   volumeScale: 0.5,
