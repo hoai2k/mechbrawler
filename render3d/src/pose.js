@@ -687,10 +687,18 @@ const GROUNDED = new Set([
   "light", "sideHeavy", "upHeavy", "downHeavy", "crouchAttack",
   "hurt", "prone", "dash",
   "specialNeutral", "specialSide", "specialDown",
+  // `ult` and `getup` are as grounded as a heavy is — the ult is a stance the
+  // fighter plants and swings from, the getup is performed lying on the floor
+  // — and they were missing, so they were the one family this pass never ran
+  // on. Their MM clips carry the same hip-high carriage as everybody's, so
+  // "never grounded" meant "left half a body-height in the air": measured at
+  // +0.49 to +0.65 of body height across the roster before this line. The
+  // dash attacks are not listed because they ALIAS to light/sideHeavy and this
+  // set is tested against clipNameFor (see above).
+  "ult", "getup",
 ]);
 
-/** Each rig's armature node and where it sits in the bind, so the ground drop
- *  is applied fresh every frame instead of accumulating. */
+/** Each rig's pelvis node, so the lookup is not repeated per frame. */
 const _armature = new WeakMap();
 
 /** The bones the body stands on — mech intake names first (ankleL/toeL...),
@@ -758,7 +766,7 @@ function groundOffset(bones, root) {
 }
 
 /**
- * DROP THE BODY UNTIL ITS FEET ARE ON THE FLOOR.
+ * SETTLE THE BODY ONTO THE FLOOR — both directions.
  *
  * A pose folds the legs; it does not lower the hips, because a pose is bone
  * rotations and hip height is a translation. So a crouch built from the pose
@@ -766,9 +774,48 @@ function groundOffset(bones, root) {
  * 29cm up — and foot IK did not catch it: `plantFeet` only pushes feet that
  * have sunk BELOW the line back up to it, and these are above it.
  *
- * It moves the ARMATURE, not the rig root. The root is where the fighter is
- * standing in the world and belongs to the backend; the armature node inside
- * it is the body, and moving that leaves placement alone.
+ * It moves the pelvis, not the rig root. The root is where the fighter is
+ * standing in the world and belongs to the backend; the body hangs off the
+ * pelvis, and moving that leaves placement alone.
+ *
+ * TWO THINGS THIS USED TO GET WRONG. Both show up as a fighter who is not
+ * standing on anything — sunk into the floor with only their leaning upper
+ * body above the line, or planted in mid-air — which is most of what "the
+ * attack poses look wonky" turned out to be once the clips themselves had
+ * been checked against their source and cleared.
+ *
+ *   1. IT COULD ONLY LOWER. The correction was `Math.min(0, drop)` — a body
+ *      whose feet came out BELOW the floor was left there, on the argument
+ *      that hoisting a fighter up to meet a stray foot is worse than leaving
+ *      them be. That argument belonged to the deleted pose library, whose
+ *      poses folded the legs and only ever floated. The delivered MM clips
+ *      extend the legs too, and carry their own carriage height in
+ *      `hips.position` besides, so a strike that plants a foot lower than the
+ *      idle solved to a POSITIVE drop, had it thrown away, and rendered
+ *      buried. So the clamp is now symmetric: settle either way, and keep the
+ *      magnitude limit, which is there to stop one bone measured somewhere
+ *      absurd from throwing the body across the screen — not to pick a
+ *      direction.
+ *
+ *   2. IT SOLVED FROM A REMEMBERED HIP HEIGHT. The pelvis was reset to a
+ *      `_bindY` snapshotted the first time any rig was grounded — which is
+ *      after `playClip`, so it was never the bind at all but whatever height
+ *      the first state to render happened to leave. Every later solve measured
+ *      from there, which made the answer depend on BOOT ORDER (the same token
+ *      could render differently in a match and in the workbench, breaking the
+ *      determinism the afterimage trail relies on) and pushed the correction
+ *      far enough from zero to hit the magnitude limit. The honest base is the
+ *      height the CLIP just asked for: `restoreClean` + `playClip` rewrite
+ *      `hips.position` every pose, and `keepClean` snapshots it BEFORE this
+ *      pass runs, so reading it here is stable, un-accumulating and carries
+ *      the clip's own authored carriage into the solve.
+ *
+ * STILL OWED: `meshSoleDelta` is measured lazily, at the first grounded pose,
+ * and it is what sets the height every later pose is settled to. In practice
+ * that first pose is the idle and the idle is the right reference — but it is
+ * an accident of draw order, not a guarantee, and the honest version measures
+ * it from the rig's BIND pose at registration. Until then the same boot-order
+ * hazard removed from `_bindY` above survives one level down.
  */
 function standOnGround(rig, animKey) {
   const root = rig?.root;
@@ -783,12 +830,10 @@ function standOnGround(rig, animKey) {
     // PBR made the crop impossible to blame on the toon pass).
     const hips = root.getObjectByName("hips") || root.getObjectByName("Hips")
       || root.getObjectByName("mixamorigHips");
-    node = hips?.parent === root ? hips : (hips || null);
-    _armature.set(root, node ? Object.assign(node, { _bindY: node.position.y }) : null);
+    _armature.set(root, hips || null);
     node = _armature.get(root);
   }
   if (!node) return;
-  node.position.y = node._bindY;
   if (!GROUNDED.has(clipNameFor(animKey))) { root.updateMatrixWorld(true); return; }
   root.updateMatrixWorld(true);
   const bones = new Map();
@@ -800,15 +845,12 @@ function standOnGround(rig, animKey) {
   // so is the floor the fighter stands on. See groundOffset. The bones alone
   // are not the whole answer — meshSoleDelta says why.
   const drop = groundOffset(bones, root) - meshSoleDelta(rig, bones, root);
-  // A hard clamp, because this is a correction and not a lift: a pose that
-  // wants the body far lower than its bind is a broken pose, and hoisting a
-  // fighter UP to meet a stray foot would be worse than leaving them be. The
-  // clamp scales with the body — 0.6m was a third of the JJK roster's height,
-  // and a flat 0.6 on a 7m mech would strand it mid-air (the MM exports
-  // carry their carriage roughly hip-height above the floor, so the honest
-  // drop is over half the mech's height).
+  // The magnitude limit stays, and stays generous: it is here so that one bone
+  // measured somewhere absurd cannot fling the body out of frame, not to pick
+  // a direction. It scales with the body — 0.6 m was a third of the JJK
+  // roster's height, and a flat 0.6 on a 7 m mech would strand it mid-air.
   const limit = Math.max(0.6, 0.75 * (rig.height || 0));
-  node.position.y = node._bindY + Math.min(0, Math.max(-limit, drop));
+  node.position.y += Math.max(-limit, Math.min(limit, drop));
   root.updateMatrixWorld(true);
 }
 
