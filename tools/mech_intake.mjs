@@ -115,9 +115,15 @@ const PREFER = {
   prone: ["knockdown"],
   getup: ["getup"],
   win: ["victory"],
+  // THE RELEASE, NEVER THE HOLD. `punchHold1` is a LOOP of the cocked fist
+  // quaking at the hip — in Mech Mayhem it plays only while the button is
+  // down, and `punchRelease1` throws the punch from exactly that chamber (its
+  // first frame IS the hold pose, which is why MM hands over between them with
+  // no cross-fade). Preferring the hold here gave titanus and colossus — the
+  // only two mechs with no `light1` — a jab that wound up and never landed.
   light: [
     "viperSlash1", "saurionKick1", "jerryRakeR", "tritoneGore", "bigPunch1",
-    "punchHold1", "light1", "heavy",
+    "punchRelease1", "light1", "heavy",
   ],
   airLight: ["flurry", "viperSlash2", "saurionKick2", "jerryRakeL", "light2", "light1", "heavy"],
   sideHeavy: HEAVY_WINDUP,
@@ -166,6 +172,12 @@ for (const id of ids) {
   if (have.has("poundHold")) clips.charge = { glb: "poundHold" };
   else if (clips.sideHeavy) clips.charge = { glb: clips.sideHeavy.glb, freeze: CHARGE_FREEZE_T };
   else missing.push("charge");
+  // ...and the JAB bank, which is a different hold on the two mechs that have
+  // one (states.js chargeLight says why it is its own state). Everyone else
+  // maps it to the smash wind-up and never plays it — a state with no entry
+  // draws the placeholder body, so "never played" still has to resolve.
+  if (have.has("punchHold1")) clips.chargeLight = { glb: "punchHold1" };
+  else if (clips.charge) clips.chargeLight = { ...clips.charge };
   if (missing.length) {
     console.warn(`${id}: no clip for ${missing.join(", ")} — state will use the default pose set`);
   }

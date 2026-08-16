@@ -14,7 +14,7 @@
 // tools/audit_hitboxes.mjs fails while this file is stale (--check).
 
 export const MODEL_REACH = {
-  "colossus": {"reach":81,"states":{"light":{"fwd":81,"top":196},"sideHeavy":{"fwd":77,"top":190},"upHeavy":{"fwd":55,"top":194},"downHeavy":{"fwd":50,"top":193},"crouchAttack":{"fwd":54,"top":213},"airLight":{"fwd":55,"top":299}}},
+  "colossus": {"reach":86,"states":{"light":{"fwd":86,"top":197},"sideHeavy":{"fwd":77,"top":190},"upHeavy":{"fwd":55,"top":194},"downHeavy":{"fwd":50,"top":193},"crouchAttack":{"fwd":54,"top":213},"airLight":{"fwd":55,"top":299}}},
   "cranky": {"reach":99,"states":{"light":{"fwd":99,"top":159},"sideHeavy":{"fwd":72,"top":160},"upHeavy":{"fwd":42,"top":166},"downHeavy":{"fwd":43,"top":161},"crouchAttack":{"fwd":89,"top":161},"airLight":{"fwd":84,"top":235}}},
   "fenrir": {"reach":78,"states":{"light":{"fwd":42,"top":141},"sideHeavy":{"fwd":55,"top":116},"upHeavy":{"fwd":43,"top":151},"downHeavy":{"fwd":43,"top":137},"crouchAttack":{"fwd":60,"top":127},"airLight":{"fwd":78,"top":212}}},
   "frogger": {"reach":92,"states":{"light":{"fwd":68,"top":138},"sideHeavy":{"fwd":28,"top":133},"upHeavy":{"fwd":28,"top":133},"downHeavy":{"fwd":37,"top":110},"crouchAttack":{"fwd":92,"top":120},"airLight":{"fwd":72,"top":204}}},
@@ -26,7 +26,7 @@ export const MODEL_REACH = {
   "rhino": {"reach":79,"states":{"light":{"fwd":54,"top":165},"sideHeavy":{"fwd":30,"top":150},"upHeavy":{"fwd":30,"top":150},"downHeavy":{"fwd":60,"top":139},"crouchAttack":{"fwd":79,"top":151},"airLight":{"fwd":57,"top":244}}},
   "saurion": {"reach":152,"states":{"light":{"fwd":149,"top":200},"sideHeavy":{"fwd":146,"top":197},"upHeavy":{"fwd":114,"top":183},"downHeavy":{"fwd":148,"top":184},"crouchAttack":{"fwd":152,"top":199},"airLight":{"fwd":84,"top":200}}},
   "tempest": {"reach":62,"states":{"light":{"fwd":42,"top":144},"sideHeavy":{"fwd":51,"top":140},"upHeavy":{"fwd":41,"top":106},"downHeavy":{"fwd":62,"top":98},"crouchAttack":{"fwd":60,"top":138},"airLight":{"fwd":45,"top":216}}},
-  "titanus": {"reach":91,"states":{"light":{"fwd":88,"top":194},"sideHeavy":{"fwd":91,"top":223},"upHeavy":{"fwd":54,"top":203},"downHeavy":{"fwd":44,"top":195},"crouchAttack":{"fwd":53,"top":224},"airLight":{"fwd":54,"top":297}}},
+  "titanus": {"reach":91,"states":{"light":{"fwd":89,"top":197},"sideHeavy":{"fwd":91,"top":223},"upHeavy":{"fwd":54,"top":203},"downHeavy":{"fwd":44,"top":195},"crouchAttack":{"fwd":53,"top":224},"airLight":{"fwd":54,"top":297}}},
   "tritone": {"reach":182,"states":{"light":{"fwd":178,"top":153},"sideHeavy":{"fwd":152,"top":201},"upHeavy":{"fwd":152,"top":201},"downHeavy":{"fwd":180,"top":165},"crouchAttack":{"fwd":182,"top":164},"airLight":{"fwd":181,"top":260}}},
   "viper": {"reach":93,"states":{"light":{"fwd":60,"top":147},"sideHeavy":{"fwd":91,"top":131},"upHeavy":{"fwd":93,"top":144},"downHeavy":{"fwd":34,"top":163},"crouchAttack":{"fwd":31,"top":198},"airLight":{"fwd":56,"top":218}}},
   "vulcan": {"reach":86,"states":{"light":{"fwd":48,"top":178},"sideHeavy":{"fwd":43,"top":175},"upHeavy":{"fwd":43,"top":175},"downHeavy":{"fwd":49,"top":170},"crouchAttack":{"fwd":86,"top":174},"airLight":{"fwd":54,"top":261}}},
@@ -34,9 +34,9 @@ export const MODEL_REACH = {
 };
 
 export const ENVELOPE_INPUTS = {
-  "manifest": "23a7c1d909ff",
+  "manifest": "70cedc89d726",
   "sprites": "missing",
-  "poses": "9ef2710442dc",
+  "poses": "468881ca1918",
   "models": {
     "colossus": "4897362b6b45",
     "cranky": "44b516436434",

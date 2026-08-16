@@ -214,7 +214,7 @@ function beginLight(f, input) {
     // the arms glow, and the release is the haymaker (releaseCharge below).
     if (chargeTime(f, "light") > 0) {
       f.charging = { variant: "light", t: 0, step: f.jabStep };
-      setAnim(f, "charge");
+      setAnim(f, chargeAnim(f.charging));
       return;
     }
     const move = lightMove(f.char, "jab", f.jabStep);
@@ -300,7 +300,17 @@ function beginHeavy(f, input) {
   }
   const variant = input.down || f.crouching ? "down" : input.up ? "up" : "side";
   f.charging = { variant, t: 0 };
-  setAnim(f, "charge");
+  setAnim(f, chargeAnim(f.charging));
+}
+
+/** Which hold a charge shows. Banking a JAB and winding up a SMASH are two
+ *  different acts on the mechs that can do both — one fist cocked at the hip
+ *  against a two-hand overhead load — so they are two states (states.js
+ *  chargeLight). Every rig maps both; on the fifteen that cannot bank a jab
+ *  the two resolve to the same clip and this is a distinction without a
+ *  difference, which is the right kind of harmless. */
+function chargeAnim(charging) {
+  return charging?.variant === "light" ? "chargeLight" : "charge";
 }
 
 /**
@@ -1642,7 +1652,7 @@ function pickAnim(f, input) {
     if (f.action.anim) setAnim(f, f.action.anim);
     return;
   }
-  if (f.charging) { setAnim(f, "charge"); return; }
+  if (f.charging) { setAnim(f, chargeAnim(f.charging)); return; }
   if (f.hitstun > 0) { setAnim(f, "hurt"); return; }
   if (f.healing) { setAnim(f, "specialDown"); return; }
   if (f.counter) { setAnim(f, "specialDown"); return; }

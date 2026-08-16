@@ -574,6 +574,39 @@ plays nothing like a platform fighter.
         points in all 35 clips, dividing out the scale and the folded yaw by
         fitting them. That is the check that says our mapping is exact.
 
+- [x] K16. THE JAB THAT NEVER LANDED (owner: titanus "seems to do a wind-up
+        pose, but never actually does the walking punch at all").
+
+        A clip-mapping bug, and a small state-contract hole under it.
+
+        `punchHold1` is a LOOP of the cocked fist quaking at the hip. In Mech
+        Mayhem it plays only while X is down, and `punchRelease1` throws the
+        punch FROM that chamber — its first frame IS the hold pose, which is
+        why MM hands over between them with no cross-fade at all. The intake
+        table preferred the hold, and titanus and colossus are the only two
+        mechs with no `light1` to fall through to, so their jab mapped to the
+        wind-up and the strike was never on screen. Every other mech was fine,
+        which is why it took a play-test to find.
+
+        `light` is `punchRelease1` now, in the manifest and in the intake
+        table's preference list, so a re-intake cannot bring it back.
+
+        AND THE HOLD ITSELF WAS THE WRONG HOLD. Banking a jab and winding up a
+        smash were one `charge` state, which mapped to `poundHold` — the
+        two-hand overhead load — so a banked jab showed a mech loading an
+        overhead slam and then throwing a hook. `chargeLight` is now its own
+        state (states.js says why it cannot be an alias), fighter.js picks it
+        by the charging variant, and the two banking mechs map it to
+        `punchHold1`. The other fifteen map it to the same clip as `charge` and
+        never reach it.
+
+        `tools/probe_light_chain.mjs` is the check: it drives the fighter's own
+        state machine through press -> hold -> release and prints the animation
+        key on every frame it changes, because the failure is a SEQUENCE and no
+        still frame of it looks wrong. Titanus and colossus read
+        `chargeLight -> light`; everyone else `light`. Reach envelopes
+        re-derived (the punch reaches 1-5 px further than the hold did).
+
 ## Decisions taken
 
 - mechs/lib/ (robotworld's animation runtime) stays REFERENCE ONLY; render3d

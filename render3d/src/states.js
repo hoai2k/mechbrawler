@@ -61,6 +61,20 @@ export const STATES = {
   upHeavy:        { loop: false, duration: 0.55,  beat: 0.167, aim: true,  tier: "archetype" },
   downHeavy:      { loop: false, duration: 0.55,  beat: 0.167, aim: true,  tier: "archetype" },
   charge:         { loop: true,  duration: 0.5,   tier: "identity" },
+  // BANKING A JAB IS NOT WINDING UP A SMASH. Both are "the button is held",
+  // which is why one state covered them for so long, but on the two mechs that
+  // bank a jab at all (titanus, colossus — `charge.light` in characters.js)
+  // Mech Mayhem draws them as different acts: the smash is the two-hand
+  // overhead hold (`poundHold`), the jab is one fist cocked at the hip and
+  // quaking (`punchHold1`). Sharing a state showed a mech loading an overhead
+  // slam and then throwing a hook.
+  //
+  // A real state rather than an alias, because an alias resolves to the OTHER
+  // state's manifest entry (clipNameFor runs before the lookup) and could
+  // never be mapped per mech — which is the whole point. Every rig gets an
+  // entry from tools/mech_intake.mjs; the fifteen with no jab bank map it to
+  // the same clip as `charge` and never play it.
+  chargeLight:    { loop: true,  duration: 0.5,   tier: "identity" },
   specialNeutral: { loop: false, duration: 0.5,   beat: 0.125, aim: true,  tier: "identity" },
   specialSide:    { loop: false, duration: 0.5,   beat: 0.125, aim: true,  tier: "identity" },
   specialDown:    { loop: false, duration: 0.5,   beat: 0.125, tier: "identity" },
