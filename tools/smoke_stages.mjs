@@ -28,6 +28,7 @@ page.on("console", (m) => { if (m.type() === "error") errors.push({ stage: curre
 const OPTIONAL_ART = [
   "/assets/sprites/summons/",
   "/assets/sprites/effects/",
+  "/assets/sprites/garnish/",
   "/assets/backgrounds/domains/",
   // The mech roster's select cards (intake/cards) are a Phase-1 delivery that
   // trails the roster code; the select screen falls back without them.

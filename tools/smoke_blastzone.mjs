@@ -37,6 +37,7 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 const OPTIONAL_ART = [
   "/assets/sprites/summons/",
   "/assets/sprites/effects/",
+  "/assets/sprites/garnish/",
   "/assets/backgrounds/domains/",
 ];
 const undelivered = new Set();
