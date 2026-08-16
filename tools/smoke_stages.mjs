@@ -85,16 +85,29 @@ for (let i = 0; i < STAGE_KEYS.length; i++) {
     if (state.stageKey !== stageKey) return { fail: `wrong stage: ${state.stageKey}` };
     const fxCount = state.entities.filter((e) => e.owner === null).length;
     const mods = JSON.stringify(state.stageMods);
+    // Platforms that declare their own motion (stages.js sway/traverse/
+    // waypoints, run by stage_fx.js's shared updater) must actually move.
+    // Asserted as "it went somewhere between two moments" rather than against
+    // expected coordinates, so retuning a gantry in stages.js does not fail
+    // this — but the motion runner silently not running does.
+    const movers = state.platforms
+      .map((p, i) => ({ i, cfg: !!(p.sway || p.traverse || p.waypoints) }))
+      .filter((m) => m.cfg)
+      .map((m) => m.i);
+    const before = movers.map((i) => `${state.platforms[i].x},${state.platforms[i].y}`);
     // Fast-forward through 3+ hazard cycles: jump time, then let it simulate.
     const jumps = [10, 14, 18, 22, 26, 29, 44, 58];
     for (const target of jumps) {
       state.matchTime = target;
       await new Promise((r) => setTimeout(r, 700));
     }
+    const moved = movers.filter((i, k) =>
+      `${state.platforms[i].x},${state.platforms[i].y}` !== before[k]).length;
     const platsOk = state.platforms.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
     const fightersOk = state.fighters.every((f) => Number.isFinite(f.x) && Number.isFinite(f.y) && Number.isFinite(f.damage));
     return {
       fxCount, mods, platsOk, fightersOk,
+      movers: movers.length, moved,
       zones: (state.hazardZones || []).length,
       dmg: state.fighters.map((f) => Math.round(f.damage)),
       stocks: state.fighters.map((f) => f.stocks),
@@ -103,6 +116,10 @@ for (let i = 0; i < STAGE_KEYS.length; i++) {
 
   results.push({ stage: current, ...report, newErrors: errors.length - before });
   console.log(current.padEnd(16), JSON.stringify(report));
+  if (report.movers && report.moved !== report.movers) {
+    errors.push({ stage: current,
+      err: `${report.movers - report.moved} declared-motion platform(s) never moved` });
+  }
 
   // quit to menu for the next stage
   await page.keyboard.press("Escape");
