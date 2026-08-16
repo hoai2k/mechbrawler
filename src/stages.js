@@ -11,6 +11,23 @@
 // paintings, one 2048×1152 plate per arena in assets/backgrounds/arenas/,
 // shared by the flat and 3D cameras alike (no wide/flat plate split any more).
 //
+// A platform may also declare its own SCHEDULED MOTION, run by the shared
+// updater in src/stage_fx.js — no per-board code, so a new arena moves a
+// platform by writing numbers here. All three are optional, all three are
+// pure functions of match time, and `sway` composes with either of the others
+// (a swinging platform can hang off a traversing gantry):
+//   sway      { ampX, rate, ampY?, rateY?, dip? } — hangs and swings about its
+//             authored position; `dip` is how far it settles under a mech's
+//             weight (the foundry's hook, on its chain)
+//   traverse  { x1, x2, period, pause } — slides between two x positions, one
+//             leg per half-period, dwelling `pause` seconds at each end (the
+//             harbor's crane spreader)
+//   waypoints { points: [{x, y}…], period, ease } — glides through a ring of
+//             stops, one per leg, easing in over `ease` and holding (the
+//             orbital arm's three working positions)
+// Motion that is an EVENT rather than a schedule — the ruins' lintel falling
+// when a column breaks — stays in stage_fx.js where its trigger lives.
+//
 // A stage's gameplay identity (hazards, platform motion — "Active Boards" in
 // Settings) lives in src/stage_fx.js, keyed by the stage key. The optional
 // `mods` field holds always-on-while-active field modifiers:
@@ -43,7 +60,10 @@ export const STAGES = [
     platforms: [
       { x: 220, y: 572, w: 840, h: 42, kind: "main" },
       { x: 850, y: 445, w: 240, h: 15, kind: "side" }, // right-mid catwalk
-      { x: 560, y: 435, w: 170, h: 15, kind: "side" }, // the hanging hook platform (sways)
+      // the hanging hook platform: it swings on its chain, and its suspension
+      // dips 6px under a mech's weight
+      { x: 560, y: 435, w: 170, h: 15, kind: "side",
+        sway: { ampX: 10, rate: 0.9, ampY: 2, rateY: 1.7, dip: 6 } },
       { x: 190, y: 320, w: 240, h: 15, kind: "side" }, // left-high catwalk
     ] },
   { key: "uptown", name: "Uptown Plaza", bgFile: "arenas/uptown.jpg",
@@ -64,7 +84,10 @@ export const STAGES = [
       { x: 240, y: 345, w: 190, h: 15, kind: "side" }, // left stack, high
       { x: 870, y: 460, w: 220, h: 15, kind: "side" }, // right stack, low
       { x: 850, y: 345, w: 190, h: 15, kind: "side" }, // right stack, high
-      { x: 540, y: 255, w: 200, h: 15, kind: "top" },  // the crane spreader (traverses)
+      // the crane spreader: it crosses the quay and back on a 14s cycle,
+      // dwelling at each end (stage_fx.js counts its legs for the container)
+      { x: 540, y: 255, w: 200, h: 15, kind: "top",
+        traverse: { x1: 210, x2: 670, period: 14, pause: 2 } },
     ] },
   { key: "skyterrace", name: "Sky Terrace", bgFile: "arenas/skyterrace.jpg",
     tint: "rgba(120, 214, 255, 0.11)",
@@ -138,7 +161,11 @@ export const STAGES = [
     desc: "Low gravity, and station debris rakes the upper platforms every ~30s.",
     platforms: [
       { x: 240, y: 572, w: 800, h: 42, kind: "main" },
-      { x: 390, y: 430, w: 210, h: 15, kind: "side" }, // the robotic arm's forearm (drifts)
+      // the robotic arm's forearm: it drifts through three working positions
+      // on a 16s loop, easing into each and holding there
+      { x: 390, y: 430, w: 210, h: 15, kind: "side",
+        waypoints: { points: [{ x: 280, y: 430 }, { x: 540, y: 405 }, { x: 760, y: 435 }],
+                     period: 16, ease: 2 } },
       { x: 840, y: 452, w: 230, h: 15, kind: "side" }, // the shuttle's fuselage
     ] },
 ];

@@ -1,13 +1,17 @@
 # Arena polish plan — identity, variety, garnish, and the 3D camera
 
-Status: **proposal + progress tracker**. Update the checklist as work lands so a
-fresh session can resume from here. This is the mech-arena successor to the
-JJK-era stage-variety and 2.5D-camera passes; the same process, applied to the
-12 arenas in `docs/arenas.md`.
+Status: **IMPLEMENTED** — every phase below is ticked. This is the mech-arena
+successor to the JJK-era stage-variety and 2.5D-camera passes; the same
+process, applied to the 12 arenas in `docs/arenas.md`. Kept as written rather
+than trimmed to a summary, because the reasoning behind each arena's camera
+dials, cue beats and garnish is what a later retune has to argue with. The
+rollout checklist at the foot records what landed.
 
-## 0. Audit — what we have and what is dead
+## 0. Audit — the state this pass started from
 
-The 2D gameplay layer is essentially **complete**:
+*(Historical: the "dead" column below is what this pass fixed.)*
+
+The 2D gameplay layer was essentially **complete**:
 
 - `src/stages.js` — all 12 arenas, genuinely varied layouts (mains 640–900 px
   wide, 2–5 non-main platforms, symmetric/asymmetric mix), per-arena `tint`,
@@ -283,8 +287,17 @@ their textures, so splitting bought nothing)
       motes, floodlight sweep) — written in stage_fx's house idiom rather
       than a config table; a shared `STAGE_AMBIENT` runner stays open as a
       refactor if a second consumer ever wants the data
-- [ ] D2 Declarative platform behaviours (sway/traverse/waypoints) — refactor,
-      no behaviour change; smoke_stages green proves it
+- [x] D2 Declarative platform behaviours: `sway` / `traverse` / `waypoints`
+      are now optional fields on a platform in stages.js, run by one shared
+      updater in stage_fx.js, so a board moves a platform with data instead of
+      another hand-rolled loop. The foundry hook, harbor spreader and orbital
+      arm lost their bespoke motion code; the ruins' lintel stays imperative
+      because it is an EVENT, not a schedule. Every mode is a pure function of
+      match time (only the sway's weight-dip eases), so a wound-forward clock
+      lands a platform where that moment says rather than where an integration
+      drifted to. Verified position-for-position against the pre-refactor
+      formulas (17 samples across the three boards, exact), and smoke_stages
+      now fails if a platform that declares motion never moves.
 - [x] D3 K2 ambience beds verified: audio.js already plays `amb_<stageKey>`
       per arena (config_audio.js registers all 12)
 - [x] D4 Docs: `docs/arenas.md` gained its presentation-layer table;
