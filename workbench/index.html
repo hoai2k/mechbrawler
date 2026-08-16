@@ -3,91 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Effect workbench — Mech Brawler</title>
+    <title>Workbench — Mech Brawler</title>
     <link rel="icon" href="../favicon-32x32.png">
-    <link rel="stylesheet" href="effects.css">
+    <link rel="stylesheet" href="workbench.css">
   </head>
   <body>
-    <header class="bar">
-      <div class="bar-title">
-        <strong>Effect workbench</strong>
-        <span id="count" class="muted">…</span>
-      </div>
-
-      <div class="bar-tools">
-        <label class="tool">
-          Zoom
-          <input id="zoom" type="range" min="0.5" max="2" step="0.05" value="1">
-          <output id="zoomOut">1.00×</output>
-        </label>
-        <label class="tool tool--check">
-          <input id="showHit" type="checkbox" checked>
-          Hit shape
-        </label>
-        <label class="tool tool--check">
-          <input id="showLaunch" type="checkbox" checked>
-          Launch point
-        </label>
-        <!--
-          Which pose the reference mech stands in. "Battle idle" is the default
-          and that is a statement about the RIGS, not about the tool: K5 settled
-          the clip mapping and idle now reads correctly on every mech, but
-          several states still do not, so a card defaulting to the launch state
-          would sometimes show a machine on its face. Flipping the default is a
-          one-line change once the rest read as cleanly as idle.
-        -->
-        <label class="tool">
-          Pose
-          <select id="pose">
-            <option value="stance" selected>Battle idle</option>
-            <option value="launch">The move's own pose</option>
-          </select>
-        </label>
-        <button id="copyConfig" type="button">Copy config</button>
-      </div>
-
-      <p id="status" class="muted">booting…</p>
-      <p id="poseNote" class="muted bar-note">
-        Mechs are standing in their <strong>battle idle</strong>, not the move's
-        own pose. K5 settled the clip mapping and idle now reads correctly on
-        every rig; several other states — <code>ult</code> most visibly — still
-        render mis-oriented, and a ruler is all the reference has to be to answer
-        a size question. Switch to <em>The move's own pose</em> above to see the
-        mapping as it stands.
-      </p>
-    </header>
-
     <!--
-      The whole tool in one sentence: every shared drawing in the game, beside
-      the mech that throws it, at the size the game paints it. The intro is here
-      rather than in a help panel because a workbench nobody can read is a
-      workbench nobody uses, and there is exactly this much to say.
+      Both tools render into this one node; router.js picks which by `?edit=`.
+      The shell is empty on purpose — each tool owns its whole layout, and a
+      skeleton here would be a third place either of them could be wrong.
     -->
-    <section class="intro">
-      <p>
-        Each card renders the <strong>real rig</strong>, in the <strong>real
-        animation state</strong> the move plays, frozen at release — so the size
-        of a drawing is a ratio you can see rather than a number you have to
-        trust. Art no kit throws (hazards, statuses, the KO burst) gets the
-        roster's median mech beside it, dimmed, purely as a ruler.
-      </p>
-      <p>
-        <strong>Drag</strong> the canvas to nudge the drawing,
-        <strong>scroll</strong> it to size it, <strong>double-click</strong> a
-        control to put it back. The red shape is what the move actually collides
-        on and the green cross is where it leaves the mech — neither is editable,
-        because both are numbers the kit declares; they are here to be matched.
-        When it looks right, <strong>Copy config</strong> and paste the result
-        over <code>EFFECT_PLACEMENT</code> in <code>src/config_effects.js</code>.
-      </p>
-    </section>
-
-    <main id="grid" class="grid"></main>
-
-    <!-- The fallback for a browser that will not give a plain-http page the
-         clipboard. Hidden until it is needed. -->
-    <textarea id="dump" class="dump" hidden readonly spellcheck="false"></textarea>
-
-    <script type="module" src="effects.js"></script>
+    <div id="app"><p class="muted boot">booting…</p></div>
+    <script type="module" src="router.js"></script>
   </body>
 </html>
