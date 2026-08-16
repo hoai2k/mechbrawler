@@ -50,7 +50,7 @@ import {
   clearSharedRegistry,
 } from "../src/shared_sprites.js";
 import { EFFECT_PLACEMENT } from "../src/config_effects.js";
-import { muzzlePoint } from "../src/body_points.js";
+import { muzzlePoint, muzzleIsVerified } from "../src/body_points.js";
 import { STATES, clipNameFor } from "../render3d/src/states.js";
 import { firingUse, referenceMech, LAUNCH_TIME } from "./usage.js";
 import {
@@ -155,6 +155,48 @@ function referenceFor(card) {
   return { charKey, anim: "idle", t: 0.4, ruler };
 }
 
+/** The handlers whose spawn point runs through `combat.spawnProjectileScaled`,
+ *  and therefore through the muzzle — the two the registry's LAUNCH table
+ *  builds from a kit's `ox`/`oy`. Everything else with a launch point is a
+ *  ground flash or a planted trap, which `spawnSummonFlash` and friends place
+ *  at the raw distance the handler passes, unscaled; muzzle-scaling those would
+ *  move them off the spot the game uses. */
+const MUZZLE_TYPES = new Set(["projectile", "wave"]);
+
+/**
+ * WHERE THE GAME ACTUALLY SPAWNS THIS DRAWING, in game px from the mech's feet.
+ *
+ * `info.launch` carries the kit's raw numbers — `ox ?? 70` forward, `oy ?? -86`
+ * up — and those are the REFERENCE BODY's offsets, for a fighter of
+ * HEIGHT_BASE_PX (149px). No shot leaves from there unless the mech happens to
+ * be that size: combat.js asks `muzzlePoint(key, height, ox, oy)`, which answers
+ * with the fighter's verified muzzle when somebody has pinned one, and the
+ * reference offsets SCALED BY HEIGHT when nobody has.
+ *
+ * The viewer used to draw the raw pair. The gap is small but real — the roster
+ * runs 125px (Cranky) to 165px (Jerry) drawn, so the cross sat up to 16px off
+ * the point the shot actually leaves, and it was always 0px off for whichever
+ * mech happened to be reference height. The preview lightbox has always called
+ * muzzlePoint, so the two halves of this tool disagreed about the same move.
+ * This is that one call, made once, for both.
+ *
+ * What it does NOT fix, because it is not the tool's to fix: with
+ * config_body_points.js empty, every mech's muzzle IS the scaled default —
+ * 58% up the body, about half a body-height forward — so a shell leaves the
+ * middle of a machine rather than the barrel on its shoulder. The panel says so
+ * rather than letting the cross imply somebody chose that spot.
+ */
+function spawnPointFor(card) {
+  const launch = card.info?.launch;
+  if (!launch) return null;
+  if (!MUZZLE_TYPES.has(card.use?.type)) {
+    return { x: launch.forward, y: launch.y, scaled: false, verified: false };
+  }
+  const charKey = referenceFor(card).charKey;
+  const m = muzzlePoint(charKey, mechHeightPx(charKey), launch.forward, launch.y);
+  return { x: m.x, y: m.y, scaled: true, verified: muzzleIsVerified(charKey) };
+}
+
 /** Where the drawing sits, in game pixels relative to the mech's feet, before
  *  its own nudge. Three cases, the three the registry already distinguishes:
  *  a declared LAUNCH point (anything a kit throws), a GROUND drawing anchored
@@ -162,8 +204,9 @@ function referenceFor(card) {
 function placement(card) {
   const { info } = card;
   const anchor = info?.anchor || "centre";
-  if (info?.launch) {
-    return { x: MECH_GX + info.launch.forward, y: GROUND_GY + info.launch.y, anchor };
+  const spawn = spawnPointFor(card);
+  if (spawn) {
+    return { x: MECH_GX + spawn.x, y: GROUND_GY + spawn.y, anchor };
   }
   if (anchor === "feet") return { x: MECH_GX + 220, y: GROUND_GY, anchor };
   if (anchor === "top") return { x: MECH_GX + 220, y: GROUND_GY - 240, anchor };
@@ -277,12 +320,19 @@ function paint() {
   if (art) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    ctx.translate(art.x, art.top + art.h / 2);
+    // Rotated about the point the drawing is ANCHORED to, which is the point
+    // every draw site in the game turns it about: a ground drawing leans on its
+    // feet (specials.js makeTrap, ultimates.js eruption, render.js's install
+    // aura), a hanging one on the point it hangs from (stage_fx.js), a shot on
+    // its own centre (render.js drawProjectiles). Pivoting everything on the
+    // centre here would have shown a lean the game does not paint.
+    const pivotDy = art.at.anchor === "feet" ? art.h : art.at.anchor === "top" ? 0 : art.h / 2;
+    ctx.translate(art.x, art.top + pivotDy);
     if (art.adj.rot) ctx.rotate(art.adj.rot);
     // Drawn AS FIRED: `getImage` has already applied the Mirror flag. Showing
     // the raw plate while the game shows the flip is exactly how a drawing that
     // already points the right way gets "corrected" into flying backwards.
-    ctx.drawImage(art.img, -art.w / 2, -art.h / 2, art.w, art.h);
+    ctx.drawImage(art.img, -art.w / 2, -pivotDy, art.w, art.h);
     ctx.restore();
     if (showLaunch) drawLaunchPoint(ctx, art.at, card, z);
     if (showHit) drawHitShape(ctx, card, art, z);
@@ -300,17 +350,34 @@ function paint() {
 }
 
 /** The point the move actually launches from — the thing the drawing has to be
- *  aligned TO, and the one thing no amount of looking at the plate reveals. */
+ *  aligned TO, and the one thing no amount of looking at the plate reveals.
+ *
+ *  Drawn big enough to FIND. It used to be a ten-pixel hairline cross, which on
+ *  a scene scaled to fit a phone is four pixels of thin green over a lit
+ *  explosion — present, and invisible, which is the same thing as absent for a
+ *  mark whose whole job is to be looked at. A ring and a dark outline give it
+ *  something to sit against on any art. */
 function drawLaunchPoint(ctx, at, card, z) {
-  if (!card.info?.launch) return;
+  const spawn = spawnPointFor(card);
+  if (!spawn) return;
+  const r = 16 / z;
   ctx.save();
-  ctx.strokeStyle = "rgba(120, 255, 190, 0.9)";
-  ctx.lineWidth = 1.5 / z;
-  const r = 10 / z;
-  ctx.beginPath();
-  ctx.moveTo(at.x - r, at.y); ctx.lineTo(at.x + r, at.y);
-  ctx.moveTo(at.x, at.y - r); ctx.lineTo(at.x, at.y + r);
-  ctx.stroke();
+  ctx.lineCap = "round";
+  // The dark pass first, one pixel wider: the cross has to read over a white
+  // muzzle flash as well as over the empty floor.
+  for (const [stroke, width] of [["rgba(0, 12, 8, 0.75)", 4 / z], ["rgba(120, 255, 190, 0.95)", 1.8 / z]]) {
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(at.x - r, at.y); ctx.lineTo(at.x - r * 0.32, at.y);
+    ctx.moveTo(at.x + r * 0.32, at.y); ctx.lineTo(at.x + r, at.y);
+    ctx.moveTo(at.x, at.y - r); ctx.lineTo(at.x, at.y - r * 0.32);
+    ctx.moveTo(at.x, at.y + r * 0.32); ctx.lineTo(at.x, at.y + r);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(at.x, at.y, r * 0.32, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -675,7 +742,19 @@ function factLines(card) {
     : info?.anchor === "top" ? "hangs FROM the spawn point"
     : "painted AROUND the spawn point"]);
   if (info?.launch) {
-    out.push(["leaves at", `${Math.round(info.launch.forward)}px forward, ${Math.round(-info.launch.y)}px up`]);
+    const spawn = spawnPointFor(card);
+    const at = `${Math.round(spawn.x)}px forward, ${Math.round(-spawn.y)}px up`;
+    // Say WHICH point this is. The kit's raw pair is the reference body's, and
+    // on a mech who is not that size the number the game uses is a different
+    // one — so the fact carries both, and names the reason they differ.
+    out.push(["leaves at", spawn.scaled && !spawn.verified
+      ? `${at} — the reference muzzle (${Math.round(info.launch.forward)}, ${Math.round(info.launch.y)}) scaled to this mech's height`
+      : at]);
+    if (spawn.scaled) {
+      out.push([spawn.verified ? "muzzle" : "⚠ muzzle", spawn.verified
+        ? `verified for ${use?.charName || "this mech"} — src/config_body_points.js`
+        : `NOT verified for ${use?.charName || "this mech"}: nobody has said where their barrel is, so the game spawns from the reference body's chest line scaled by height (src/config_body_points.js is empty)`]);
+    }
   }
   if (info?.hit) {
     out.push(["collides on", info.hit.shape === "circle"
@@ -796,9 +875,10 @@ function launchPlan(card) {
   // combat.js spawnProjectileScaled: the verified muzzle if this mech has one,
   // else the reference offsets scaled by the body's height.
   const m = muzzlePoint(use.charKey, mechHeightPx(use.charKey), p.ox ?? 70, p.oy ?? -86);
-  const origin = flies || card.info?.launch == null
-    ? { x: m.x, y: m.y }
-    : { x: card.info.launch.forward, y: card.info.launch.y };
+  // The same point the still viewer draws its cross on, so opening the preview
+  // never moves the drawing off the mark you were just lining it up against.
+  const spawn = spawnPointFor(card);
+  const origin = spawn && !flies ? { x: spawn.x, y: spawn.y } : { x: m.x, y: m.y };
   const spawnT = Number.isFinite(p.delay) ? p.delay : 0;
   if (!Number.isFinite(p.delay)) {
     notes.push("spawn instant approximated: the handler fires on the action's first frame, so the drawing appears at clip t=0");
@@ -807,8 +887,12 @@ function launchPlan(card) {
   const shots = [];
   for (let i = 0; i < count; i++) {
     const spreadVy = count > 1 ? (i - (count - 1) / 2) * (p.spread || 100) : 0;
-    // The wave handler overrides ox itself, one wave per 54px.
-    const ox = use.type === "wave" ? 60 + i * 54 : origin.x;
+    // The wave handler overrides ox itself, one wave per 54px — and then hands
+    // that to spawnProjectileScaled like everything else, so each wave's
+    // distance is scaled onto this body the same way the muzzle is.
+    const ox = use.type === "wave"
+      ? muzzlePoint(use.charKey, mechHeightPx(use.charKey), 60 + i * 54, p.oy ?? -86).x
+      : origin.x;
     shots.push({ x0: ox, y0: origin.y, vx: p.speed ?? 0, vy: (p.vy || 0) + spreadVy });
   }
   if (p.homing) notes.push(`homing ${p.homing} ignored — there is no opponent in the lightbox, so the seekers fly straight`);

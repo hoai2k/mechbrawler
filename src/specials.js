@@ -825,6 +825,15 @@ const HANDLERS = {
           const h = (p.spriteH || 150) * (0.6 + prog * 0.5);
           const w = img.width * h / img.height;
           const adj = sharedAdjust(p.sprite);
+          // The tilt turns about the point the drawing is painted on, so it
+          // leans rather than sliding (render.js paints the install aura the
+          // same way). Without this the workbench's Rotate was stored and inert
+          // for every drawing a handler paints itself.
+          if (adj.rot) {
+            ctx.translate(tx, ty);
+            ctx.rotate(adj.rot);
+            ctx.translate(-tx, -ty);
+          }
           ctx.drawImage(img, tx - w / 2 + adj.dx, ty - h / 2 + adj.dy, w, h);
         } else {
           ctx.strokeStyle = p.color;
@@ -874,6 +883,12 @@ const HANDLERS = {
           const w = img.width * h / img.height;
           const adj = sharedAdjust(p.sprite);
           ctx.globalAlpha = 0.6 * fade;
+          // About the ground point it stands on, so a tilt leans the cloud.
+          if (adj.rot) {
+            ctx.translate(this.x, this.y);
+            ctx.rotate(adj.rot);
+            ctx.translate(-this.x, -this.y);
+          }
           ctx.drawImage(img, this.x - w / 2 + adj.dx, this.y - h + adj.dy, w, h);
         } else {
           ctx.globalAlpha = 0.3 * fade;
@@ -978,6 +993,9 @@ function spawnSummonFlash(owner, spriteKey, duration, height, forward) {
       ctx.shadowBlur = 18;
       // Inside the mirrored frame, so the nudge follows the drawing rather
       // than reversing when the fighter turns round (render.js does the same).
+      // The frame's origin IS the ground point the flash stands on, so the tilt
+      // needs no translation of its own.
+      if (adj.rot) ctx.rotate(adj.rot);
       ctx.drawImage(img, -w / 2 + adj.dx, -h + adj.dy, w, h);
       ctx.restore();
     },
@@ -1060,6 +1078,12 @@ function makeTrap(owner, x, groundY, p, name) {
           ctx.globalAlpha = Math.min(1, fade * 1.35);
           ctx.shadowColor = this.color;
           ctx.shadowBlur = 14;
+          // About the ground point the trap is planted on.
+          if (adj.rot) {
+            ctx.translate(this.x, this.y);
+            ctx.rotate(adj.rot);
+            ctx.translate(-this.x, -this.y);
+          }
           ctx.drawImage(sprite, this.x - w / 2 + adj.dx, this.y - h + adj.dy, w, h);
           ctx.restore();
           return;

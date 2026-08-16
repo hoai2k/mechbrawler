@@ -1,9 +1,8 @@
 import { CHARACTER_KEYS, actorsFor } from "./characters.js";
-import { applySharedSpriteScales } from "./shared_sprites.js";
+import { applySharedSpriteScales, sharedFaceLeft } from "./shared_sprites.js";
 import { STAGES, backgroundFile } from "./stages.js";
 import { transformActorsFor } from "./config_transform.js";
 import { SUMMON_ART, SUMMON_POSES } from "./config_summons.js";
-import { EFFECT_PLACEMENT } from "./config_effects.js";
 
 export const images = new Map();
 export let spriteManifest = null;
@@ -153,24 +152,7 @@ export function getImage(key) {
   // Done here rather than at the twenty-odd places an effect or a summon is
   // drawn: which way a drawing FACES is a property of the drawing, and every
   // one of those sites is asking for the drawing. See mirroredShared().
-  return img && sharedMirror(key) ? mirroredShared(key, img) : img;
-}
-
-/** Whether this shared sprite is marked as drawn facing left.
- *
- *  Effects and summons are drawn pointing right, the same as the fighters —
- *  the game mirrors them with whoever threw them. Art that arrives facing the
- *  other way needs flipping once, at the source, or every spawn site would
- *  have to know about that one file. */
-function sharedMirror(key) {
-  // `otherSprites` in the character manifest was where this lived while there
-  // WAS a character manifest. There is not one any more (loadCoreAssets says
-  // so at length), so the placement of shared art is configuration now —
-  // src/config_effects.js, written by the effect workbench. The manifest is
-  // still consulted first so a workbench holding an unsaved edit in memory
-  // wins over the file it has not written yet.
-  return !!(spriteManifest?.otherSprites?.[key]?.faceLeft
-    ?? EFFECT_PLACEMENT[key]?.faceLeft);
+  return img && sharedFaceLeft(key) ? mirroredShared(key, img) : img;
 }
 
 const mirrored = new Map();
@@ -200,12 +182,14 @@ export function forgetSharedMirror(key) {
  *
  *  THE EFFECT WORKBENCH IS THE ONLY CALLER, and it needs this because an edit
  *  it is holding has to beat the config file it has not been written to yet.
- *  `sharedAdjust`, `sharedHit` and `sharedMirror` all consult
- *  `spriteManifest.otherSprites` before falling through to EFFECT_PLACEMENT
- *  (see `entryOf` in shared_sprites.js), so handing them an object whose
- *  `otherSprites` IS the workbench's store makes every read in the game's own
- *  code path see the unsaved value — rather than the workbench maintaining a
- *  parallel resolution that could drift from the one that ships.
+ *  `sharedAdjust`, `sharedHit`, `sharedScale` and `sharedFaceLeft` all resolve
+ *  through `entryOf` (shared_sprites.js), which reads
+ *  `spriteManifest.otherSprites` before falling through to EFFECT_PLACEMENT —
+ *  so handing them an object whose `otherSprites` IS the workbench's store makes
+ *  every read in the game's own code path see the unsaved value, rather than the
+ *  workbench maintaining a parallel resolution that could drift from the one
+ *  that ships. An entry wins WHOLE: a field the workbench has dropped reads as
+ *  unset, not as whatever the config file says.
  *
  *  The game never calls it. `spriteManifest` stays null in a match, which is
  *  the state the fall-through is written for. */

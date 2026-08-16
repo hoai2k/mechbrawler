@@ -197,6 +197,29 @@ export function sharedScale(key) {
 }
 
 /**
+ * Is this drawing marked as delivered facing LEFT — the flag getImage flips on?
+ *
+ * Resolved through `entryOf` like every other field, which is the point of it
+ * living here rather than in assets.js. It used to be answered there by reading
+ * the two stores FIELD BY FIELD:
+ *
+ *     spriteManifest?.otherSprites?.[key]?.faceLeft ?? EFFECT_PLACEMENT[key]?.faceLeft
+ *
+ * and that made the workbench's Mirror control one-way for the fifteen drawings
+ * the config already flips. The workbench holds its edits in `otherSprites` and
+ * stores a decision by ITS ABSENCE when it matches the default — so unticking
+ * Mirror deleted the field, the `??` fell through to `EFFECT_PLACEMENT`, and the
+ * config's `true` answered instead. The drawing stayed mirrored and the box
+ * looked broken. Nothing else read the stores that way: an entry wins whole, so
+ * an entry with no `faceLeft` in it means NOT mirrored.
+ *
+ * It also inherits down a summon's poses now, which the old reading did not.
+ */
+export function sharedFaceLeft(key) {
+  return !!entryOf(key)?.faceLeft;
+}
+
+/**
  * Where this drawing's COLLISION SHAPE sits relative to the picture, and how
  * big — the correction that makes the shape the workbench draws land on the
  * art instead of on the bare spawn point.
@@ -441,6 +464,14 @@ function buildRegistry() {
   // height of its own rather than the kit's, that height is here too and
   // `sizable: false` says the slider cannot move it.
   const SELF = (site) => ({ nudge: false, site });
+  // A handler that paints its own set piece AND reads `sharedAdjust` at the
+  // draw. The distinction is the whole value of this table to the workbench:
+  // SELF means the control is stored and inert and the panel should say so,
+  // PAINTS means the picture moves. Several of these were SELF long after
+  // their handler learned to read the nudge, which cost the workbench four
+  // working controls on ten drawings — a tool that under-claims is as wrong as
+  // one that over-claims, and harder to notice.
+  const PAINTS = (site) => ({ nudge: true, site });
   // WHERE it leaves the fighter, in game pixels from their feet, forward being
   // the way they face. Read off each handler, and where the handler defaults a
   // kit field the default is here too — `spawnProjectile` puts a shot at
@@ -509,34 +540,34 @@ function buildRegistry() {
     // --- painted by their own handler, straight from getImage -------------
     // Standing on the ground: `-h` under the point, or drawn at a ground line
     // the handler works out for itself.
-    trap: { anchor: "feet", ...SELF("makeTrap (src/specials.js)") },
+    trap: { anchor: "feet", ...PAINTS("makeTrap (src/specials.js)") },
     randomDrop: { anchor: "feet", ...SELF("randomDrop (src/specials.js)") },
-    cloudField: { anchor: "feet", ...SELF("cloudField (src/specials.js)") },
+    cloudField: { anchor: "feet", ...PAINTS("cloudField (src/specials.js)") },
     // A tornado stands on the floor and rises out of it — `translate(640, 595)`
     // then `-h` — so it is a ground drawing, not one centred on a point in the
     // air, however much a centred crosshair suggested otherwise.
     tempest: { anchor: "feet", ...SELF("tempest (src/ultimates.js)") },
-    eruption: { anchor: "feet", ...SELF("eruption (src/ultimates.js)") },
+    eruption: { anchor: "feet", ...PAINTS("eruption (src/ultimates.js)") },
     cardrop: { anchor: "feet", ...SELF("cardrop (src/ultimates.js)") },
     // Centred on the point the handler puts them on: a falling meteor, a ring
     // of blood orbs, a shout in front of the mouth.
-    meteor: { anchor: "centre", ...SELF("meteor (src/ultimates.js)") },
+    meteor: { anchor: "centre", ...PAINTS("meteor (src/ultimates.js)") },
     vortex: { anchor: "centre", ...SELF("vortex (src/ultimates.js)") },
     nailstorm: { anchor: "centre", ...SELF("nailstorm (src/ultimates.js)") },
-    shout: { anchor: "centre", ...SELF("shout (src/ultimates.js)") },
+    shout: { anchor: "centre", ...PAINTS("shout (src/ultimates.js)") },
     skyInvert: { anchor: "centre", ...SELF("skyInvert (src/ultimates.js)") },
     massDrive: { anchor: "centre", ...SELF("massDrive (src/ultimates.js)") },
     supernova: { anchor: "centre", ...SELF("supernova (src/ultimates.js)") },
     concert: { anchor: "centre", ...SELF("concert (src/ultimates.js)") },
-    warpStrike: { anchor: "centre", ...SELF("warpStrike (src/specials.js)") },
+    warpStrike: { anchor: "centre", ...PAINTS("warpStrike (src/specials.js)") },
     // A one-shot flash of art beside the fighter — Todo's clap, Yuji's
     // divergent impact, Rika's fist, Todo's drum. spawnSummonFlash stands it on
     // the ground at the fighter's feet and mirrors it with their facing, at the
     // move's own `spriteH`; it never reads the nudge.
-    swap: { anchor: "feet", mirrored: true, ...SELF("spawnSummonFlash (src/specials.js)") },
-    echoStrike: { anchor: "feet", mirrored: true, ...SELF("spawnSummonFlash (src/specials.js)") },
-    burst: { anchor: "feet", mirrored: true, ...SELF("spawnSummonFlash (src/specials.js)") },
-    commandGrab: { anchor: "feet", mirrored: true, ...SELF("spawnSummonFlash (src/specials.js)") },
+    swap: { anchor: "feet", mirrored: true, ...PAINTS("spawnSummonFlash (src/specials.js)") },
+    echoStrike: { anchor: "feet", mirrored: true, ...PAINTS("spawnSummonFlash (src/specials.js)") },
+    burst: { anchor: "feet", mirrored: true, ...PAINTS("spawnSummonFlash (src/specials.js)") },
+    commandGrab: { anchor: "feet", mirrored: true, ...PAINTS("spawnSummonFlash (src/specials.js)") },
 
     // --- a second body for the fighter, at a height the RENDERER fixes -----
     // Yuta's Rika stands behind him at 238px; Panda's triceratops replaces his

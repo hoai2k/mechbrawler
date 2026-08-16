@@ -36,6 +36,10 @@ if yours is elsewhere).
   `smoke_ground3d.mjs`, `smoke_render3d.mjs`, `smoke_render_backend.mjs` —
   the 2.5D/3D camera and render backends.
 - `smoke_controllers.mjs`, `smoke_select_layout.mjs` — input and menus.
+- `smoke_workbench.mjs` — every control in the effect workbench reaches the
+  picture (Size, X, Y, Rotate, Mirror), the launch cross sits on the muzzle
+  combat.js spawns from, and both workbenches boot clean at desk and phone
+  size. Mirror shipped silently one-way once; this is the guard.
 
 ## Pipelines
 

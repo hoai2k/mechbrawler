@@ -36,6 +36,18 @@ export function muzzlePoint(charKey, height, fallbackOx = 70, fallbackOy = -86) 
   return { x: fallbackOx * k, y: fallbackOy * k };
 }
 
+/** Has anybody actually LOOKED at this fighter and said where their muzzle is?
+ *
+ *  The difference matters to a tool that draws the point: a verified muzzle is
+ *  on the barrel somebody picked, while the fallback is the reference body's
+ *  chest offsets scaled by height — which on a tall machine lands mid-torso and
+ *  looks like a bug rather than like the default it is. `muzzlePoint` answers
+ *  with one or the other and cannot say which; this can. */
+export function muzzleIsVerified(charKey) {
+  const p = BODY_POINTS[charKey]?.muzzle;
+  return !!(p && Number.isFinite(p.x) && Number.isFinite(p.y));
+}
+
 /** Where the gripping hand meets the lip on a ledge hang, or null when
  *  nobody has said — the caller keeps whatever it did before. */
 export function ledgeGrip(charKey) {

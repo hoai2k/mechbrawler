@@ -17,6 +17,7 @@ import { rumbleEvent } from "./rumble.js";
 import { circleRectOverlap } from "./utils.js";
 import { ULT_METER_COST, METER_MAX } from "./constants.js";
 import { getImage } from "./assets.js";
+import { sharedAdjust } from "./shared_sprites.js";
 import { isFoe } from "./teams.js";
 
 // The two halves of an ultimate's opening. They fire on the same frame for the
@@ -387,11 +388,17 @@ const DIRECTORS = {
             if (img) {
               const h = p.spriteH || 310;
               const w = img.width * h / img.height;
+              // The workbench's placement, read at the draw. A handler that
+              // paints its own set piece used to ignore it, which made X/Y and
+              // Rotate stored-but-inert for exactly the art nobody can place by
+              // eye — a rock falling past the camera.
+              const adj = sharedAdjust(p.sprite);
               ctx.save();
               ctx.translate(tx, my);
+              if (adj.rot) ctx.rotate(adj.rot);
               ctx.shadowColor = p.color;
               ctx.shadowBlur = 24;
-              ctx.drawImage(img, -w / 2, -h / 2, w, h);
+              ctx.drawImage(img, -w / 2 + adj.dx, -h / 2 + adj.dy, w, h);
               ctx.restore();
               return;
             }
@@ -663,7 +670,17 @@ const DIRECTORS = {
             if (roots) {
               const drawH = h * 1.65;
               const drawW = roots.width * drawH / roots.height;
-              ctx.drawImage(roots, px - drawW / 2, groundY - drawH, drawW, drawH);
+              const adj = sharedAdjust(p.sprite);
+              // About the ground point each wave stands on, so a tilt leans the
+              // whole column rather than sliding it off its own eruption.
+              ctx.save();
+              if (adj.rot) {
+                ctx.translate(px, groundY);
+                ctx.rotate(adj.rot);
+                ctx.translate(-px, -groundY);
+              }
+              ctx.drawImage(roots, px - drawW / 2 + adj.dx, groundY - drawH + adj.dy, drawW, drawH);
+              ctx.restore();
               continue;
             }
             ctx.beginPath();
@@ -776,13 +793,17 @@ const DIRECTORS = {
           if (img) {
             const h = (p.spriteH || 330) * (0.65 + (this.t - 0.45) * 1.2);
             const w = img.width * h / img.height;
+            const adj = sharedAdjust(p.sprite);
             ctx.save();
             ctx.translate(f.x + f.facing * w * 0.3, f.y - 105);
             ctx.scale(f.facing > 0 ? -1 : 1, 1);
+            // Inside the mirrored frame, so the nudge follows the drawing
+            // rather than reversing when the fighter turns round.
+            if (adj.rot) ctx.rotate(adj.rot);
             ctx.globalAlpha = Math.max(0, a) * 0.85;
             ctx.shadowColor = p.color;
             ctx.shadowBlur = 24;
-            ctx.drawImage(img, -w / 2, -h / 2, w, h);
+            ctx.drawImage(img, -w / 2 + adj.dx, -h / 2 + adj.dy, w, h);
             ctx.restore();
             return;
           }

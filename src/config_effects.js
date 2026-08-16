@@ -39,6 +39,15 @@
 //                arrived pointing right is flipped once, at the one place a
 //                drawing is read, instead of at every spawn site.
 //
+//                ABSENT MEANS NOT MIRRORED. An entry is resolved WHOLE
+//                (shared_sprites.entryOf), so a workbench session holding an
+//                entry with no `faceLeft` in it is saying "this drawing is not
+//                flipped" rather than "ask this file". It was once read field by
+//                field, and that made the workbench's Mirror box one-way for
+//                every key listed below: unticking it dropped the field, the
+//                fall-through answered `true` from here, and the art stayed
+//                flipped.
+//
 //   hit          where the move's collision shape sits relative to the picture,
 //                and how big — `{ dx, dy, scale }`. Presentation only: it moves
 //                the SHAPE THE WORKBENCH DRAWS, so a drawing can be matched to
