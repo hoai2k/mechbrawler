@@ -15,7 +15,7 @@
 // elsewhere. Start the game first (node server.mjs), then:
 //   node tools/smoke_blastzone.mjs [baseUrl]
 import { chromium } from "playwright";
-import { pressStart } from "./smoke_boot.mjs";
+import { pressStart, pickAnyFighter } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
@@ -48,9 +48,7 @@ page.on("response", (r) => {
 
 await page.goto(`${BASE}/index.html?camera=flat`, { waitUntil: "load" });
 await pressStart(page);
-await page.waitForSelector('[data-character="gojo"]', { timeout: 60000 });
-await page.click('[data-character="gojo"]');
-await page.waitForTimeout(400);
+await pickAnyFighter(page);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 5000 });
 await page.locator(".stage-card").nth(0).click();

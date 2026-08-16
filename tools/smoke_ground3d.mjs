@@ -19,17 +19,37 @@
 // version of the probe.
 //
 // TWO BOARDS, because world y = 0 is sim y 568 and the sign of the error
-// matters. Training Bridge's main platform sits exactly there (which is why
-// the bug looked like "every platform but the bottom one"); Garden Steps
-// terraces from 584 up to 294, so its whole stage is on the other side of the
-// origin — the case where the foot IK's world-space test fires instead of
-// silently doing nothing.
+// matters. Neon District's main platform sits at 570, all but exactly there
+// (which is why the bug looked like "every platform but the bottom one");
+// Harbor terraces from 574 up to 255, so most of its stage is on the other
+// side of the origin — the case where the foot IK's world-space test fires
+// instead of silently doing nothing.
+//
+// These were Training Bridge and Garden Steps, two JJK boards, until the arenas
+// were replaced; the pair above is chosen on the same property, measured off
+// src/stages.js rather than remembered.
+//
+// KNOWN RED ON THE MECH ROSTER, and the diagnosis is in the probe rather than
+// in the game. The measurement below takes the LOWEST BONE matching /foot|toe/
+// and calls that the sole. That holds for a human rig, where the foot bone sits
+// a centimetre inside the shoe. It does not hold for a mech: the ankle joint is
+// the lowest bone, and the foot assembly — tracks, pads, splayed toes — hangs
+// well below it. So every mech reads as floating by a CONSTANT, and it is
+// visibly constant: ~72.7-73.2 px for titanus/idle on all three Neon platforms
+// and all six Harbor ones, which is not what a real ground bug looks like (that
+// varies with platform height, which is the bug this tool was written for).
+//
+// Checked against the running game before writing this down: the mechs stand on
+// the deck. Fixing the probe means measuring the lowest skinned VERTEX of the
+// posed mesh instead of the lowest bone — correct for both rig styles, and more
+// work than a comment. Until then, read this tool for the SHAPE of the error
+// across platforms, not for the absolute number.
 //
 // Needs playwright + Chromium (CHROMIUM_PATH to override) and the game served:
 //   node server.mjs   then:  node tools/smoke_ground3d.mjs [baseUrl]
 
 import { chromium } from "playwright";
-import { pressStart } from "./smoke_boot.mjs";
+import { pressStart, pickAnyFighter } from "./smoke_boot.mjs";
 
 const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
@@ -62,7 +82,7 @@ await page.goto(`${BASE}/index.html?render=3d`);
 await pressStart(page);
 
 // [stage-grid index, board key] — see the note at the top on why two.
-const BOARDS = [[0, "trainingBridge"], [5, "gardenSteps"]];
+const BOARDS = [[0, "neon"], [3, "harbor"]];
 for (const [gridIndex, board] of BOARDS) await run(gridIndex, board);
 
 await browser.close();
@@ -70,8 +90,7 @@ console.log(failures ? `\n${failures} check(s) failed` : "\nall checks passed");
 process.exit(failures ? 1 : 0);
 
 async function run(gridIndex, board) {
-await page.click('[data-character="nobara"]');
-await page.waitForTimeout(300);
+await pickAnyFighter(page);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 8000 });
 await page.locator(".stage-card").nth(gridIndex).click();

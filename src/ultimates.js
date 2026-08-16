@@ -454,7 +454,7 @@ const DIRECTORS = {
       t: p.duration, label: p.label, color: p.color,
       speedMul: p.speedMul, dmgMul: p.dmgMul, armor: p.armor,
       unblockable: p.unblockable, healPerSec: p.healPerSec,
-      echoDamage: p.echoDamage, dmgTakenMul: p.dmgTakenMul, aura: p.aura,
+      dmgTakenMul: p.dmgTakenMul, aura: p.aura,
     }, 2);
     // Maki's Awakening: power as the absence of glow — speed-lines and dust.
     if (f.char.fxElement === "steel") steelInstallFx(f);

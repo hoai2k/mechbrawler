@@ -113,8 +113,8 @@ is a roll or a dash grab that carries its owner over the end: both spend
 momentum the player built themselves, over a distance the player can see coming.
 
 **A lunge is braked, though** — dash attacks (see Offense) and the `dashStrike`
-specials both. The `dashStrike` specials — Hakari's
-Restless Rush and the rest — set their own travel speed and used to carry
+specials both. The `dashStrike` specials — Rhino's Bull Rush, Viper's Blade
+Cyclone and the rest — set their own travel speed and used to carry
 `keepMomentum`, which means *no friction at all*: the fighter crossed 302 px at
 a flat 520 px/s with movement locked out, was still doing 426 px/s when the
 action ended, and then stopped dead. On screen that is the "sudden slide fast in

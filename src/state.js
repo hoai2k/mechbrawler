@@ -36,7 +36,11 @@ export const state = {
   // committed a fighter; the match can start once every human slot is ready.
   ready: { 1: false, 2: false, 3: false, 4: false },
   activePicker: 1,
-  stageKey: "trainingBridge",
+  // Overwritten by main.js before any match starts; it matters only as a
+  // valid key for anything that reads the stage before one is chosen. It
+  // was still naming a JJK board that no longer exists, so `getStage()`
+  // answered undefined for the initial state.
+  stageKey: "neon",
 
   fighters: [],
   platforms: [],

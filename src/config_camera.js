@@ -97,21 +97,16 @@ export const GARNISH = {
 // rig above. `yawMax`/`heightBias`/`fovNudge`/`dampingMul` are the dials the
 // plan names; boards not listed get the global feel.
 export const BOARD_CAMERA = {
-  // The neutral baseline — the global rig is tuned here.
-  trainingBridge: {},
-  // Left→right terraces: a persistent yaw bias makes the stairs visibly stack
-  // in depth — the stage whose layout the 3D camera flatters most.
-  gardenSteps: { yawBias: 2.5 },
-  // The slick floor communicated through the lens: the camera itself glides
-  // and overshoots slightly.
-  sunkenCrossing: { dampingMul: 0.5 },
-  // Low gravity: floatier fights get a floatier frame.
-  domainCore: { heightBias: 0.7, dampingMul: 0.7 },
-  // The drifting main platform is the anchor: blend 40% of its drift into the
-  // tracked x, so the world visibly slides under the fight.
-  bridgeDuel: { driftFollow: 0.4 },
-  // The busiest skyline gets the busiest lens.
-  shibuyaNight: { fovNudge: 1, lookaheadMul: 1.5 },
+  // EMPTY, and that is a gap rather than a decision: every entry here was a JJK
+  // board — a terraced garden given a yaw bias, a slick floor given a looser
+  // damping, a low-gravity core given a higher frame. None of those keys exists
+  // any more, so all twelve mech arenas currently share the global rig.
+  //
+  // The dials still work and the lookup still runs; what is missing is somebody
+  // deciding what each arena's lens should feel like. Obvious candidates from
+  // docs/arenas.md: orbital already rides `mods.gravityMul`, so it wants the
+  // floatier frame the old low-gravity board had; skyterrace and neon are the
+  // two with real depth to flatter.
 };
 
 // Cue treatments the rig knows, poked by stage_fx.js through cameraCue().

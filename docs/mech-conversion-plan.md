@@ -153,7 +153,7 @@ plays nothing like a platform fighter.
         + props.js JJK tables (K3/K5 owner's area), dead specials.js handlers
         (C3/A4 sweep).
 
-- [x] K6. EFFECT ART DELIVERED AND WIRED (the whole of docs/image-requests.md:
+- [x] K10. EFFECT ART DELIVERED AND WIRED (the whole of docs/image-requests.md:
         61 plates). `tools/effects_intake.py` lands a delivery — trim to alpha,
         cap the long edge, copy into assets/sprites/effects/ and assets/ui/.
         Kits name their art (`sprite`/`sprites` + `spriteH`, 42 slots);
@@ -170,7 +170,7 @@ plays nothing like a platform fighter.
         still paint themselves (one `hazardArt` call each, in stage_fx.js), and
         `shock_arc` has no electric status to attach to.
 
-- [x] K7. EFFECT WORKBENCH (`workbench/`, replacing the JJK sprite workbench
+- [x] K11. EFFECT WORKBENCH (`workbench/`, replacing the JJK sprite workbench
         that was deleted with the sprite era). One grid, no character picker
         and no filters: every shared drawing in the game, each on a card that
         renders the REAL RIG at the game's own scale beside it — the mech that
@@ -361,6 +361,57 @@ plays nothing like a platform fighter.
 - **MM sfx bank**: public/sfx 122 files w/ manifest (generic camelCase +
   <mech>_<event> overrides + amb_<arena> + step_<material>), sliced
   multi-take detection, category mix table.
+
+- [x] K12. STRAY-JJK SWEEP + TOOLING REPAIR. A pass over every JJK character
+        and arena name left in the tree, splitting them into dead code, broken
+        tools and historical rationale, and acting on the first two.
+
+        REMOVED (all provably unreachable — no mech kit can trigger any of it):
+        the RIKA melee-echo bonus and its `echoDamage` plumbing, the
+        `modeToggle` special handler and its "PANDA CORE" popup, the
+        `feedHunger` appetite passive and its two call sites. EMPTIED, with the
+        reason written where the table used to be, because the machinery is
+        generic and still wired: props.js `CHARACTER_PROPS`/`CHARACTER_CHAINS`/
+        `CARRY_OVERRIDES`/`CHARACTER_MORPHS` (a mech carries its armament in its
+        own mesh), pose.js `PRESENT_DEG`, config_camera.js `BOARD_CAMERA`, and
+        camera3d/garnish.js `SYSTEMS`. Fixed: the game's DEFAULT `state.stageKey`
+        still named a JJK board; index.html's moves/winner headings still read
+        "Gojo"; three styles.css sizing comments justified themselves with names
+        no longer on the roster; two docs used JJK examples for live mechanics.
+        KEPT DELIBERATELY: the JJK names in render3d's ik.js/pose.js/loader.js/
+        rig_fixes.js comments and README, which are measured evidence for why
+        the solver is built as it is — the names are labels on data, and losing
+        them would lose the reasoning.
+
+        TOOLING, all of it silently broken before this: seven `data-character`
+        selectors across six smoke tools named fighters who no longer exist, so
+        each sat on a 60s `waitForSelector` and failed on a timeout that blamed
+        a character rather than the roster — replaced with `pickAnyFighter`
+        (smoke_boot.mjs), because a test that does not care which fighter it
+        gets should not name one. `derive_attack_envelopes.mjs` measured NOTHING
+        because rigs load lazily and it never asked for them eagerly; it now
+        fills config_model_reach.js for all 17 mechs, which turns
+        `audit_hitboxes` green for the first time since the conversion.
+        `camera3d/index.js debugStats()` threw `ReferenceError: quad is not
+        defined` on its first call — it read two bindings deleted with the
+        billboard card layer — killing smoke_camera3d outright; the dead flags
+        and the assertions on them are gone, and it counts bodies not quads.
+        smoke_camera3d/smoke_ground3d point at real arenas now, three of the old
+        indices having been past the end of a twelve-arena grid. 15 sounds were
+        off the mono/-3 dBFS contract and are normalised — and normalising them
+        exposed a second bug in `normalize_sfx.py`, which wrote every file back
+        at a fixed 44.1 kHz/128 kb/s: the twelve ambience beds ship at 22 kHz/
+        64 kb/s, so fixing their peak DOUBLED all twelve for no audible gain.
+        It now preserves each file's own rate and bitrate (+2% instead of
+        +100%, ~2.7 MB of download saved). `npm run check` passes end to end.
+
+        STILL OPEN, and now visible rather than silent: the garnish layer and
+        the per-board camera personality both need re-keying for the mech
+        arenas (empty tables, machinery intact); `smoke_ground3d` reads a
+        constant ~73 px foot float on every mech because its probe takes the
+        lowest foot BONE as the sole, which is a human-rig assumption — the
+        mechs stand correctly on the deck, and the fix is to measure the lowest
+        skinned vertex instead.
 
 ## Decisions taken
 

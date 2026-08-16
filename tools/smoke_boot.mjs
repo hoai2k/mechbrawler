@@ -33,3 +33,28 @@ export async function pressStart(page, { timeout = 120000 } = {}) {
   }
   throw new Error("the title splash never handed over to the fighter select");
 }
+
+/**
+ * Pick a fighter — any fighter — and leave the select screen ready to start.
+ *
+ * WHY THIS EXISTS RATHER THAN A NAME. Six tools reached the select screen and
+ * clicked `[data-character="gojo"]`, and one clicked `nobara`. None of them
+ * cared who: they wanted a match running so they could measure a blast zone, a
+ * ledge grab, a camera, a controller. The roster then became seventeen mechs,
+ * those seven selectors stopped matching anything, and each tool sat on its
+ * `waitForSelector` for a full minute and failed on a timeout that named a
+ * character rather than the problem.
+ *
+ * A test that does not care which fighter it gets should not name one. This
+ * takes the first card in the grid, so the next roster change cannot break it
+ * the same way. A tool that DOES care — smoke_combat wants a heavyweight — goes
+ * on naming its mech, and should.
+ */
+export async function pickAnyFighter(page, { timeout = 120000 } = {}) {
+  const card = page.locator(".char-card").first();
+  await card.waitFor({ state: "visible", timeout });
+  await card.click();
+  // The select screen animates the pick in before the start button commits it;
+  // every caller used to sleep here, so it belongs with the click.
+  await page.waitForTimeout(400);
+}

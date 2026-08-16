@@ -492,24 +492,6 @@ const HANDLERS = {
     burst(f.x, f.y - 100, "#ffd35a", 18, 0.9);
   },
 
-  modeToggle(f, p, cfg) {
-    beginSpecialAction(f, currentSlot(cfg, f), 0.4);
-    if (f.installs && f.installs.id === "gorilla") {
-      f.installs = null;
-      popup(f.x, f.y - 170, "PANDA CORE", "#8ea0b8", 20);
-      return;
-    }
-    effortSound(f, cfg);
-    const ok = applyInstall(f, {
-      id: "gorilla", t: p.duration, label: p.label, color: p.color,
-      dmgMul: p.dmgMul, speedMul: p.speedMul, armor: p.armor, aura: p.aura,
-    });
-    if (!ok) return;
-    banner(p.label, p.color, { y: 240, size: 36, life: 0.9 });
-    burst(f.x, f.y - 100, p.color, 26, 1.2);
-    state.camera.shake = Math.max(state.camera.shake, 5);
-  },
-
   shout(f, p, cfg) {
     beginSpecialAction(f, currentSlot(cfg, f), 0.5);
     // The command itself, where every other handler puts its effort grunt.

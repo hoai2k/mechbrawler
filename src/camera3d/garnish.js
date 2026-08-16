@@ -320,170 +320,26 @@ const billboardDrawn = (i) => texture(`billboard:${i}`, 160, 128, (ctx, w, h) =>
 const rand = (a, b) => a + Math.random() * (b - a);
 
 const SYSTEMS = {
-  // The calmest board, and the one the plan tunes the rig on: falling leaves
-  // drifting past the lens sell depth where nothing else is happening.
-  trainingBridge: {
-    every: 0.55,
-    ambient(ctx) {
-      const near = Math.random() < 0.35;
-      ctx.spawn({
-        x: rand(-200, 1480), y: rand(-160, -40),
-        // A near leaf is bigger, faster and fainter — the three things that
-        // together read as "close to the lens" rather than "a big leaf".
-        z: near ? rand(2.6, 4.2) : rand(0.9, 1.8),
-        w: near ? rand(46, 74) : rand(22, 34),
-        h: 0, // set from the texture's aspect below
-        tex: leafTexture(Math.random() < 0.7 ? "#8fce7a" : "#d8c36a"),
-        alpha: near ? rand(0.4, 0.6) : rand(0.7, 0.9),
-        vx: rand(20, 62), vy: rand(70, 130),
-        rot: rand(0, Math.PI * 2), spin: rand(-2.4, 2.4),
-        sway: rand(18, 46), swayRate: rand(1.4, 2.6),
-        life: 14,
-      });
-    },
-  },
-
-  // The instant depth showcase: lantern silhouettes swinging past the camera.
-  // They ride the TOP of the frame — the corridor's lanterns hang from the
-  // rafters — so the biggest cards in the game never cover a fighter.
-  lanternCorridor: {
-    every: 3.2,
-    ambient(ctx) {
-      const dir = Math.random() < 0.5 ? 1 : -1;
-      ctx.spawn({
-        x: dir > 0 ? -320 : 1600,
-        // High enough that the frame CROPS them: a foreground element reads as
-        // foreground when it intrudes from the edge, and a lantern hanging
-        // fully inside the picture just covers the fight. Only their lower
-        // halves hang into view, which is also what a real ceiling lamp does.
-        y: rand(70, 170),
-        z: rand(1.6, 2.6),
-        w: rand(84, 132), h: 0,
-        tex: lanternTexture(),
-        alpha: 1,
-        // Brisk, because parallax is the point: a thing this close to the lens
-        // has to outrun the background for the depth to read.
-        vx: dir * rand(80, 145), vy: 0,
-        rot: 0, spin: 0,
-        // Hanging things swing; the sway is horizontal, so it reads as a
-        // pendulum rather than as the card bobbing.
-        sway: rand(14, 30), swayRate: rand(0.8, 1.5), swayAxis: "x",
-        tilt: rand(0.05, 0.13), tiltRate: rand(0.8, 1.5),
-        life: 70,
-      });
-    },
-  },
-
-  // THE showcase. stage_fx.js cues `surge` with the traffic's direction at the
-  // exact moment it launches its cars, so these streaks are the same run of
-  // traffic — the ones that can hit you pass at ground level behind, and these
-  // pass in front of the whole fight.
-  crosswalkRush: {
-    // The signal gantry is the one card in 18F with no procedural ancestor: it
-    // was asked for as a new element rather than a replacement, so it appears
-    // only once its art exists. Static and near the lens, hanging into the top
-    // of frame the way a real signal arm does — the traffic passes under it.
-    setup(ctx, settled) {
-      const tex = artTexture("signal_gantry");
-      // Not yet decoded — say so, so the caller tries again rather than
-      // leaving the board permanently bare. This card has no procedural
-      // ancestor, so once the loader has settled there is nothing to place.
-      if (!tex) return settled ? undefined : false;
-      ctx.spawn({
-        x: rand(240, 460), y: rand(-40, 40),
-        z: rand(2.2, 3.0),
-        w: rand(300, 380), h: 0,
-        tex,
-        alpha: 0.92,
-        vx: 0, vy: 0, rot: 0, spin: 0,
-        // A signal on an arm sways barely at all; enough to not read as a decal.
-        sway: 6, swayRate: 0.5, swayAxis: "x",
-        life: Infinity,
-      });
-    },
-    cue(name, strength, ctx) {
-      if (name !== "surge" || !ctx.plat) return;
-      const dir = Math.sign(strength) || 1;
-      const plat = ctx.plat;
-      for (let i = 0; i < 3; i++) {
-        ctx.spawn({
-          x: dir > 0 ? plat.x - 620 - i * 700 : plat.x + plat.w + 620 + i * 700,
-          // A card off the gameplay plane does NOT land where the same sim y
-          // would land at z = 0: it is nearer the camera, so the small downward
-          // pitch throws it further below the centre of frame and magnifies it.
-          // These sit well above the stage in sim space to come out riding
-          // along its front edge on screen, with the roofline crossing the
-          // fighters' legs — the pass reads as happening in FRONT of them while
-          // their heads, the thing you actually read a fight from, stay clear.
-          y: plat.y - rand(128, 168),
-          z: rand(1.8, 2.6),
-          w: rand(430, 570), h: 0,
-          tex: vehicleTexture(),
-          flipX: dir < 0,
-          // Solid enough that occlusion reads — that is the whole point — but
-          // held just under opaque so a fighter caught behind one is still
-          // faintly there, and it clears the screen in well under a second.
-          alpha: rand(0.76, 0.88),
-          vx: dir * rand(2000, 2500), vy: 0,
-          rot: 0, spin: 0,
-          life: 3,
-        });
-      }
-    },
-  },
-
-  // Rubble falling toward the lens as a rooftop gives way, on the same cue
-  // that shakes the camera.
-  emptyCity: {
-    cue(name, strength, ctx) {
-      if (name !== "rattle") return;
-      for (let i = 0; i < 7; i++) {
-        ctx.spawn({
-          x: rand(180, 1100), y: rand(-80, 240),
-          z: rand(0.5, 1.6),
-          w: rand(26, 58), h: 0,
-          tex: rubbleTexture(i),
-          alpha: rand(0.65, 0.9),
-          vx: rand(-70, 70), vy: rand(180, 420),
-          rot: rand(0, Math.PI * 2), spin: rand(-5, 5),
-          gravity: 900,
-          life: 3.5,
-        });
-      }
-    },
-  },
-
-  // The skyline layer, BEHIND the stage: hoardings that catch the storm. They
-  // are static scenery, respawned once per match rather than on a timer, and
-  // the lightning cue flashes them.
-  billboardRoof: {
-    every: 0,
-    setup(ctx, settled) {
-      // Placed once and standing for the match, so it is worth waiting for the
-      // drawn hoardings rather than freezing the procedural ones in front of
-      // the player for the whole round.
-      if (!settled && !artTexture("hoarding_a")) return false;
-      for (let i = 0; i < 5; i++) {
-        ctx.spawn({
-          // Spread across the middle band, clear of the corners the HUD
-          // panels occupy — garnish must never fight the damage readout.
-          x: 235 + i * 205, y: rand(215, 330),
-          z: rand(-5.5, -3.4),
-          w: rand(120, 175), h: 0,
-          tex: billboardTexture(i),
-          alpha: rand(0.6, 0.78),
-          vx: 0, vy: 0, rot: 0, spin: 0,
-          behind: true,
-          life: Infinity,
-          flicker: 0,
-        });
-      }
-    },
-    cue(name, strength, ctx) {
-      if (name !== "lightning") return;
-      for (const c of ctx.cards) if (c.behind) c.flicker = 0.5;
-    },
-  },
+  // EMPTY, AND THAT IS WHY YOU SEE NO NEAR-FIELD CARDS ON ANY ARENA.
+  //
+  // Every system here was keyed to a JJK board — leaves over a bridge, paper
+  // lanterns down a corridor, crossing traffic, a skyline of hoardings — and
+  // none of those keys survives the conversion. `SYSTEMS[stageKey]` therefore
+  // misses on all twelve mech arenas and the layer runs, spawns nothing, and
+  // costs nothing. It has been inert since the arenas were replaced; saying so
+  // here is the difference between a feature awaiting art direction and a
+  // feature somebody assumes is working.
+  //
+  // The machinery below is untouched and complete: the quad pool, the spawn/
+  // update/retire loop, the depth sort, the `GARNISH.enabled` toggle and the
+  // `cue()` hook stage_fx.js already calls. Re-keying is the whole job — an
+  // entry per arena that wants one, plus its cards.
+  //
+  // The fourteen plates in `assets/sprites/garnish/` are the JJK set (leaves,
+  // paper and iron lanterns, three cars, rubble, hoardings) and are optional
+  // loads, so nothing fetches them. A mech re-key wants its own art: drifting
+  // ash over volcano, snow over frozen, sparks over foundry, traffic over
+  // uptown. That is an image request, not a code change.
 };
 
 // -------------------------------------------------------------------- layer

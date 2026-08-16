@@ -35,15 +35,22 @@ export function debugStats() {
     standing: garnish ? garnish.standing() : 0,
     camera: camera.position.toArray(),
     fov: camera.fov,
-    // The two flags that keep the stage from cutting holes in the fighters.
+    // The flag that keeps the stage from cutting holes in the fighters.
+    //
+    // THIS FUNCTION USED TO THROW. It read `quad` and `behindQuad` — the
+    // billboard card layer and the layer behind it — and neither has been a
+    // binding in this module since fighters became real geometry (see the note
+    // in the draw loop below). `ReferenceError: quad is not defined` came out
+    // of the first `debugStats()` call, which is the first thing
+    // tools/smoke_camera3d.mjs does per board, so that entire tool died on its
+    // opening measurement and had done since the card layer was removed.
+    //
+    // Reporting the two dead flags as `null` would have been the smaller edit
+    // and the wrong one: null reads as "could not measure", and the truth is
+    // that there is nothing there to measure. They are gone, and the smoke
+    // test's assertions on them go with them.
     layering: {
-      billboardDepthTest: quad ? quad.material.depthTest : null,
       platformFaceDepthWrite: plat ? plat.children[1]?.material.depthWrite : null,
-      // The behind-the-fighters layer (auras, projectile art) is the one that
-      // MUST test depth: it is the only thing here that has to end up behind a
-      // fighter, and under `?render=3d` that fighter is opaque geometry no
-      // paint order can get in front of.
-      auraDepthTest: behindQuad ? behindQuad.material.depthTest : null,
     },
   };
 }

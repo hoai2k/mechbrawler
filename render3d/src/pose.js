@@ -236,14 +236,19 @@ const MIRROR_FACING_STATES = new Set(["idle", "walk", "run", "dash"]);
 
 /** How each fighter presents while facing right, in degrees off the lens:
  *  0 is chest-on, +90 is a full profile facing screen-right. Absent means
- *  "however the delivery stands", which is what everyone but Sukuna wants. */
+ *  "however the delivery stands", which is what every mech currently wants. */
 export const PRESENT_DEG = {
-  // Delivered at −10°: nearly square to the camera, so his run read as a
-  // fighter jogging on the spot toward the viewer while the same clip on
-  // everyone else read as a sprint across the screen. Turned all the way to
-  // profile instead, both directions — the one fighter on the roster whose
-  // locomotion is better side-on than three-quarter.
-  sukuna: 68,
+  // Empty. This carried one entry on the JJK roster — a fighter delivered at
+  // −10°, nearly square to the lens, whose run read as jogging on the spot
+  // toward the viewer while the same clip on everyone else read as a sprint
+  // across the screen; pinning him to profile fixed it.
+  //
+  // The mech rigs are exported from one pipeline with a common orientation
+  // (mechs/PROVENANCE.md) and `yawOffsetDeg` in render3d's manifest already
+  // cancels what residual there is, so none of them needs an override today.
+  // The dial stays because "this delivery presents at the wrong angle and no
+  // offset fixes the locomotion" is a thing a future rig can still be, and it
+  // is one number when it happens.
 };
 
 /** The camera-space angle this rig presents at, in radians, measured once off
