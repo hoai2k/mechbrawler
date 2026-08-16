@@ -100,7 +100,7 @@ specials default to 30) and run on individual cooldowns on top of it.
 - Ranged (RB) *(1.6s cooldown, 16 energy)* — **Flank Cannons** — Both cannons traverse for a visible half-beat, then fire together — the fastest heavy ordnance in the game.
 - Neutral special *(3.5s cooldown)* — **Seismic Bellow** — The frill flares and six tonnes of chest answers — a bellow that staggers everything in front of it.
 - Side special *(4.4s cooldown)* — **Gore Charge** — Head down, frill planted, and he runs — the horns catch the first body and momentum is the damage.
-- Down special *(4s cooldown)* — **Frill Bulwark** — Braces behind the frill — a front-facing counter; the display organ flares as the tell.
+- Down special *(4s cooldown)* — **Frill Bulwark** — Braces behind the frill — a front-facing counter that reflects shells; the display organ flares as the tell.
 - Ultimate — **SIEGE PROTOCOL** — All four legs plant, both cannons hose the sky in opposite-phase sweeps — then the whole cloud wakes up and comes down hunting.
 - Passive — **Four Columns** — Four legs, no lever: he cannot be flipped, tripped, or dragged, and jabs do not flinch him while he walks.
 
@@ -201,7 +201,7 @@ specials default to 30) and run on individual cooldowns on top of it.
 
 *Tech · `vulcan` · theme `#ff8c30`*
 
-- Ranged (RB) *(0.75s cooldown, 4 energy)* — **Gatling Burst** — A spray of tracer that chips, pushes, and never kills — it exists to make you approach.
+- Ranged (RB) *(0.75s cooldown, 4 energy)* — **Gatling Burst** — A held spray of tracer that chips, pushes, and never kills — it exists to make you approach.
 - Neutral special *(3.5s cooldown)* — **Frag Shell** — A fat grenade lobbed over the tracer line — every problem is insufficient ammunition.
 - Side special *(4.1s cooldown)* — **Micro-Missile Volley** — Both shoulder pods ripple-fire six seekers that arc onto the target.
 - Down special *(3.5s cooldown)* — **Flak Fan** — An upward spread burst — his anti-air, ugly to jump into.
@@ -243,7 +243,7 @@ specials default to 30) and run on individual cooldowns on top of it.
 - Ranged (RB) *(0.75s cooldown, 4 energy)* — **Hydro Hose** — Held water pressure — less a gun than a push. Shoves bodies off platforms and stuffs approaches.
 - Neutral special *(4.5s cooldown)* — **Pincer Grip** — The claw closes from further away than anything should — seized, squeezed, and flung.
 - Side special *(4.4s cooldown)* — **Geyser** — A bubbling patch telegraphs under the target, then a water column erupts — his anti-air lives in the floor.
-- Down special *(4s cooldown)* — **Shell Up** — Full counter — the best guard in the game, weaponised.
+- Down special *(4s cooldown)* — **Shell Up** — Full counter — the best guard in the game, weaponised, and shells bounce off it.
 - Ultimate — **TSUNAMI** — The sea answers — a wall of water rises behind him and rolls the full stage length. Jump it or ride it out.
 - Passive — **Hard Shell + Top-Heavy** — The shell takes 45% less shield damage — but a big enough launch flips him onto his back.
 

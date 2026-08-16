@@ -6,7 +6,7 @@ import { cpuLevelName } from "./ai.js";
 import { METER_MAX, TIME_OPTIONS, INHERENT_ENERGY } from "./constants.js";
 import { clamp } from "./utils.js";
 import { padsMenuState, padsMenuStates } from "./input.js";
-import { preloadChar } from "./render_backend.js";
+import { preloadChar, frameStyle, setFrameStyle, renderStyle, setRenderStyle } from "./render_backend.js";
 import { previewCharacter, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
 import { CHARACTER_QUOTES, QUOTE_INTRO, QUOTE_WIN, RANDOM_GROUP, TEXT } from "./config_menus.js";
 import { CONTROL_ROWS, rowAtPad } from "./config_controls.js";
@@ -24,6 +24,26 @@ let movesReturnPhase = "menu";
 // each player actually wants is their OWN fighter, not a tour of the roster.
 let movesMode = "players";
 let settingsReturnPhase = "menu";
+// A shading choice made mid-match, waiting for the page to come back up.
+let pendingRenderStyle = null;
+
+/** Is there a fight to lose by reloading? Paused counts — the pause screen is
+ *  the usual way into Settings from a match. */
+function matchInProgress() {
+  return (state.phase === "playing" || state.phase === "paused"
+    || settingsReturnPhase === "playing" || settingsReturnPhase === "paused")
+    && (state.fighters?.length || 0) > 0;
+}
+
+/** Come back up in the chosen shading style. The preference is stored, so the
+ *  URL only needs pinning when it already pins the OTHER style — a `?render=`
+ *  left over from a comparison link outranks the setting (style.js), and a
+ *  reload that visibly ignored the button would read as a bug. */
+function reloadForRenderStyle(style) {
+  const url = new URL(location.href);
+  if (url.searchParams.has("render")) url.searchParams.set("render", style);
+  location.replace(url.toString());
+}
 
 const STOCK_OPTIONS = [1, 2, 3, 5];
 const PLAYER_IDS = [1, 2, 3, 4];
@@ -61,7 +81,8 @@ export function initUi(cb) {
     "movesModeButton",
     "randomStageButton", "stageBackButton", "roundKicker", "winnerText", "rematchButton", "menuButton",
     "resumeButton", "pauseResetButton", "pauseMenuButton",
-    "settingsSfxButton", "settingsMusicButton", "settingsCpuButton", "settingsStocksButton", "settingsTimeButton", "settingsBoardsButton", "musicVolumeRange", "musicVolumeLabel",
+    "settingsSfxButton", "settingsMusicButton", "settingsCpuButton", "settingsStocksButton", "settingsTimeButton", "settingsBoardsButton",
+    "settingsFramesButton", "settingsRenderButton", "musicVolumeRange", "musicVolumeLabel",
     "sfxVolumeRange", "sfxVolumeLabel", "settingsBackButton",
   ]) {
     els[id] = $(id);
@@ -781,6 +802,26 @@ function bindMenuButtons() {
     state.activeBoards = !state.activeBoards;
     updateMenuButtons();
   });
+  // Animation frame style: live, both ways, mid-match included. The pose cache
+  // is dropped for us (render3d backend.setFrameStyle) so the change shows on
+  // the very next frame rather than as poses age out.
+  els.settingsFramesButton.addEventListener("click", () => {
+    setFrameStyle(frameStyle() === "twos" ? "smooth" : "twos");
+    updateMenuButtons();
+  });
+  // Shading style: the one setting that cannot take effect in place — the
+  // materials are converted when a rig loads and the light rig is built when
+  // the scene inits, so the page has to come back up. Out of a fight that is a
+  // reload the moment it is chosen; DURING one it is remembered and the label
+  // says "(on restart)", because dropping a live match to change a shader is
+  // not a trade anyone asked for.
+  els.settingsRenderButton.addEventListener("click", () => {
+    const next = (pendingRenderStyle ?? renderStyle()) === "toon" ? "pbr" : "toon";
+    const needsReload = setRenderStyle(next);
+    pendingRenderStyle = needsReload ? next : null;
+    updateMenuButtons();
+    if (needsReload && !matchInProgress()) reloadForRenderStyle(next);
+  });
   const musicClick = () => {
     cycleMusicMode();
     updateMenuButtons();
@@ -905,6 +946,10 @@ export function updateMenuButtons() {
   );
   els.settingsBoardsButton.textContent = TEXT.settings.activeBoards(state.activeBoards);
   els.settingsSfxButton.textContent = TEXT.settings.sfxEnabled(state.sfxEnabled);
+  els.settingsFramesButton.textContent = TEXT.settings.frames(frameStyle());
+  els.settingsRenderButton.textContent = pendingRenderStyle
+    ? TEXT.settings.renderPending(pendingRenderStyle)
+    : TEXT.settings.render(renderStyle());
 }
 
 // Stat bars for the hero cards, normalized against the full roster so a bar

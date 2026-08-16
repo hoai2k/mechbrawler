@@ -112,6 +112,34 @@ export function preloadChar(charKey, commit = false) {
   render3d.preload?.(charKey, commit);
 }
 
+// The two looks the Settings screen offers. They are drawing questions through
+// and through — no gameplay number moves — so they belong on this seam rather
+// than in `state`, and the UI never reaches into render3d for them.
+
+/** "smooth" | "twos" — the animation frame style. "twos" is JJK Brawler's own
+ *  stepped, drawn-on-twos sampling; "smooth" is Mech Mayhem's. */
+export function frameStyle() {
+  return render3d.frameStyle();
+}
+
+/** Switch the frame style. Takes effect on the next frame drawn. */
+export function setFrameStyle(style) {
+  render3d.setFrameStyle(style);
+}
+
+/** "pbr" | "toon" — the material/lighting style this page is drawing with. */
+export function renderStyle() {
+  return render3d.renderStyle();
+}
+
+/** Choose a render style. Returns TRUE when the page has to reload for it to
+ *  show: materials are converted once at rig load and the light rig is built
+ *  once at scene init, so a live swap would mean re-materialing every loaded
+ *  rig and rebuilding the scene — the reload is the honest version. */
+export function setRenderStyle(style) {
+  return render3d.setRenderStyle(style);
+}
+
 /** How a character presents inside the real 3D scene.
  *
  *  The three questions above are about a 2D CONTEXT. The camera has a scene

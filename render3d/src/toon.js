@@ -39,14 +39,12 @@
 // shells, same NoToneMapping as it always had. `?render=` is otherwise free —
 // backend selection retired with the sprite/billboard paths (render_backend.js).
 
-/** "pbr" (default) or "toon" (`?render=toon`). Fixed for the page's life —
- *  materials are converted at rig load — so both consumers (loader.js picks
- *  the material pass, scene.js the tone mapping, lights and cache tag) read
- *  one constant and cannot disagree mid-session. */
-export const RENDER_STYLE = (() => {
-  const p = new URLSearchParams(typeof location !== "undefined" ? location.search : "");
-  return (p.get("render") ?? "").trim().toLowerCase() === "toon" ? "toon" : "pbr";
-})();
+/** "pbr" (default) or "toon" — chosen in Settings, or pinned for one load with
+ *  `?render=toon`. Fixed for the page's life (style.js says why), so both
+ *  consumers — loader.js picks the material pass, scene.js the tone mapping,
+ *  lights and cache tag — read one constant and cannot disagree mid-session. */
+export { RENDER_STYLE } from "./style.js";
+import { RENDER_STYLE } from "./style.js";
 
 export const TOON_STYLE = RENDER_STYLE === "toon";
 

@@ -478,6 +478,31 @@ plays nothing like a platform fighter.
         mechs stand correctly on the deck, and the fix is to measure the lowest
         skinned vertex instead.
 
+- [x] K13. THE TWO LOOKS ARE SETTINGS (owner): "note the animation frame style
+        used in jjkbrawler and provide that along with toon rendering as
+        options in the settings".
+
+        The JJK frame style is ON-TWOS SAMPLING — pose.js `DIALS.onTwos` /
+        `sampleHz: 13`, clip time quantised so motion holds and snaps like
+        limited animation, with the contact beat always landing on a sampled
+        frame. M3 turned it off for the mechs (MM animates smoothly) and K6
+        put toon behind `?render=toon`; both were live dials with no way to
+        reach them from the game.
+
+        DONE: `render3d/src/style.js` owns both preferences (URL flag >
+        localStorage > default), toon.js and pose.js read it at load, and
+        `backend.js` exposes them through the render_backend seam. Settings
+        gains "Animation: Smooth / On Twos" — live, cache dropped so the
+        change shows on the next frame rather than as poses age out — and
+        "Shading: Neon Metal / Anime Toon", which reloads the page because
+        materials convert at rig load and the light rig is built at scene
+        init; mid-match it defers and the button reads "(on restart)".
+        `tools/smoke_render_backend.mjs` was the retired backend REGISTRY
+        test (it called `renderBackendName`, gone since the sprite/billboard
+        removal, so it had been failing on every run); it is now the check for
+        this seam — 25 checks over both flags, the live switch, the reload and
+        the deferral.
+
 ## Decisions taken
 
 - mechs/lib/ (robotworld's animation runtime) stays REFERENCE ONLY; render3d

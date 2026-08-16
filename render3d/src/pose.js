@@ -30,6 +30,7 @@
 // not bake it; the delivery rule carries over verbatim.
 
 import { STATES, clipNameFor, clipTime, aimable } from "./states.js";
+import { FRAME_STYLE } from "./style.js";
 import { applyRigFixes, applySkeletonSymmetry, modelFixesEnabled } from "./rig_fixes.js";
 import {
   applyReach, reaches, makeScratch, applyTwoHandGrip, applyCarry, applyGrip, applyMorphs, applyIdleStand, applyIdleArms, applyShoulderWidth, applyBindPose, applyKneeTurn, clearIdleStand,
@@ -39,11 +40,12 @@ import {
 
 /** The engine-side dials, each independently workbench-editable. */
 export const DIALS = {
-  // SMOOTH by default now. On-twos stepping was the anime-on-paper look the
-  // JJK roster was styled for; the mechs are Mech Mayhem's and Mech Mayhem
-  // animates smoothly — stepping a gatling spin at 13 Hz reads as lag, not
-  // style. The dial survives for anyone who wants the old look back.
-  onTwos: false,
+  // SMOOTH by default. On-twos stepping was the anime-on-paper look the JJK
+  // roster was styled for; the mechs are Mech Mayhem's and Mech Mayhem animates
+  // smoothly — stepping a gatling spin at 13 Hz reads as lag, not style. It is
+  // a real choice rather than a dead dial, though: Settings ("Animation: On
+  // twos") and `?frames=twos` both land here, live, through setOnTwos below.
+  onTwos: FRAME_STYLE === "twos",
   sampleHz: 13,               // used only when onTwos is turned back on
   smoothHz: 30,               // the smooth path's own cache quantum
   onOnesStates: new Set(),    // states that step at full rate (see above)
@@ -89,6 +91,15 @@ const PLANT_STATES = new Set(["idle", "walk", "run", "crouch", "shield", "charge
 const BREATH_STATES = new Set(["idle", "crouch", "shield"]);
 
 const DEG = Math.PI / 180;
+
+/** Switch the animation frame style live. Nothing else has to change: every
+ *  pose goes through sampleTime, so the next frame is already stepped (or
+ *  smooth), and the pose cache is keyed BY the sampled time — the two styles
+ *  cannot serve each other's renders. The caller drops the cache anyway so the
+ *  entries the old style filled it with age out at once instead of by LRU. */
+export function setOnTwos(on) {
+  DIALS.onTwos = !!on;
+}
 
 /** Clip time for a state, stepped on twos. The contact beat is always a
  *  sampled frame. Returns seconds into the clip.
