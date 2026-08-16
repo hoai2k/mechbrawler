@@ -380,7 +380,7 @@ export const IDLE_ARM_DEG = 9;
 // ------------------------------------------------------------ posing proper
 
 let THREE = null;
-let _q1, _q2, _q3, _qAxis, _v1, _v2, _v3, _v4, _v5, _e1, _vGround;
+let _q1, _q2, _q3, _qAxis, _v1, _v2, _v3, _v4, _v5, _e1, _vGround, _vScale;
 let _ik = null, _reachTarget = null, _lateral = null;
 
 export function initPose(three) {
@@ -398,6 +398,7 @@ export function initPose(three) {
   _vGround = new THREE.Vector3();
   _v2 = new THREE.Vector3();
   _v3 = new THREE.Vector3();
+  _vScale = new THREE.Vector3();
   _v4 = new THREE.Vector3();
   _v5 = new THREE.Vector3();
 }
@@ -1026,7 +1027,26 @@ function standOnGround(rig, animKey) {
   // a direction. It scales with the body — 0.6 m was a third of the JJK
   // roster's height, and a flat 0.6 on a 7 m mech would strand it mid-air.
   const limit = Math.max(0.6, 0.75 * (rig.height || 0));
-  node.position.y += Math.max(-limit, Math.min(limit, drop));
+  // WORLD UNITS INTO THE PELVIS'S OWN. `drop` is measured in the root's frame
+  // (game units, a mech ~9 tall); `node.position` is local to the pelvis's
+  // PARENT, and on a delivery that carries its game transform on the armature
+  // node — which is how the mech exports are built now, so that the transform
+  // applies rigidly after skinning instead of being folded into vertices the
+  // animation does not share (docs/mm-export-fix.patch) — that parent is
+  // scaled. Adding a world-unit drop to a native-unit local position therefore
+  // multiplied it by the rig's own scale: the pelvis went 30 units into the
+  // floor and the fighter vanished. Divide by the parent's world scale and the
+  // two agree again, whichever way a file carries its transform.
+  // RELATIVE to the root, not the world: the 2.5D camera scales the whole rig
+  // to the fighter's on-screen size (camera3d/models.js), and `drop` is
+  // measured in the root's own frame, so only the scale BETWEEN the root and
+  // the pelvis's parent belongs in this conversion. Taking the world scale
+  // instead divided the correction by the camera's zoom as well, which left
+  // the mechs ungrounded by the carriage offset their clips carry — standing a
+  // body-height below the platform.
+  const pScale = (_vGround.setFromMatrixScale(node.parent?.matrixWorld || node.matrixWorld).y || 1)
+    / (_vScale.setFromMatrixScale(root.matrixWorld).y || 1);
+  node.position.y += Math.max(-limit, Math.min(limit, drop)) / pScale;
   root.updateMatrixWorld(true);
 }
 
