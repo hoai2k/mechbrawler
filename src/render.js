@@ -58,7 +58,7 @@ export function draw(ctx) {
   drawScreenFlash(ctx);
 }
 
-// The 2.5D frame (docs/2.5d-camera-plan.md §6). The WebGL canvas underneath
+// The 2.5D frame (docs/arena-polish-plan.md §6). The WebGL canvas underneath
 // takes the scene — backdrop, domain planes, platforms, fighter and projectile
 // billboards — posed by the camera rig; this canvas keeps everything else,
 // exactly as the flat path draws it, positioned by the rig's projection of the

@@ -1,5 +1,5 @@
 // Static audit of stage platform layouts (src/stages.js) against the
-// movement budget in docs/stage-variety-plan.md ("Platform configurations"):
+// movement budget in docs/arena-polish-plan.md:
 //
 //   - the main platform is the lowest surface
 //   - every stage has 2–6 platforms besides the main
@@ -17,7 +17,6 @@ import { STAGES } from "../src/stages.js";
 const MAX_RISE = 175;        // hard ceiling per hop (weakest reach is ~239)
 const COMFY_RISE = 145;      // above this, flag as a warning
 const MIN_TOP_Y = 235;       // highest allowed platform
-const ORBIT_SLACK = 24;      // domainCore shards bob ±24 in y
 
 // Horizontal gap budget for a hop: plenty of drift on low hops, little near
 // the apex of a maximum-height jump.
@@ -35,7 +34,7 @@ for (const stage of STAGES) {
   const plats = stage.platforms;
   const main = plats.find((p) => p.kind === "main");
   const others = plats.filter((p) => p !== main);
-  const slack = stage.key === "domainCore" ? ORBIT_SLACK : 0;
+  const slack = 0; // no orbiting platforms in this roster of boards
   const problems = [];
   const warns = [];
 

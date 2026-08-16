@@ -1,7 +1,7 @@
-// Every dial of the 2.5D camera (docs/2.5d-camera-plan.md), in one place, in
-// the same comment-every-dial style as config_tuning.js. Nothing here affects
-// flat mode or the simulation — these numbers only exist once `?camera=3d` has
-// loaded src/camera3d/.
+// Every dial of the 2.5D camera (docs/arena-polish-plan.md owns the per-arena
+// personality), in one place, in the same comment-every-dial style as
+// config_tuning.js. Nothing here affects flat mode or the simulation — these
+// numbers only exist once the 3D camera has loaded src/camera3d/.
 
 export const CAMERA = {
   // 100 sim pixels = 1 world unit. Every mapping in camera3d goes through this.
@@ -56,7 +56,8 @@ export const CAMERA = {
 // Drama hooks — camera moves driven entirely by state the sim already sets.
 export const DRAMA = {
   // Round intro (introT > 0): start pulled out and angled, ease to standard
-  // framing while READY…/GO! plays.
+  // framing while READY…/GO! plays. These are the defaults — each arena can
+  // override them with an `intro` block in BOARD_CAMERA below.
   introDolly: 1.25,    // × the standard dolly distance
   introYaw: 6,         // degrees
   introTime: 1.6,      // matches introT in main.js
@@ -93,20 +94,46 @@ export const GARNISH = {
   interval: 1,
 };
 
-// Per-board camera personality. Any field omitted falls back to the global
-// rig above. `yawMax`/`heightBias`/`fovNudge`/`dampingMul` are the dials the
-// plan names; boards not listed get the global feel.
+// Per-board camera personality — one row per arena (docs/arena-polish-plan.md
+// §1). Any field omitted falls back to the global rig above. Dials:
+// `yawBias`/`yawMax` (degrees), `heightBias` (world units), `fovNudge`
+// (degrees), `dampingMul` (< 1 glides, > 1 snaps), `lookaheadMul`,
+// `driftFollow` (blend of the MAIN platform's drift into the tracked x — only
+// meaningful on a board whose main moves).
+//
+// `intro` is the arena's establishing shot, riding the same READY…GO! envelope
+// as DRAMA's global intro: { dolly?, yaw?, time? }, each falling back to
+// DRAMA.introDolly / introYaw / introTime. The yaw is a full override, not an
+// addition — an intro that wants the global angle just omits it.
 export const BOARD_CAMERA = {
-  // EMPTY, and that is a gap rather than a decision: every entry here was a JJK
-  // board — a terraced garden given a yaw bias, a slick floor given a looser
-  // damping, a low-gravity core given a higher frame. None of those keys exists
-  // any more, so all twelve mech arenas currently share the global rig.
-  //
-  // The dials still work and the lookup still runs; what is missing is somebody
-  // deciding what each arena's lens should feel like. Obvious candidates from
-  // docs/arenas.md: orbital already rides `mods.gravityMul`, so it wants the
-  // floatier frame the old low-gravity board had; skyterrace and neon are the
-  // two with real depth to flatter.
+  // The street canyon stacks in depth; the train re-prices the mid lane, so
+  // the lens leads a little harder. Intro rakes down the street.
+  neon: { yawBias: 1.5, lookaheadMul: 1.2, intro: { yaw: 10, dolly: 1.3 } },
+  // Catwalk tiers: float the lens a touch higher. Intro starts tight and hot.
+  foundry: { heightBias: 0.5, intro: { dolly: 1.1, yaw: -6 } },
+  // The tournament flat is deliberately the reference shot — default dials,
+  // just a breath of daylight air. Intro is a high, clean crane-down.
+  uptown: { fovNudge: 0.5, intro: { dolly: 1.4, yaw: 0 } },
+  // Sunset side: a persistent lean toward the water. Intro from off the quay.
+  harbor: { yawBias: -1.5, lookaheadMul: 1.2, intro: { yaw: -9, dolly: 1.3 } },
+  // The small scrappy stage: thinner air, twitchier frame. Intro pulls right
+  // out to the cloud sea before diving in.
+  skyterrace: { fovNudge: 1, dampingMul: 0.8, intro: { dolly: 1.45 } },
+  // The buried hand's fingers stack in depth under a yaw bias.
+  scrapyard: { yawBias: 2, dampingMul: 0.9, intro: { yaw: 8, dolly: 1.2 } },
+  // The terraced pit: higher, statelier. Intro looks down into the workings.
+  quarry: { heightBias: 0.55, dampingMul: 1.1, intro: { dolly: 1.35, yaw: 5 } },
+  // Hug the fissured floor; the heat widens the lens slightly.
+  volcano: { fovNudge: 0.8, heightBias: 0.35, intro: { dolly: 1.1, yaw: -5 } },
+  // Glacial calm between the floe's beats. Intro is a slow, wide aurora shot.
+  frozen: { dampingMul: 1.25, lookaheadMul: 0.9, intro: { dolly: 1.4, time: 2.0 } },
+  // The colonnade rakes into depth on the left. Intro down the processional way.
+  ruins: { yawBias: -2, intro: { yaw: -10, dolly: 1.25 } },
+  // Pyramid tiers and canopy: a taller frame with a slight lean.
+  jungle: { heightBias: 0.6, yawBias: 1, intro: { dolly: 1.15, yaw: 6 } },
+  // Low gravity: floatier fights get a floatier frame (the proven low-g
+  // recipe). Intro starts wide against the planet and takes its time.
+  orbital: { heightBias: 0.7, dampingMul: 0.7, intro: { dolly: 1.5, time: 2.0 } },
 };
 
 // Cue treatments the rig knows, poked by stage_fx.js through cameraCue().
@@ -115,36 +142,40 @@ export const BOARD_CAMERA = {
 // released over `release`. Dolly is a multiplier delta (−0.07 ≈ push in to
 // 0.93×D); yaw/roll/fov are degrees; shake is sim-px camera noise.
 export const CUES = {
-  // Quiet Hall's silence seal: a held breath — slow push in, yaw to zero.
-  // The hush lasts 4 s; the push arrives with it held and lets go as it lifts.
+  // The quarry's arming sequence: the pit holds its breath — slow push in,
+  // yaw to zero — while the LEDs count one-two-three, then the punches land.
   hush:      { dolly: -0.07, attack: 2.0, hold: 2.0, release: 1.2, yawTo0: true },
-  // Flooded Gate's surge: the camera leads the wave, like footage from a boat.
-  // Signed by strength: cue with strength ±1 for direction.
+  // A crossing hazard the camera leads: the neon maglev, a volcano fissure
+  // arming, the jungle whip. Signed by strength: cue with ±1 for direction.
   surge:     { pan: 0.6, roll: 1.5, attack: 0.3, hold: 1.2, release: 0.8 },
-  // Shibuya's curtain window: the lens widens for the frenzy.
+  // The volcano's lake surge: the lens widens while the caldera vents.
   frenzy:    { fov: 3, attack: 0.6, hold: 8.0, release: 1.2 },
-  // Curse Maw's fang snap at an edge: a 60 ms punch toward that side.
+  // A hazard releasing at a spot: the harbor's container let go, the
+  // scrapyard magnet's snap — a 60 ms punch toward that side.
   fangSnap:  { dolly: -0.05, yaw: 2, attack: 0.06, hold: 0.05, release: 0.25 },
-  // Garden Steps' bloom heal: a gentle drift toward the flower.
+  // Light itself as the event: the foundry tap-hole going white-hot, the
+  // jungle's god-rays re-angling — a gentle drift toward the glow.
   bloom:     { dolly: -0.03, attack: 0.5, hold: 1.0, release: 1.0 },
-  // Lantern fall / curse blob pop / crossing hit: a micro punch.
+  // Container landing / husk landing / quarry detonation: a micro punch.
   punch:     { fov: -1.2, attack: 0.04, hold: 0.02, release: 0.3 },
-  // Neon Split's wall: ease the yaw around the wall so its face catches light.
+  // Available, unused: ease the yaw so a stage face catches light.
   wallYaw:   { yaw: 3, attack: 0.8, hold: 6.0, release: 1.0 },
-  // Bone Sanctum's rattle / Empty City's crumble: sustained micro-shake.
+  // Grinding machinery / cracking ice / cracking stone: sustained micro-shake
+  // (the foundry drum, the magnet hum, the floe break, the column hits).
   rattle:    { shake: 3, attack: 0.1, hold: 0.8, release: 0.3 },
-  // Academy Hall's bell reshuffle: a deliberate pull-back to watch the layout
-  // glide, then re-frame.
+  // The stage just permanently changed: the ruins' lintel is down — a
+  // deliberate pull-back to take in the new layout, then re-frame.
   layout:    { dolly: 0.15, attack: 0.8, hold: 1.6, release: 1.2 },
-  // Mist Pier's fog bank: dolly IN while visibility is low — claustrophobia
-  // instead of blindness.
-  fog:       { dolly: -0.1, attack: 2.0, hold: 6.0, release: 2.0 },
-  // Cursed Teeth's inhale: the camera is being inhaled too.
+  // The frozen floe's open hole: steam off black water — dolly IN while it
+  // gapes, claustrophobia instead of blindness. Sized to the 3 s hole.
+  fog:       { dolly: -0.1, attack: 1.0, hold: 2.5, release: 1.5 },
+  // The caldera draws breath before the lake surges: the camera is being
+  // inhaled too, and the release kicks as the vent lets go.
   inhale:    { dolly: -0.05, attack: 1.5, hold: 1.5, release: 0.2, kickOnRelease: 0.1 },
-  // River Gate's crosswind: wind made visible with zero particles. Signed;
-  // re-cued on every 15 s flip, so the hold spans a whole leg of the cycle.
+  // The terrace gust / the ruins' sand: wind made visible with zero
+  // particles. Signed; the hold spans the whole blow.
   wind:      { roll: 1.3, attack: 1.0, hold: 13.0, release: 1.0 },
-  // Billboard Roof's lightning: the strongest shake in the game.
+  // Orbital debris streaking through / the colonnade coming down: the
+  // strongest shake in the game.
   lightning: { shake: 14, fov: -2, attack: 0.02, hold: 0.08, release: 0.5 },
-  // Bridge Duel: not a cue — see rig.js driftFollow, blended every frame.
 };

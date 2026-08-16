@@ -1,7 +1,6 @@
 import { CHARACTER_KEYS, actorsFor } from "./characters.js";
 import { applySharedSpriteScales } from "./shared_sprites.js";
 import { STAGES, backgroundFile } from "./stages.js";
-import { cameraMode } from "./camera_mode.js";
 import { transformActorsFor } from "./config_transform.js";
 import { SUMMON_ART, SUMMON_POSES } from "./config_summons.js";
 import { EFFECT_PLACEMENT } from "./config_effects.js";
@@ -118,6 +117,9 @@ const GARNISH_SPRITES = [
   "car_sedan", "car_van", "car_bike", "signal_gantry",
   "rubble_a", "rubble_b", "rubble_c",
   "hoarding_a", "hoarding_b", "hoarding_c",
+  // The arena-polish round (docs/image-requests.md): each falls back to a
+  // procedural drawing in garnish.js until its plate lands.
+  "gull", "cloud_wisp", "aurora_curtain", "godray_shaft",
 ];
 
 function loadImage(src) {
@@ -455,7 +457,7 @@ function groupJobs(id) {
     // imported and its WebGL context proved before the loader starts — so this
     // reads the camera the match will actually run, never a default that is
     // about to change under it.
-    if (stage) add(`bg:${stage.key}`, backgroundFile(stage, cameraMode !== "3d"));
+    if (stage) add(`bg:${stage.key}`, backgroundFile(stage));
     return jobs;
   }
 

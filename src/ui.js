@@ -6,7 +6,6 @@ import { cpuLevelName } from "./ai.js";
 import { METER_MAX, TIME_OPTIONS, INHERENT_ENERGY } from "./constants.js";
 import { clamp } from "./utils.js";
 import { padsMenuState, padsMenuStates } from "./input.js";
-import { cameraMode } from "./camera_mode.js";
 import { preloadChar } from "./render_backend.js";
 import { previewCharacter, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
 import { CHARACTER_QUOTES, RANDOM_GROUP, TEXT } from "./config_menus.js";
@@ -547,7 +546,7 @@ function buildStageGrid() {
     btn.className = "stage-card";
     // The same plate the match will draw, so the card is a preview rather than
     // a different painting of the same place (src/stages.js, backgroundFile).
-    const src = backgroundFile(stage, cameraMode !== "3d");
+    const src = backgroundFile(stage);
     const blurb = stage.desc ? `<small>${stage.desc}</small>` : "";
     btn.innerHTML = `<img src="${src}" alt="${stage.name}" loading="lazy"><span>${stage.name}${blurb}</span>`;
     btn.dataset.stage = stage.key;

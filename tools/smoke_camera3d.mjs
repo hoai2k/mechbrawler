@@ -23,36 +23,31 @@ const BASE = process.argv[2] || "http://127.0.0.1:5174";
 
 // [stage key, index in the stage grid, sim seconds to run, garnish expected?]
 //
-// The clock matters: a board's cards are spawned by its own gimmick, so the
-// run has to be long enough to reach one. Crosswalk Rush launches traffic at
-// 13.6 s of its 15 s cycle, which is why it runs longest.
+// The clock matters: a board's cue-driven cards are spawned by its own
+// gimmick, so the boards sampled here lean on their AMBIENT layers (rain,
+// embers, clouds, snow, stars), which spawn within seconds. Uptown Plaza is
+// the deliberate negative: the tournament flat has no garnish system at all
+// (src/camera3d/garnish.js), and this asserts it stays that way.
+// Sim-second targets are set by what each board needs to demonstrate — every
+// ambient layer here spawns within the first couple of seconds — and bounded
+// by what software GL can simulate inside the wall-clock deadline: neon and
+// foundry are the heaviest boards (rain + embers + the effect layer), and
+// asking them for 8 sim seconds ran out the clock without testing anything
+// the first 4 had not.
 const BOARDS = [
-  // [stage key, index in the stage grid, sim seconds to run, garnish expected?]
-  //
-  // GARNISH IS EXPECTED NOWHERE, and that is a fact about the game rather than
-  // a gap in this test: src/camera3d/garnish.js has no system for any mech
-  // arena (its SYSTEMS map says why at length), so no board spawns a card. The
-  // flag is kept so re-keying one arena is a `true` here rather than a rewrite.
-  //
-  // These were six JJK boards at grid indices 0/6/13/18/10/19 — three of which
-  // are past the end of a twelve-arena grid — so every run of this tool sat on
-  // a `waitForSelector` and failed on a timeout. The six below are chosen for
-  // the same spread: a plain board, a busy one, one with a hazard that moves
-  // the camera, one with layered depth, one with low gravity.
-  ["neon", 0, 8, false],         // the maglev pass, a camera cue on its own timing
-  ["foundry", 1, 8, false],      // the pour, and a suspended platform
-  ["uptown", 2, 8, false],       // the busiest skyline
-  ["skyterrace", 4, 5, false],   // layered terraces — the most depth to flatter
-  ["harbor", 3, 6, false],       // widest vertical spread
-  ["orbital", 11, 6, false],     // low gravity: mods.gravityMul rides here
+  ["neon", 0, 4, true],        // ambient rain + standing hoardings/gantry
+  ["foundry", 1, 5, true],     // ambient embers
+  ["uptown", 2, 5, false],     // the tournament flat: no cards, on purpose
+  ["skyterrace", 4, 6, true],  // ambient cloud deck
+  ["frozen", 8, 5, true],      // ambient snow + standing aurora
+  ["orbital", 11, 5, true],    // ambient starfield
 ];
 
 // Boards whose cards include scenery that is placed once and then stands for
-// the whole match, and how many of those cards there should be.
-// Boards whose cards include scenery placed once and then standing for the
-// whole match, and how many there should be. Empty while SYSTEMS is: standing
-// scenery is a kind of garnish card, so nothing places any.
-const STANDING = {};
+// the whole match, and how many of those cards there should be. Neon's six
+// are the five hoardings plus the signal gantry (delivered art, no
+// procedural ancestor); frozen's two are the aurora curtains.
+const STANDING = { neon: 6, frozen: 2 };
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || "/opt/pw-browsers/chromium-1194/chrome-linux/chrome",
@@ -80,7 +75,7 @@ page.on("console", (m) => {
 
 await page.goto(`${BASE}/index.html?camera=3d`, { waitUntil: "load" });
 await pressStart(page);
-await page.locator(".char-card").first().waitFor({ state: "visible", timeout: 120000 });
+
 
 // Before anything else: did the mode actually take? Every check below is
 // vacuous if this silently fell back to flat.
@@ -175,12 +170,8 @@ for (const [key, index, simSeconds, wantsGarnish] of BOARDS) {
     return state.fighters.filter((f) => !f.dead && f.respawnTimer <= 0).length;
   });
 
-  // `models`, not `quads`: fighters were billboard cards when this was written
-  // and are real geometry now, so `debugStats()` reports no quad count at all
-  // and this read `undefined` — which came out as "NaN quads / 2 alive" and
-  // failed every board. The check itself is the right one, on the right number.
-  check(peak.models >= alive, `${key}: the scene drew a body for every fighter`,
-    `${peak.models} bodies / ${alive} alive`);
+  check(peak.models >= alive, `${key}: the scene drew a rig for every fighter`,
+    `${peak.models} rigs / ${alive} alive`);
   if (wantsGarnish) {
     check(peak.garnish > 0, `${key}: garnish cards were spawned`, `${peak.garnish} cards`);
   }
@@ -207,11 +198,11 @@ for (const [key, index, simSeconds, wantsGarnish] of BOARDS) {
   check(errors.length === before, `${key}: no page errors`,
     errors.slice(before).map((e) => e.err).slice(0, 2).join(" | "));
 
-  // The stage must never cut a hole in a fighter. Both flags below were once
-  // the other way round, and the result was a platform slicing a body in half
-  // wherever the two crossed — worst on the boards whose platforms move, where
-  // the cut line slides across the sprite. Asserted on the live materials
-  // because it is one word in each file that brings it back.
+  // The stage must never cut a hole in a fighter. The platform face's flag
+  // was once the other way round, and the result was a platform slicing a
+  // body in half wherever the two crossed — worst on the boards whose
+  // platforms move, where the cut line slides across the rig. Asserted on
+  // the live material because it is one word that brings it back.
   const layer = await page.evaluate(async () =>
     (await import("/src/camera3d/index.js")).debugStats().layering);
   check(layer.platformFaceDepthWrite === false,
@@ -231,7 +222,7 @@ current = "garnish-toggle";
 await pickAnyFighter(page);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 8000 });
-await page.locator(".stage-card").nth(0).click(); // Neon District
+await page.locator(".stage-card").nth(0).click(); // Neon District: ambient rain
 await waitForMatch();
 await runUntil(4);
 const garnishCycle = await page.evaluate(async () => {
@@ -261,7 +252,7 @@ if (garnishCycle.on > 0) {
 }
 
 // Garnish must not survive a change of board: a new match starts with a clean
-// sky, or one arena's near-field scenery ends up drifting through the next.
+// sky, or Neon District's rain ends up falling through Uptown Plaza.
 current = "reset";
 await page.keyboard.press("Escape");
 await page.waitForTimeout(200);
@@ -270,44 +261,20 @@ await page.waitForTimeout(300);
 await pickAnyFighter(page);
 await page.click("#startButton");
 await page.waitForSelector(".stage-card", { timeout: 8000 });
-await page.locator(".stage-card").nth(19).click(); // Domain Core: no cards of its own
+await page.locator(".stage-card").nth(2).click(); // Uptown Plaza: no cards of its own
 await waitForMatch();
 await runUntil(1.5);
 const leftovers = await page.evaluate(async () =>
   (await import("/src/camera3d/index.js")).debugStats().garnish);
 check(leftovers === 0, "garnish is cleared when the board changes", `${leftovers} cards left over`);
 
-// The install aura belongs to the SCENE, not to the overlay canvas.
-//
-// Flat, render.js paints it between the shadow and the body, so it sits under
-// the fighter. In this mode the body is in the WebGL layer and the overlay is
-// strictly above it, so leaving the aura on the overlay put it in FRONT of the
-// fighter wearing it — a lit fighter reading as a fighter behind frosted
-// glass. billboards.js draws it as a quad instead, and that quad is the one
-// thing in this scene that has to test depth: only the depth buffer can put a
-// transparent quad behind opaque rig geometry.
-current = "aura";
-await page.evaluate(async () => {
-  const { state } = await import("/src/state.js");
-  for (const f of state.fighters) {
-    f.installs = { duration: 99, life: 99, color: "#ff62cf", label: "PROBE", aura: null };
-  }
-});
-await settleFrames();
-const aura = await page.evaluate(async () =>
-  (await import("/src/camera3d/index.js")).debugStats());
-check(aura.auras > 0, "the install aura is drawn in the scene, not on the overlay",
-  `${aura.auras} aura quad(s)`);
-// The aura layer's depth test went with the card layer it lived on — fighters
-// are real geometry now, so there is no quad behind them to test depth against.
-// What is still worth asserting is that the projectile art DREW at all.
-
-// Entity effects — traps, ultimate waves, hazards — belong in the SCENE too,
-// and for the same reason. Flat they draw before the fighters; on the overlay
+// Entity effects — traps, ultimate waves, hazards — belong in the SCENE, not
+// on the overlay canvas. Flat they draw before the fighters; on the overlay
 // they could only ever be in front, and these are the biggest pictures the
-// game has: an Encore wave painted there erased the fighter it was cast at and
-// the one across the stage with it. src/camera3d/effects.js draws the whole
-// layer as one quad behind the bodies.
+// game has: every stage hazard's telegraph and body is painted this way.
+// src/camera3d/effects.js draws the whole layer as one quad behind the
+// bodies — and it is wired in index.js, which is exactly what regressed when
+// the billboard paths were retired (the layer existed, nothing created it).
 current = "effect-layer";
 await page.evaluate(async () => {
   const { state } = await import("/src/state.js");

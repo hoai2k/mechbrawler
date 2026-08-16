@@ -18,6 +18,7 @@
 
 import { state } from "./state.js";
 import { getStage, mainPlatform } from "./stages.js";
+import { BLAST } from "./constants.js";
 import { playSfx } from "./audio.js";
 import { burst, dust, popup, banner, ring, sparkLine, spriteFlash } from "./particles.js";
 import { getImage } from "./assets.js";
@@ -37,9 +38,13 @@ import { cameraCue } from "./camera_mode.js";
 export function initStageFx() {
   state.stageMods = { gravityMul: 1, frictionPow: 1 };
   state.hazardZones = [];
+  const stage = getStage(state.stageKey);
+  // The blast zones are stage GEOMETRY, like the platforms — a stage's `blast`
+  // override applies whether Active Boards is on or off (fighter.js reads
+  // state.blast at the ring-out check).
+  state.blast = { ...BLAST, ...(stage.blast || {}) };
   if (!state.activeBoards) return;
 
-  const stage = getStage(state.stageKey);
   if (stage.mods) Object.assign(state.stageMods, stage.mods);
 
   const make = STAGE_FX[stage.key];
@@ -309,9 +314,11 @@ const STAGE_FX = {
           ctx.restore();
           // The nose itself, riding the streak. Mirrored to the travel
           // direction the same way a projectile is — the plate is drawn facing
-          // one way and the pass alternates.
-          hazardArt(ctx, "stagefx:monorail_train", train.x, track.y - 30, 150,
-                    { anchor: "centre", alpha: 0.95, flip: train.dir > 0 ? -1 : 1, additive: false });
+          // one way and the pass alternates. Through drawFx like every other
+          // plate in this file, so the workbench's table stays the one place
+          // that sizes it (150 is this call's tuned hint).
+          drawFx(ctx, "stagefx:monorail_train", train.x, track.y - 30, 150,
+                 { anchor: "center", alpha: 0.95, flip: train.dir > 0 });
         }
         // ambient neon motes
         ctx.save();
@@ -359,6 +366,7 @@ const STAGE_FX = {
           warned = n;
           playSfx("hazardBell", 0.7, 0.6); // the klaxon
           warnZone(strip.x, strip.w, TELEGRAPH + POUR + 0.5, { yMin: plat.y - 80 });
+          cameraCue("bloom", 0.8); // the tap-hole goes white-hot: heat blooms the lens
         }
         if (t >= pourAt && poured !== n) {
           poured = n;
@@ -529,8 +537,29 @@ const STAGE_FX = {
     let block = null;     // landed container platform (in state.platforms)
     let blockHits = 0;
     let blockIv = 0;
+    // ambient: gulls gliding the sunset and the water's glints off both ends
+    // of the quay (docs/arenas.md — the harbor's constant layer)
+    const quay = mainPlatform(state.platforms);
+    const gulls = [];
+    let gullAt = 4 + Math.random() * 6;
+    const glints = Array.from({ length: 12 }, (_, i) => ({ seed: i * 59.3 }));
     return {
       update(dt) {
+        // the gulls: spawn one every ~6-14s, glide across the sky band
+        gullAt -= dt;
+        if (gullAt <= 0 && gulls.length < 3) {
+          gullAt = 6 + Math.random() * 8;
+          const gDir = Math.random() < 0.5 ? 1 : -1;
+          gulls.push({ x: gDir > 0 ? -40 : 1320, y: 90 + Math.random() * 130, dir: gDir, t: Math.random() * 7 });
+          playSfx("hazardSignalChirp", 0.12, 1.9); // a faint, high cry
+        }
+        for (let i = gulls.length - 1; i >= 0; i--) {
+          const g = gulls[i];
+          g.t += dt;
+          g.x += g.dir * (70 + Math.sin(g.t * 0.8) * 12) * dt;
+          g.y += Math.sin(g.t * 1.7) * 14 * dt;
+          if (g.x < -80 || g.x > 1360) gulls.splice(i, 1);
+        }
         // traversal: pause | cross | pause | cross, one leg per CYCLE/2
         const leg = Math.floor(state.matchTime / (CYCLE / 2)); // even: L→R, odd: R→L
         const legT = state.matchTime % (CYCLE / 2);
@@ -603,6 +632,34 @@ const STAGE_FX = {
         }
       },
       draw(ctx) {
+        // water glints beyond both ends of the quay, twinkling with the sunset
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (const s of glints) {
+          const left = s.seed % 2 < 1;
+          const x = left
+            ? 20 + ((s.seed * 37) % Math.max(60, quay.x - 50))
+            : quay.x + quay.w + 30 + ((s.seed * 53) % 160);
+          const y = 620 + ((s.seed * 29) % 70);
+          const tw = 0.5 + 0.5 * Math.sin(state.matchTime * 1.4 + s.seed);
+          ctx.globalAlpha = 0.1 + 0.22 * tw;
+          ctx.fillStyle = "#ffd9a0";
+          ctx.fillRect(x, y, 5, 1.6);
+        }
+        ctx.restore();
+        // the gulls: small dark chevrons with a slow wingbeat
+        ctx.save();
+        ctx.strokeStyle = "rgba(30, 22, 34, 0.85)";
+        ctx.lineWidth = 2.5;
+        for (const g of gulls) {
+          const flap = Math.sin(g.t * 6) * 5;
+          ctx.beginPath();
+          ctx.moveTo(g.x - 9, g.y - flap);
+          ctx.quadraticCurveTo(g.x - 2, g.y + 2, g.x, g.y);
+          ctx.quadraticCurveTo(g.x + 2, g.y + 2, g.x + 9, g.y - flap);
+          ctx.stroke();
+        }
+        ctx.restore();
         // crane cables down to the spreader
         ctx.save();
         ctx.strokeStyle = "rgba(60, 52, 70, 0.85)";
@@ -768,8 +825,20 @@ const STAGE_FX = {
     let phaseT = 0, cycle = -1;
     let husk = null;       // { x, y, vy, landY }
     let debris = null;     // { x, y, until }
+    // ambient: sand-wind drifting +X and the crusher thumping off-frame
+    // (docs/arenas.md — the scrapyard's constant layer)
+    const sands = Array.from({ length: 14 }, (_, i) => ({ seed: i * 67.1 }));
+    let thumpAt = 7 + Math.random() * 5;
     return {
       update(dt) {
+        // the crusher, working through the night somewhere off to the side
+        thumpAt -= dt;
+        if (thumpAt <= 0) {
+          thumpAt = 8 + Math.random() * 6;
+          playSfx("explosionSmall", 0.16, 0.35); // distant and low
+          state.camera.shake = Math.max(state.camera.shake, 1.5);
+          dust(Math.random() < 0.5 ? 60 : 1220, 560, 3);
+        }
         const n = Math.floor(state.matchTime / PERIOD);
         const t = state.matchTime % PERIOD;
         phaseT += dt;
@@ -840,6 +909,16 @@ const STAGE_FX = {
         if (debris && debris.until < state.matchTime) debris = null;
       },
       draw(ctx) {
+        // sand-wind: fine sepia streaks drifting +X through the haze
+        ctx.save();
+        for (const s of sands) {
+          const x = ((s.seed * 101 + state.matchTime * (30 + (s.seed % 20))) % 1360) - 40;
+          const y = 140 + ((s.seed * 73) % 440) + Math.sin(state.matchTime * 1.1 + s.seed) * 8;
+          ctx.globalAlpha = 0.12 + 0.1 * Math.sin(state.matchTime * 2 + s.seed);
+          ctx.fillStyle = "#d6b088";
+          ctx.fillRect(x, y, 4, 1.5);
+        }
+        ctx.restore();
         // the magnet on its cable
         ctx.save();
         ctx.strokeStyle = "rgba(80, 66, 48, 0.9)";
@@ -908,6 +987,9 @@ const STAGE_FX = {
     let armedCycle = -1;
     const fired = [false, false, false];
     let cued = -1;
+    // ambient: violet crystal motes and the rim floodlights sweeping the pit
+    // (docs/arenas.md — the quarry's constant layer)
+    const motes = Array.from({ length: 12 }, (_, i) => ({ seed: i * 47.7 }));
     return {
       update() {
         const n = Math.floor(state.matchTime / PERIOD);
@@ -917,7 +999,9 @@ const STAGE_FX = {
           armedCycle = n;
           fired[0] = fired[1] = fired[2] = false;
           playSfx("hazardSignalChirp", 0.7, 0.8); // the blasting klaxon
-          cameraCue("rattle", 0.5);
+          // The pit holds its breath while the LEDs count one-two-three: a
+          // slow push-in that the detonation punches then interrupt.
+          cameraCue("hush");
         }
         if (armedCycle !== n || t < seqStart) return;
         for (let i = 0; i < 3; i++) {
@@ -947,6 +1031,32 @@ const STAGE_FX = {
         }
       },
       draw(ctx) {
+        // floodlight cones sweeping slowly in from the rim, and the motes
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        for (let i = 0; i < 2; i++) {
+          const px = i === 0 ? 150 : 1130;
+          const bx = 640 + Math.sin(state.matchTime * 0.12 + i * 2.6) * 260 * (i === 0 ? 1 : -1);
+          const grad = ctx.createLinearGradient(px, 40, bx, plat.y);
+          grad.addColorStop(0, "rgba(240, 244, 255, 0.09)");
+          grad.addColorStop(1, "rgba(240, 244, 255, 0)");
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(px - 8, 40);
+          ctx.lineTo(px + 8, 40);
+          ctx.lineTo(bx + 120, plat.y);
+          ctx.lineTo(bx - 120, plat.y);
+          ctx.closePath();
+          ctx.fill();
+        }
+        for (const m of motes) {
+          const x = ((m.seed * 89 + state.matchTime * 14) % 1340) - 30;
+          const y = 130 + ((m.seed * 57) % 430) + Math.sin(state.matchTime * 1.6 + m.seed) * 12;
+          ctx.globalAlpha = 0.16 + 0.12 * Math.sin(state.matchTime * 2.4 + m.seed);
+          ctx.fillStyle = "#b46bff";
+          ctx.fillRect(x, y, 3, 3);
+        }
+        ctx.restore();
         const n = Math.floor(state.matchTime / PERIOD);
         const t = state.matchTime % PERIOD;
         const seqStart = PERIOD - STEP * 3 - 0.1;
@@ -987,7 +1097,7 @@ const STAGE_FX = {
       { x: plat.x + third * 2 + 10, w: third - 40 },
     ];
     let warned = -1, jetted = -1;
-    let surged = -1;
+    let surged = -1, inhaled = -1;
     const embers = Array.from({ length: 12 }, (_, i) => ({ seed: i * 83.7, t: 0 }));
     return {
       update(dt) {
@@ -1017,6 +1127,12 @@ const STAGE_FX = {
         // the lava lake surge: edge zones taxed
         const sn = Math.floor(state.matchTime / SURGE_EVERY);
         const st = state.matchTime % SURGE_EVERY;
+        // the caldera draws breath two seconds before the lake goes: the
+        // camera is inhaled with it, and the cue's release kicks as it vents
+        if (st >= SURGE_EVERY - SURGE - 2 && inhaled !== sn) {
+          inhaled = sn;
+          cameraCue("inhale");
+        }
         if (st >= SURGE_EVERY - SURGE) {
           if (surged !== sn) {
             surged = sn;
@@ -1127,6 +1243,10 @@ const STAGE_FX = {
           playSfx("hazardFangSnap", 0.7, 0.6); // the crack-through
           dust(zone.x + zone.w / 2, plat.y, 16);
           cameraCue("rattle");
+          // steam off black water while the hole gapes: dolly IN for the 3s —
+          // claustrophobia instead of blindness (the fog treatment is sized
+          // to this hole)
+          cameraCue("fog", 0.9);
         }
         if (holed) {
           for (const f of fighters()) {
@@ -1290,6 +1410,9 @@ const STAGE_FX = {
               playSfx("explosionSmall", 0.8, 0.6);
               state.camera.shake = Math.max(state.camera.shake, 8);
               cameraCue("lightning", 0.6); // the big beat
+              // the stage just permanently changed: pull back to take in the
+              // new layout once the dust starts to settle
+              cameraCue("layout", 0.8);
               banner("THE COLONNADE FALLS", "#ffca6e", { y: 240, size: 30, life: 1.4 });
             }
           }
@@ -1347,6 +1470,14 @@ const STAGE_FX = {
     let whip = null; // { x, hit:Set }
     let warned = -1, launched = -1;
     const leaves = [];
+    // The god-rays through the canopy shift every ~40s and re-light the stage
+    // (docs/arenas.md: ambience only — no gameplay). Each phase deals the
+    // three shafts a new set of lanes; the move between them is a 2s cross-eas
+    // and the big re-light fires the bloom cue.
+    const RAY_EVERY = 40, RAY_EASE = 2;
+    const rayLanes = (phase) => Array.from({ length: 3 }, (_, i) =>
+      180 + (((phase * 7 + i * 5 + 3) * 197) % 900));
+    let rayN = 0, rayShiftAt = -10;
     return {
       update(dt) {
         const n = Math.floor(state.matchTime / PERIOD);
@@ -1394,10 +1525,42 @@ const STAGE_FX = {
         if (leaves.length < 6 && Math.random() < dt * 1.5) {
           leaves.push({ x: Math.random() * 1280, y: -10, vy: 50 + Math.random() * 40, rot: Math.random() * 7, spin: 1 + Math.random() * 2 });
         }
+        // the god-rays shift lanes and re-light the stage
+        const rn = Math.floor(state.matchTime / RAY_EVERY);
+        if (rn !== rayN) {
+          rayN = rn;
+          rayShiftAt = state.matchTime;
+          cameraCue("bloom", 0.6); // the light itself is the event
+        }
       },
       draw(ctx) {
         const t = state.matchTime % PERIOD;
         const whipAt = PERIOD - SWEEP - 0.1;
+        // the god-rays: three soft shafts slanting down through the canopy,
+        // cross-easing to their new lanes after a shift
+        {
+          const k = smoothstep(clamp((state.matchTime - rayShiftAt) / RAY_EASE, 0, 1));
+          const from = rayLanes(Math.max(0, rayN - 1));
+          const to = rayLanes(rayN);
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          for (let i = 0; i < 3; i++) {
+            const x = from[i] + (to[i] - from[i]) * k;
+            const breathe = 0.05 + 0.02 * Math.sin(state.matchTime * 0.6 + i * 2.1);
+            const grad = ctx.createLinearGradient(x, 0, x + 90, plat.y);
+            grad.addColorStop(0, `rgba(214, 255, 224, ${breathe * 1.6})`);
+            grad.addColorStop(1, "rgba(98, 255, 154, 0)");
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x + 70, 0);
+            ctx.lineTo(x + 160, plat.y);
+            ctx.lineTo(x + 40, plat.y);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+        }
         // the vines drawing back taut
         if (t >= whipAt - TELEGRAPH && t < whipAt) {
           const prog = (t - (whipAt - TELEGRAPH)) / TELEGRAPH;

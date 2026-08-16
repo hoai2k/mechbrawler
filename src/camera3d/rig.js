@@ -186,17 +186,20 @@ export function updateRig(st, dt) {
     camX = lerp(camX, smooth.focusX, smooth.focus);
   }
 
-  // ---- round intro: pulled out and angled, easing in as READY…/GO! plays
+  // ---- round intro: pulled out and angled, easing in as READY…/GO! plays.
+  // Each arena may bring its own establishing shot (BOARD_CAMERA.<key>.intro);
+  // omitted fields fall back to the global DRAMA numbers.
+  const intro = board.intro || {};
   let introK = 0;
   if (st.introT > 0) {
-    introK = clamp(st.introT / DRAMA.introTime, 0, 1);
-    dollyTarget = Math.max(dollyTarget, lerp(1, DRAMA.introDolly, introK));
+    introK = clamp(st.introT / (intro.time ?? DRAMA.introTime), 0, 1);
+    dollyTarget = Math.max(dollyTarget, lerp(1, intro.dolly ?? DRAMA.introDolly, introK));
   }
 
   // ---- yaw: toward the action as the camera tracks, plus board bias and cues
   if (yawTarget === undefined) {
     yawTarget = clamp(camX * C.yawPerUnit, -(board.yawMax ?? C.yawMax), board.yawMax ?? C.yawMax)
-      + (board.yawBias ?? 0) + introK * DRAMA.introYaw;
+      + (board.yawBias ?? 0) + introK * (intro.yaw ?? DRAMA.introYaw);
   }
   if (yawTo0) yawTarget = 0;
   yawTarget += cueYaw;

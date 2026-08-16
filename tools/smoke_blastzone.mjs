@@ -37,6 +37,7 @@ page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 const OPTIONAL_ART = [
   "/assets/sprites/summons/",
   "/assets/sprites/effects/",
+  "/assets/sprites/garnish/",
   "/assets/backgrounds/domains/",
 ];
 const undelivered = new Set();
@@ -129,6 +130,50 @@ for (const c of CASES) {
   });
   await page.waitForTimeout(200);
 }
+
+// Per-stage blast zones (stages.js `blast`, merged in initStageFx): Sky
+// Terrace pulls its side zones in to 1460/-180. A fighter parked at x=1500 —
+// inside the GLOBAL right zone (1580) but past Sky Terrace's — must ring out,
+// which proves fighter.js is reading state.blast rather than the constant.
+await page.keyboard.press("Escape");
+await page.waitForTimeout(200);
+await page.click("#pauseMenuButton");
+await page.waitForTimeout(300);
+await pickAnyFighter(page);
+await page.click("#startButton");
+await page.waitForSelector(".stage-card", { timeout: 5000 });
+await page.locator(".stage-card").nth(4).click(); // Sky Terrace
+for (let waited = 0; ; waited += 120) {
+  const ready = await page.evaluate(async () => {
+    const { state } = await import("/src/state.js");
+    return state.phase === "playing" && state.fighters.length > 0;
+  });
+  if (ready) break;
+  if (waited > 90000) throw new Error("skyterrace match never started");
+  await page.waitForTimeout(120);
+}
+const narrow = await page.evaluate(async () => {
+  const { state } = await import("/src/state.js");
+  const victim = state.fighters[1] || state.fighters[0];
+  const before = victim.stocks;
+  victim.x = 1500; // past Sky Terrace's right zone, inside the global one
+  victim.y = 300;
+  victim.vx = 0; victim.vy = 0;
+  victim.grounded = false;
+  victim.invuln = 0; victim.hitPause = 0; victim.respawnTimer = 0;
+  victim.ledge = null; victim.action = null;
+  const deadline = performance.now() + 2000;
+  while (performance.now() < deadline) {
+    if (victim.stocks < before || victim.dead) break;
+    await new Promise((r) => requestAnimationFrame(r));
+  }
+  return { blast: state.blast, before, after: victim.stocks, dead: victim.dead };
+});
+const narrowOk = narrow.blast?.right === 1460
+  && (narrow.dead || narrow.after < narrow.before);
+console.log(`${narrowOk ? "ok  " : "FAIL"} Sky Terrace's close side blast zone`
+  + `   right=${narrow.blast?.right}, stocks ${narrow.before} -> ${narrow.after}`);
+if (!narrowOk) failures++;
 
 const realErrors = errors.filter(
   (e) => !(/Failed to load resource/.test(e) && undelivered.size));

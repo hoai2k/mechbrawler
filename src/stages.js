@@ -17,6 +17,12 @@
 //   gravityMul  — scales gravity for the whole match (Orbital Platform floats)
 //   frictionPow — exponent on ground friction; < 1 is slick (unused today)
 //
+// The optional `blast` field overrides sides of the global blast-zone rect
+// (BLAST in constants.js): { left?, right?, top?, bottom? }. It is stage
+// GEOMETRY, like the platforms — it applies whether Active Boards is on or
+// off. Sky Terrace is the designed user: its side zones are close, so the
+// small stage kills early off the sides (docs/arenas.md §5).
+//
 // `tint` is the arena's colour wash — the flat renderer paints it over the
 // backdrop and the 3D rig reads it for the fighters' rim light, so it is
 // picked from each painting's palette. `desc` is the select screen's one-line
@@ -62,6 +68,7 @@ export const STAGES = [
     ] },
   { key: "skyterrace", name: "Sky Terrace", bgFile: "arenas/skyterrace.jpg",
     tint: "rgba(120, 214, 255, 0.11)",
+    blast: { left: -180, right: 1460 }, // close side zones: small, fast, scrappy
     desc: "Every ~25s a gust crosses the terrace and re-prices every edge guard.",
     platforms: [
       { x: 320, y: 576, w: 640, h: 42, kind: "main" }, // the helipad — small and scrappy
@@ -141,10 +148,8 @@ export function getStage(key) {
 }
 
 /** The backdrop file for `stage`. Every arena has exactly ONE painting
- *  (assets/backgrounds/arenas/<key>.jpg, 2048×1152) serving both cameras —
- *  the `flat` flag is kept so callers didn't have to change, but it no longer
- *  selects a different plate. */
-export function backgroundFile(stage, _flat) {
+ *  (assets/backgrounds/arenas/<key>.jpg, 2048×1152) serving both cameras. */
+export function backgroundFile(stage) {
   return `assets/backgrounds/${stage.bgFile}`;
 }
 

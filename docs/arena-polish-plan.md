@@ -255,34 +255,41 @@ Order (the proven sequence: shared framework → boards in batches → tools →
 docs → merge). Each phase is separately shippable and merges to `main` green.
 
 **Phase A — plumbing + camera personality (S-heavy, biggest win/line)**
-- [ ] A1 Rekey `BOARD_CAMERA`, author dials for all 12 (§1), fix CUES prose
-- [ ] A2 Intro framing: `intro` sub-object in rig + 12 rows (§2)
-- [ ] A3 Per-stage blast zones + Sky Terrace values; smoke_blastzone updated
-- [ ] A4 New cue beats wired in stage_fx: foundry `bloom`, quarry `hush`,
-      volcano `inhale`, frozen `fog`, ruins `layout`, jungle `bloom`
-- [ ] A5 Small fixes: neon `drawFx`, `_flat` removal, doc references
-- [ ] A6 Tools rekeyed: smoke_camera3d, smoke_ground3d (plan item X4)
+- [x] A1 Rekey `BOARD_CAMERA`, author dials for all 12 (§1), fix CUES prose
+- [x] A2 Intro framing: `intro` sub-object in rig + 12 rows (§2)
+- [x] A3 Per-stage blast zones + Sky Terrace values; smoke_blastzone updated
+- [x] A4 New cue beats wired in stage_fx: foundry `bloom`, quarry `hush`,
+      volcano `inhale`, frozen `fog`, ruins `layout`, jungle `bloom` (the
+      god-ray shift itself was also built — it existed only on paper)
+- [x] A5 Small fixes: neon `drawFx`, `_flat` removal, doc references, stale
+      default `stageKey`, JJK character selectors across all smoke tools
+- [x] A6 Tools rekeyed: smoke_camera3d, smoke_ground3d, smoke_camera cue/board
+      tables (plan item X4)
 
-**Phase B — garnish, boards 1–6** (neon, foundry, uptown, harbor,
-skyterrace, scrapyard)
-- [ ] B1 `SYSTEMS` rows using existing 14 textures + procedural fallbacks
-- [ ] B2 Asset request round for the small optional set (gull, steam puff,
-      aurora curtain, god-ray, solar wing) — game never requires them
-- [ ] B3 smoke_camera3d garnish counts (incl. uptown negative)
-
-**Phase C — garnish, boards 7–12** (quarry, volcano, frozen, ruins, jungle,
-orbital)
-- [ ] C1 `SYSTEMS` rows
-- [ ] C2 smoke_camera3d counts extended
+**Phases B + C — garnish, all boards** (landed together: the systems share
+their textures, so splitting bought nothing)
+- [x] B1/C1 `SYSTEMS` rows for 11 arenas (uptown deliberately none — the
+      daylight reference and the smoke test's negative control), reusing all
+      14 delivered textures + 10 new procedural ones
+- [x] B2 Asset request round (docs/image-requests.md): gull, cloud wisp,
+      aurora curtain, god-ray shaft — optional upgrades over the procedural
+      fallbacks, art hooks already wired
+- [x] B3/C2 smoke_camera3d garnish counts (incl. uptown negative and the
+      neon/frozen standing-scenery counts)
 
 **Phase D — ambient completion + audio**
-- [ ] D1 `STAGE_AMBIENT` table + shared runner; harbor, scrapyard, quarry
-      built from zero; others migrated where it's an upgrade
+- [x] D1 The three bare boards built their ambient layers: harbor (gulls,
+      water glints), scrapyard (sand-wind, crusher thumps), quarry (violet
+      motes, floodlight sweep) — written in stage_fx's house idiom rather
+      than a config table; a shared `STAGE_AMBIENT` runner stays open as a
+      refactor if a second consumer ever wants the data
 - [ ] D2 Declarative platform behaviours (sway/traverse/waypoints) — refactor,
       no behaviour change; smoke_stages green proves it
-- [ ] D3 K2 ambience beds verified/wired
-- [ ] D4 Docs: `docs/arenas.md` gains a "presentation" line per arena;
-      `docs/mech-conversion-plan.md` X-items ticked; this checklist ticked
+- [x] D3 K2 ambience beds verified: audio.js already plays `amb_<stageKey>`
+      per arena (config_audio.js registers all 12)
+- [x] D4 Docs: `docs/arenas.md` gained its presentation-layer table;
+      `docs/mech-conversion-plan.md` X4 ticked; image requests split into a
+      live list + history archive (docs/image-requests{,-history}.md)
 
 Definition of done per phase: boot clean, `smoke_stages` + `audit_stage_reach`
 + rekeyed 3D smokes green, committed on the feature branch, merged to `main`,

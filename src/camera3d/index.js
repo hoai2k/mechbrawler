@@ -18,6 +18,8 @@ import {
 import { makeSimGroup, updatePlatforms, makeBackdrop, updateBackdrop } from "./stage_geo.js";
 import { makeModels } from "./models.js";
 import { makeGarnish } from "./garnish.js";
+import { makeEffectLayer } from "./effects.js";
+import { makeQuadPool, rectMatrix, ORDER } from "./quads.js";
 import { WORLD } from "../constants.js";
 
 export { worldToScreen, overlayTransform };
@@ -33,24 +35,17 @@ export function debugStats() {
     models: models ? models.count() : 0,
     garnish: garnish ? garnish.count() : 0,
     standing: garnish ? garnish.standing() : 0,
+    // Did the entity-effect layer (stage hazards, traps, waves — see
+    // effects.js) actually put its quad in the scene this frame?
+    fxLayer: fxDrew,
     camera: camera.position.toArray(),
     fov: camera.fov,
-    // The flag that keeps the stage from cutting holes in the fighters.
-    //
-    // THIS FUNCTION USED TO THROW. It read `quad` and `behindQuad` — the
-    // billboard card layer and the layer behind it — and neither has been a
-    // binding in this module since fighters became real geometry (see the note
-    // in the draw loop below). `ReferenceError: quad is not defined` came out
-    // of the first `debugStats()` call, which is the first thing
-    // tools/smoke_camera3d.mjs does per board, so that entire tool died on its
-    // opening measurement and had done since the card layer was removed.
-    //
-    // Reporting the two dead flags as `null` would have been the smaller edit
-    // and the wrong one: null reads as "could not measure", and the truth is
-    // that there is nothing there to measure. They are gone, and the smoke
-    // test's assertions on them go with them.
     layering: {
       platformFaceDepthWrite: plat ? plat.children[1]?.material.depthWrite : null,
+      // The effect quad must never write depth: it is a picture ON the
+      // gameplay plane, and stamping its rectangle into the depth buffer
+      // would carve a hole the fighters could not draw into.
+      effectDepthWrite: fxPool ? fxPool.group.children[0]?.material.depthWrite ?? null : null,
     },
   };
 }
@@ -68,6 +63,9 @@ let simGroup = null;
 let backdrop = null;
 let models = null;
 let garnish = null;
+let fxLayer = null;
+let fxPool = null;
+let fxDrew = false;
 
 /** Between matches: the rig's smoothed framing and every garnish card go back
  *  to nothing, so a new board does not inherit the last one's sky. */
@@ -104,6 +102,14 @@ export function initRender3d() {
   // written in world units directly.
   garnish = makeGarnish();
   simGroup.add(garnish.group);
+  // The entity-effect layer (effects.js): everything in state.entities —
+  // stage hazards, traps, ultimate waves — painted into one canvas and hung
+  // in the scene as a single quad on the gameplay plane, BEHIND the fighters.
+  // The overlay canvas sits above the whole WebGL layer, so drawing an entity
+  // there could only ever put it in front of every fighter.
+  fxLayer = makeEffectLayer();
+  fxPool = makeQuadPool();
+  simGroup.add(fxPool.group);
 
   resize();
   window.addEventListener("resize", resize);
@@ -140,5 +146,17 @@ export function draw(st) {
   // on screen. backend.js warns once per missing rig; see its header.
   models.update(st);
   garnish.update(st, dt);
+  // The entity-effect quad: repainted from state.entities, sized to the sim
+  // rect the camera can see, a hair behind the gameplay plane so the
+  // depth-tested rigs stand in front of it the way flat draw order had them.
+  fxPool.begin();
+  const fxRect = fxLayer.update(st);
+  fxDrew = !!fxRect;
+  if (fxRect) {
+    fxPool.draw(fxLayer.texture,
+      rectMatrix(fxRect.x + fxRect.w / 2, fxRect.y + fxRect.h / 2, fxRect.w, fxRect.h),
+      { z: -0.02, order: ORDER.billboard - 1 });
+  }
+  fxPool.end();
   renderer.render(scene, camera);
 }

@@ -27,7 +27,7 @@ function fighter(id, x, y) {
   return { id, x, y, vx: 0, vy: 0, dead: false, respawnTimer: 0, action: null };
 }
 
-function resetState(stageKey = "trainingBridge") {
+function resetState(stageKey = "uptown") {
   state.stageKey = stageKey;
   state.platforms = [{ x: 248, y: 568, w: 784, h: 42, kind: "main" }];
   state.fighters = [fighter(1, 430, 568), fighter(2, 850, 568)];
@@ -156,10 +156,10 @@ pass("GAME drama shot");
 
 // ---- 7. every cue, at full strength, on the board that uses it
 const CUE_BOARDS = {
-  hush: "quietHall", surge: "floodedGate", frenzy: "shibuyaNight",
-  fangSnap: "curseMaw", bloom: "gardenSteps", punch: "lanternCorridor",
-  wallYaw: "neonSplit", rattle: "boneSanctum", layout: "academyHall",
-  fog: "mistPier", inhale: "cursedTeeth", wind: "riverGate", lightning: "billboardRoof",
+  hush: "quarry", surge: "neon", frenzy: "volcano",
+  fangSnap: "harbor", bloom: "foundry", punch: "harbor",
+  wallYaw: "uptown", rattle: "foundry", layout: "ruins",
+  fog: "frozen", inhale: "volcano", wind: "skyterrace", lightning: "orbital",
 };
 for (const [name, board] of Object.entries(CUE_BOARDS)) {
   resetState(board);
