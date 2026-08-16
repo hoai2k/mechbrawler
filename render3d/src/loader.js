@@ -37,7 +37,7 @@ import { buildMannequin, buildBoneProxy, MANNEQUIN_HEIGHT_M } from "./mannequin.
 import { clone as cloneSkinned } from "../../vendor/three/utils/SkeletonUtils.js";
 import { applyToonMaterials, applyNativeMaterials, characterToon, TOON_STYLE } from "./toon.js";
 import { addOutlines, setOutlineFor } from "./outline.js";
-import { captureCleanPose, poseRig } from "./pose.js";
+import { captureCleanPose, poseRig, measureBindMetrics } from "./pose.js";
 import { reachChain } from "./ik.js";
 
 /** charKey -> { root, height, clips: Map, mixer, actions: Map, entry } */
@@ -231,6 +231,11 @@ export function acquireInstance(charKey, instanceId) {
   // does — a shoulder correction that only existed on the base rig meant the
   // number was dialled in the review and then never seen in a match.
   copyModelFixes(inst, base);
+  // The bind-pose constants come across rather than being re-measured: an
+  // instance is a clone of a rig that may already be mid-pose, so its own bind
+  // is only recoverable from the base's. Same file, same numbers.
+  inst._compass = base._compass;
+  inst._soleDelta = base._soleDelta;
   INSTANCES.set(key, inst);
   return inst;
 }
@@ -374,6 +379,10 @@ export function setRigSettings(charKey, { renderScale, yawOffsetDeg, stanceDeg, 
   if (yawOffsetDeg !== undefined && Number.isFinite(yawOffsetDeg)) {
     rig.yawOffsetDeg = yawOffsetDeg;
     rig.yawOffset = (yawOffsetDeg * Math.PI) / 180;
+    // The presentation compass is calibrated against the bind pose AT this
+    // offset — "which way the delivery faces" is the whole question it answers
+    // — so turning the delivery re-opens it.
+    measureBindMetrics(rig);
   }
   if (headTiltDeg !== undefined && Number.isFinite(headTiltDeg)) rig.headTiltDeg = headTiltDeg;
   rig.root.userData.yawOffsetRad = rig.yawOffset;
@@ -386,6 +395,8 @@ export function setRigSettings(charKey, { renderScale, yawOffsetDeg, stanceDeg, 
     if (inst.charKey !== charKey) continue;
     inst.renderScale = rig.renderScale;
     inst.yawOffset = rig.yawOffset;
+    inst._compass = rig._compass;
+    inst._soleDelta = rig._soleDelta;
     copyModelFixes(inst, rig);
     inst.root.userData.yawOffsetRad = rig.yawOffset;
   }
@@ -621,6 +632,12 @@ function registerRig(charKey, { root, height, clips, isMannequin = false }, entr
   const rig = { charKey, root, height, declaredHeight: height, clips, mixer,
                 actions: new Map(), entry, isMannequin };
   applyEntrySettings(rig, entry);
+  // The per-rig constants that are facts about the FILE — the presentation
+  // compass and the mesh's sole offset — taken here, from the bind pose, while
+  // the skeleton is still certainly in it. Measuring them lazily at the first
+  // pose made both depend on which state happened to render first (pose.js
+  // measureBindMetrics says what that cost).
+  measureBindMetrics(rig);
   RIGS.set(charKey, rig);
 }
 

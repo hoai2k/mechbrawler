@@ -36,8 +36,48 @@ import { setRimColor, TOON, TOON_STYLE, RENDER_STYLE } from "./toon.js";
 import { LIGHT_RIG, PBR_LIGHT_RIG } from "./light_rig.js";
 import { setWorldWidth, OUTLINE } from "./outline.js";
 
-export const TEX_SIZE = 384;
+/**
+ * THE POSE TEXTURE'S EDGE, IN PIXELS — and the one number in this file that is
+ * a setting rather than a constant.
+ *
+ * 384 is the GAME's size and stays the default: a fighter occupies a few
+ * hundred pixels at match zoom, the cache holds CACHE_MAX of these, and the
+ * render is 2× supersampled on top (SUPERSAMPLE), so this is already more
+ * detail than the blit consumes. Nothing about the game changes.
+ *
+ * The POSE WORKBENCH is the other consumer, and it wants something else: it
+ * fills a browser window with ONE fighter, so 384 arrives magnified three or
+ * four times and every judgement about a joint is made through the blur. It is
+ * the same pipeline, not a different renderer, so the honest fix is to let the
+ * viewer ask for a bigger texture rather than to grow a second path.
+ *
+ * `let` + a setter rather than a parameter: every consumer (blit.js, the
+ * projection helpers below) reads it as a module binding, and ES module
+ * bindings are live, so a change here reaches all of them with nothing to
+ * thread through. Changing it invalidates every cached canvas — they are all
+ * the old size — so setTexSize drops the cache and the recycling pool.
+ */
+export let TEX_SIZE = 384;
+/** The default, so a caller can put it back without hard-coding the number. */
+export const TEX_SIZE_DEFAULT = 384;
 export const SUPERSAMPLE = 2;
+
+/** Ask for a different pose-texture size. Returns the size in force after the
+ *  call (the request, clamped). Cheap to call with the size already set — it
+ *  is then a no-op and the cache survives. */
+export function setTexSize(px) {
+  const want = Math.max(64, Math.min(2048, Math.round(Number(px) || 0)));
+  if (want === TEX_SIZE) return TEX_SIZE;
+  TEX_SIZE = want;
+  // Every cached pose is a texture at the OLD edge, so none of them can serve
+  // another request — and the pool has to be emptied AFTER dropCache, which
+  // is what hands the evicted canvases to it. Recycling one would silently
+  // crop or letterbox every pose drawn into it afterwards.
+  dropCache();
+  canvasPool.length = 0;
+  if (renderer) renderer.setSize(TEX_SIZE * SUPERSAMPLE, TEX_SIZE * SUPERSAMPLE, false);
+  return TEX_SIZE;
+}
 /** Fraction of the frame height under the foot line (world y = 0). */
 export const FOOT_FRAC = 0.10;
 /** Frustum height as a multiple of rig height: headroom for raised arms and

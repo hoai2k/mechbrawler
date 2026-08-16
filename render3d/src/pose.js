@@ -90,9 +90,6 @@ const BREATH_STATES = new Set(["idle", "crouch", "shield"]);
 
 const DEG = Math.PI / 180;
 
-/** Scratch for forwardFromFeet — allocation-free at pose time. */
-const _feet = { x: 0, z: 0, n: 0 };
-
 /** Clip time for a state, stepped on twos. The contact beat is always a
  *  sampled frame. Returns seconds into the clip.
  *
@@ -372,7 +369,7 @@ export const IDLE_ARM_DEG = 9;
 // ------------------------------------------------------------ posing proper
 
 let THREE = null;
-let _q1, _q2, _q3, _v1, _v2, _v3, _v4, _v5, _e1, _vGround;
+let _q1, _q2, _q3, _qAxis, _v1, _v2, _v3, _v4, _v5, _e1, _vGround;
 let _ik = null, _reachTarget = null, _lateral = null;
 
 export function initPose(three) {
@@ -385,6 +382,7 @@ export function initPose(three) {
   _q1 = new THREE.Quaternion();
   _q2 = new THREE.Quaternion();
   _q3 = new THREE.Quaternion();
+  _qAxis = new THREE.Quaternion();
   _v1 = new THREE.Vector3();
   _vGround = new THREE.Vector3();
   _v2 = new THREE.Vector3();
@@ -481,52 +479,162 @@ export function playClip(rig, animKey, sampled, clip) {
 
 // ------------------------------------------- measuring what a clip presents
 //
-// The feet are the honest compass. The hip axis (presentRad above) needs the
-// thigh bones' left/right labels to be trusted, and on the generated mech
-// skeletons they are not — titanus's `thighL` sits on the body's right, which
-// flips the answer by 180° and put the JJK-era measurement chest-on when the
-// body stood back-on. A toe sticks out the FRONT of its foot whatever the
-// bone is called, so toe-minus-heel is unambiguous. Both feet are averaged
-// (a stride splays them either side of the heading), with the Mixamo names
-// as fallback for the older rigs. Null when no foot answers — that rig keeps
-// the plain facing turnaround.
+// WHICH WAY IS THE BODY TURNED — the one question the K3 pin is built on, and
+// the one the delivered skeletons make hard, because no two of them agree on
+// what a leg is called or which side of the body an `L` sits on.
+//
+// The first version of this asked the FEET: toe minus heel, on the argument
+// that a toe sticks out the front of a foot whatever the bone is named, where
+// a hip axis needs the left/right labels to be trusted (titanus's `thighL`
+// sits on the body's RIGHT, so the naive hip answer is 180° out). It read the
+// two mech intake names, then each ankle's first bone child as a fallback.
+// Measured across the whole roster, both halves of that are wrong:
+//
+//   * THE ANKLE-CHILD FALLBACK IS NOT A COMPASS. It carried 15 of the 17
+//     rigs, and at BIND — where the delivery's forward is known to be +Z —
+//     it pointed: cranky 158° out, jerry 153°, frogger 30°, saurion 14°,
+//     konga 8°. `footL` is wherever the exporter hung it, which on half the
+//     roster is the HEEL. Those mechs were pinned to an angle measured off a
+//     bone pointing backwards, i.e. presented back-to-front, for every state
+//     the rules cover.
+//
+//   * THE FEET ARE NOT BODY-FIXED. A foot rotates through the stride, and
+//     past about 90° of ankle roll the toe-minus-heel vector's horizontal
+//     part collapses and then INVERTS. Sampled across titanus's own run clip
+//     — the rig this measurement was authored for — the left foot's heading
+//     swings between +87° and −94° and the two-foot sum lands anywhere from
+//     −82° to +83°: a ±160° swing on a body that is running in a straight
+//     line. The pin faithfully turned the root to match, every frame.
+//
+// So the compass is a BODY-FIXED AXIS, chosen per rig from whatever the
+// skeleton actually carries, and CALIBRATED AT BIND rather than assumed:
+//
+//   1. the THIGH PAIR — the two hip joints. Rigid to the pelvis (their
+//      separation is bone, not pose), present on all 17 rigs, and measured
+//      across the run clips it holds to ±2–7° where the ankle pair swings
+//      ±14–156°. This is the body's own yaw, which is what "how much chest
+//      the viewer gets" means.
+//   2. the HIPS' OWN WORLD BASIS, for a rig with no thigh pair — its local
+//      +Z, or +X where +Z happens to stand vertical.
+//   3. the ANKLE PAIR — a real lateral axis while standing, but it rotates
+//      with the stride (the feet split fore-and-aft), so it is a fallback and
+//      not the answer.
+//   4. TOE MINUS HEEL, both feet summed — last, for a rig with no legs to
+//      speak of but a foot to point with.
+//
+// (The owner's chain named the ankle pair before the thighs. The ordering
+// here is the measured one: the ankle pair is the same axis as the thigh
+// pair only while both feet are planted, and every travel state — the states
+// the profile rule is FOR — breaks that.)
+//
+// THE CALIBRATION IS WHAT MAKES THE LABELS STOP MATTERING. Instead of
+// deciding which perpendicular of a lateral axis is "forward" from the bone
+// names, the axis's heading is recorded once, in the rig's BIND pose, with
+// the root at its `yawOffset` — the pose in which the delivery spec says the
+// body faces +Z (loader.js). Every later measurement reports the heading
+// CHANGE from that. A mirrored `L`/`R`, a rolled bone, an axis that runs out
+// the side instead of the front: all of it cancels, because only the
+// difference is ever used. Nothing here has to know which way round the
+// skeleton was built.
 
-/** Foot-bone name pairs whose difference points the body's forward:
- *  mech intake names first, Mixamo second. Rigs matching neither (wraith,
- *  tempest...) fall back to each ankle's first bone child in
- *  `forwardFromFeet` — on every generated skeleton the foot/toe hangs off
- *  the ankle toward the toes, which is the same compass. */
-const FORWARD_FEET = [
-  ["toeL", "heelL"], ["toeR", "heelR"],
-  ["LeftToeBase", "LeftFoot"], ["RightToeBase", "RightFoot"],
+/** Horizontal `bone(a) − bone(b)`, or null when either is missing or the two
+ *  sit on top of each other. */
+function axisPair(root, aName, bName) {
+  const a = root.getObjectByName(aName);
+  const b = root.getObjectByName(bName);
+  if (!a || !b) return null;
+  a.getWorldPosition(_v4);
+  b.getWorldPosition(_v5);
+  const d = _v4.sub(_v5).setY(0);
+  return d.lengthSq() > 1e-10 ? { x: d.x, z: d.z } : null;
+}
+
+/** How much of a hips axis has to lie in the ground plane before its heading
+ *  means anything: an axis standing within ~12° of vertical projects to almost
+ *  nothing, and its shadow points wherever the last decimal place says. Four of
+ *  the seventeen rigs carry their pelvis's +Z straight up, which is why this is
+ *  a gate and not an assumption. */
+const HIPS_AXIS_MIN = 0.2;
+
+/** One of the hips' own local axes, in world, flattened to the ground. */
+function axisHips(root, which) {
+  const hips = root.getObjectByName("hips") || root.getObjectByName("Hips")
+    || root.getObjectByName("mixamorigHips");
+  if (!hips) return null;
+  hips.getWorldQuaternion(_qAxis);
+  _v4.set(which === "x" ? 1 : 0, 0, which === "z" ? 1 : 0).applyQuaternion(_qAxis).setY(0);
+  return _v4.length() > HIPS_AXIS_MIN ? { x: _v4.x, z: _v4.z } : null;
+}
+
+/** Summed horizontal toe-minus-heel over both feet. The sum weights each foot
+ *  by its horizontal reach, so a foot rolled onto a near-vertical toe pulls
+ *  less than a planted one — it does not save the measurement (see above),
+ *  but it is the best this tier can do. */
+function axisFeet(root) {
+  let x = 0, z = 0, n = 0;
+  for (const [toeName, heelName] of [
+    ["toeL", "heelL"], ["toeR", "heelR"],
+    ["LeftToeBase", "LeftFoot"], ["RightToeBase", "RightFoot"],
+  ]) {
+    const d = axisPair(root, toeName, heelName);
+    if (!d) continue;
+    x += d.x; z += d.z; n++;
+  }
+  return n ? { x, z } : null;
+}
+
+/** The candidate body axes, best first — see the note above for the order. */
+const BODY_AXES = [
+  { tier: "thigh",  read: (r) => axisPair(r, "thighL", "thighR")
+                               || axisPair(r, "LeftUpLeg", "RightUpLeg") },
+  { tier: "hipsZ",  read: (r) => axisHips(r, "z") },
+  { tier: "hipsX",  read: (r) => axisHips(r, "x") },
+  { tier: "ankle",  read: (r) => axisPair(r, "ankleL", "ankleR")
+                               || axisPair(r, "LeftFoot", "RightFoot") },
+  { tier: "feet",   read: axisFeet },
 ];
 
-/** Sum the horizontal toe-minus-heel vectors of every foot found, into
- *  `out = {x, z, n}`. Unnormalised on purpose: the sum weights each foot by
- *  its horizontal reach, so a foot rolled onto a near-vertical toe (the
- *  run's passing position) contributes almost nothing instead of a random
- *  heading. */
-function forwardFromFeet(root, out) {
-  out.x = 0; out.z = 0; out.n = 0;
-  const add = (toe, heel) => {
-    toe.getWorldPosition(_v4);
-    heel.getWorldPosition(_v5);
-    const d = _v4.sub(_v5).setY(0);
-    if (d.lengthSq() < 1e-8) return;
-    out.x += d.x; out.z += d.z; out.n++;
-  };
-  for (const [toeName, heelName] of FORWARD_FEET) {
-    const toe = root.getObjectByName(toeName);
-    const heel = root.getObjectByName(heelName);
-    if (toe && heel) add(toe, heel);
-  }
-  if (out.n) return out;
-  for (const side of ["L", "R"]) {
-    const ankle = root.getObjectByName(`ankle${side}`);
-    const toe = ankle?.children.find((o) => o.isBone);
-    if (ankle && toe) add(toe, ankle);
+/** How much of an axis's BIND length has to survive into the posed frame for
+ *  its heading to be believed. Below this the vector is mostly measurement
+ *  noise pointing wherever the last decimal place says. */
+const AXIS_MIN_FRAC = 0.25;
+
+/** The calibrated compass for a rig: every axis its skeleton carries, in
+ *  priority order, each with the heading it had at bind. */
+function calibrateCompass(root) {
+  const out = [];
+  for (const axis of BODY_AXES) {
+    const v = axis.read(root);
+    if (!v) continue;
+    const mag = Math.hypot(v.x, v.z);
+    if (mag < 1e-4) continue;
+    out.push({ tier: axis.tier, read: axis.read, bindRad: Math.atan2(v.x, v.z), mag });
   }
   return out;
+}
+
+/** The body's world heading right now, in radians, relative to the delivery's
+ *  own forward — 0 means "facing where the bind pose faced". Null for a rig
+ *  with nothing measurable at all, which keeps the plain facing turnaround. */
+function bodyHeading(rig) {
+  if (rig._compass === undefined) measureBindMetrics(rig);
+  const list = rig._compass;
+  if (!list || !list.length) return null;
+  for (const c of list) {
+    const v = c.read(rig.root);
+    if (!v) continue;
+    if (Math.hypot(v.x, v.z) < c.mag * AXIS_MIN_FRAC) continue;
+    return Math.atan2(v.x, v.z) - c.bindRad;
+  }
+  return null;
+}
+
+/** Which axes this rig resolved, best first — the workbench readout and the
+ *  smoke test's per-mech report. `[0]` is the one steering it while nothing is
+ *  degenerate, which is the common case. */
+export function compassTiers(rig) {
+  if (rig?._compass === undefined) measureBindMetrics(rig);
+  return (rig?._compass || []).map((c) => c.tier);
 }
 
 /** Pin the FINISHED pose's presented angle to the signed target, by turning
@@ -542,21 +650,21 @@ function forwardFromFeet(root, out) {
  *  cache key. The camera it presents TO is the flat blit's ¾ lens by default
  *  and the head-on scene camera when `layers.presentCamRad` says so
  *  (backend.poseInstance) — same dials, both paths. A rig with no measurable
- *  feet is left exactly as the facing turnaround posed it.
+ *  body axis at all is left exactly as the facing turnaround posed it.
  *
- *  The feet steer ATTACKS too, deliberately. A strike-direction compass was
+ *  The BODY steers attacks too, deliberately. A strike-direction compass was
  *  tried (pin the farthest fist's heading at the beat) and dropped: the two
  *  facings pin mirrored STRIKE headings onto the same un-mirrored body, so
  *  the body's own angles come out asymmetric — a wind-up that faced the lens
  *  facing right faced away facing left, the exact thing the rule forbids —
  *  and the beat-time pre-measure inherited whatever pose untracked bones
- *  were left in, which broke same-token determinism across boot orders. The
- *  feet give exact dial angles and an exact mirror on every measured mech,
- *  and the delivered strikes run close enough to the stance axis that the
- *  hit still travels across the screen (titanus's punch ~20° off his feet).
+ *  were left in, which broke same-token determinism across boot orders.
+ *  The pelvis gives exact dial angles and an exact mirror on every mech, and
+ *  the delivered strikes run close enough to the stance axis that the hit
+ *  still travels across the screen (titanus's punch ~20° off his stance).
  *  The applied turn is quantised to the same whole-degree step as the target,
  *  which also keeps the per-frame heading steady instead of chasing every
- *  wobble of the feet. */
+ *  wobble of the body. */
 function applyPresentation(rig, layers) {
   if (!layers.presentDeg) return;
   const root = rig.root;
@@ -564,9 +672,8 @@ function applyPresentation(rig, layers) {
   const want = layers.presentDeg * DEG + cam; // heading that presents at target
   const q = PRESENT.quantDeg * DEG;
   root.updateMatrixWorld(true);
-  const f = forwardFromFeet(root, _feet);
-  if (f.n === 0 || f.x * f.x + f.z * f.z < 1e-6) return;
-  const phi = Math.atan2(f.x, f.z); // the body's world heading, as posed
+  const phi = bodyHeading(rig); // the body's world heading, as posed
+  if (phi === null) return;
   let delta = want - phi;
   delta -= Math.round(delta / (2 * Math.PI)) * 2 * Math.PI;
   root.rotation.y += Math.round(delta / q) * q;
@@ -708,19 +815,20 @@ const SUPPORT_BONES = [
   "LeftFoot", "RightFoot", "LeftToeBase", "RightToeBase",
 ];
 
-/**
- * How far the root has to drop for the fighter to stand on the floor: the
- * negated height of the LOWEST support bone given, measured in the fighter's
- * own frame (`root`'s y = 0 is the floor — never world y = 0; those agree
- * only while the rig stands at the origin, which is false on every raised
- * platform in `?camera=3d`). Lived in pose_library.js until K7 deleted the
- * JJK pose data; the feet-are-the-support reasoning survives here: the lowest
- * BONE would be the origin-parked armature node, and once past that, a fist
- * swung below the feet would plant the fighter on its knuckles.
- */
+/** The support bones this skeleton actually carries, as a name -> bone map. */
+function supportBones(root) {
+  const bones = new Map();
+  for (const name of SUPPORT_BONES) {
+    const b = root.getObjectByName(name);
+    if (b) bones.set(name, b);
+  }
+  return bones;
+}
+
 /**
  * How far the VISIBLE soles sit below (or above) the support bones, metres in
- * the root's frame — a fact about the DELIVERY, measured once per rig.
+ * the root's frame — a fact about the DELIVERY, and therefore measured from
+ * the delivery's own BIND POSE.
  *
  * The mech exports bind their body geometry offset from their own skeleton:
  * titanus's bind pose puts his toe bones at y=0.88 while the skinned mesh's
@@ -728,14 +836,21 @@ const SUPPORT_BONES = [
  * that drive it. Grounding by bones alone therefore left the RENDER floating
  * hip-high with the head cropped out of the frame, while every bone probe
  * swore the feet were on the floor (the K6 wild-goose chase). The feet are
- * skinned rigidly to the ankle/toe bones, so the offset is one number per
- * rig, read off the posed SKINNED vertices (Box3.expandByObject precise runs
- * them through their bone transforms) the first time the rig is grounded —
- * per-frame precise passes would make the live-geometry camera path pay a
- * full vertex walk per fighter per frame for a constant.
+ * skinned rigidly to the ankle/toe bones, so the offset is one number per rig,
+ * read off the SKINNED vertices (Box3.expandByObject precise runs them through
+ * their bone transforms).
+ *
+ * IT USED TO BE TAKEN AT THE FIRST GROUNDED POSE, and that was the last of the
+ * boot-order hazards in this file. The number is the reference height every
+ * later pose settles to, so whichever state happened to render first decided
+ * where the whole roster stood for the rest of the session — the idle in a
+ * match, whatever the workbench was opened on there, and a different answer
+ * again if a preload landed in a different order. Same token, different pixels:
+ * exactly what the pose cache and the afterimage trail are promised will not
+ * happen. The bind pose is the one pose that is a fact about the file, so that
+ * is where it is measured, once, at registration (measureBindMetrics).
  */
-function meshSoleDelta(rig, bones, root) {
-  if (rig._soleDelta !== undefined) return rig._soleDelta;
+function measureSoleDelta(root) {
   const box = new THREE.Box3();
   let any = false;
   root.traverse((o) => {
@@ -746,15 +861,71 @@ function meshSoleDelta(rig, bones, root) {
     box.expandByObject(o, true);
     any = true;
   });
-  if (!any || !Number.isFinite(box.min.y)) { rig._soleDelta = 0; return 0; }
+  if (!any || !Number.isFinite(box.min.y)) return 0;
   _vGround.set(0, box.min.y, 0);
-  if (root) root.worldToLocal(_vGround);
+  root.worldToLocal(_vGround);
   const meshMin = _vGround.y;
+  const bones = supportBones(root);
+  if (!bones.size) return 0;
+  // groundOffset hands back the DROP to the lowest support bone, so that
+  // bone's own height is its negation.
   const boneMin = -groundOffset(bones, root);
-  rig._soleDelta = bones.size ? meshMin - boneMin : 0;
-  return rig._soleDelta;
+  return meshMin - boneMin;
 }
 
+/**
+ * EVERY PER-RIG CONSTANT, MEASURED IN THE POSE THAT DEFINES THEM.
+ *
+ * Two facts about a delivered file — which way its body is turned when it is
+ * standing as built (the presentation compass) and how far its visible soles
+ * sit from its support bones (the sole delta) — used to be sampled lazily, off
+ * whatever pose the rig happened to be in the first time somebody asked. Both
+ * are properties of the .glb, not of a frame, and both feed answers the cache
+ * promises are deterministic, so both are taken here: the skeleton put back to
+ * bind, the root at its delivered `yawOffset` (the pose the spec says faces
+ * +Z), measured, and everything put back exactly as it was found.
+ *
+ * Called from loader.registerRig, which is the one funnel every rig arrives
+ * through; safe to call at any other time — including mid-pose, which is what
+ * makes the lazy fall-back for a hand-built probe rig honest rather than
+ * order-dependent.
+ */
+export function measureBindMetrics(rig) {
+  const root = rig?.root;
+  if (!root || !THREE) return;
+  const held = [];
+  root.traverse((o) => {
+    if (o.isBone) held.push([o, o.quaternion.clone(), o.position.clone(), o.scale.clone()]);
+  });
+  const yaw = root.rotation.y;
+  root.rotation.y = rig.yawOffset || 0;
+  applyBindPose(THREE, root);
+  root.updateMatrixWorld(true);
+  rig._compass = calibrateCompass(root);
+  rig._soleDelta = measureSoleDelta(root);
+  for (const [bone, q, p, s] of held) {
+    bone.quaternion.copy(q); bone.position.copy(p); bone.scale.copy(s);
+  }
+  root.rotation.y = yaw;
+  root.updateMatrixWorld(true);
+}
+
+/** The delivery's sole offset, measured at bind the first time it is wanted. */
+function soleDelta(rig) {
+  if (rig._soleDelta === undefined) measureBindMetrics(rig);
+  return rig._soleDelta || 0;
+}
+
+/**
+ * How far the root has to drop for the fighter to stand on the floor: the
+ * negated height of the LOWEST support bone given, measured in the fighter's
+ * own frame (`root`'s y = 0 is the floor — never world y = 0; those agree
+ * only while the rig stands at the origin, which is false on every raised
+ * platform in `?camera=3d`). Lived in pose_library.js until K7 deleted the
+ * JJK pose data; the feet-are-the-support reasoning survives here: the lowest
+ * BONE would be the origin-parked armature node, and once past that, a fist
+ * swung below the feet would plant the fighter on its knuckles.
+ */
 function groundOffset(bones, root) {
   let low = Infinity;
   for (const bone of bones.values()) {
@@ -810,12 +981,10 @@ function groundOffset(bones, root) {
  *      pass runs, so reading it here is stable, un-accumulating and carries
  *      the clip's own authored carriage into the solve.
  *
- * STILL OWED: `meshSoleDelta` is measured lazily, at the first grounded pose,
- * and it is what sets the height every later pose is settled to. In practice
- * that first pose is the idle and the idle is the right reference — but it is
- * an accident of draw order, not a guarantee, and the honest version measures
- * it from the rig's BIND pose at registration. Until then the same boot-order
- * hazard removed from `_bindY` above survives one level down.
+ * The reference height it settles TO — the sole delta — used to carry the same
+ * boot-order hazard one level down, sampled at the first grounded pose. It is
+ * now taken from the rig's bind pose at registration (measureBindMetrics), so
+ * the whole of this pass is a function of the file plus the frame.
  */
 function standOnGround(rig, animKey) {
   const root = rig?.root;
@@ -836,15 +1005,11 @@ function standOnGround(rig, animKey) {
   if (!node) return;
   if (!GROUNDED.has(clipNameFor(animKey))) { root.updateMatrixWorld(true); return; }
   root.updateMatrixWorld(true);
-  const bones = new Map();
-  for (const name of SUPPORT_BONES) {
-    const b = root.getObjectByName(name);
-    if (b) bones.set(name, b);
-  }
+  const bones = supportBones(root);
   // Measured in the ROOT's frame: `node.position.y` is local to the root, and
   // so is the floor the fighter stands on. See groundOffset. The bones alone
-  // are not the whole answer — meshSoleDelta says why.
-  const drop = groundOffset(bones, root) - meshSoleDelta(rig, bones, root);
+  // are not the whole answer — measureSoleDelta says why.
+  const drop = groundOffset(bones, root) - soleDelta(rig);
   // The magnitude limit stays, and stays generous: it is here so that one bone
   // measured somewhere absurd cannot fling the body out of frame, not to pick
   // a direction. It scales with the body — 0.6 m was a third of the JJK
