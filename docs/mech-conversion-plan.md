@@ -533,6 +533,47 @@ plays nothing like a platform fighter.
         double-quoted (`""...""`). The UI owns the punctuation; the data no
         longer does.
 
+- [x] K15. THE MECHS TORE THEMSELVES APART (owner: "even his normal punch
+        causes his geometry to do all sorts of weird things"). Two real defects
+        in Mech Mayhem's exporter, both found by comparing against MM's own
+        animator rather than by eye.
+
+        DEFECT 1 — SPARSE CLIPS. The exporter pruned every track whose value
+        never changed, so an action clip carried only the joints it moved:
+        titanus's `punchHold1` drove 11 of 26 bones, `block` 7. That is correct
+        for MM, whose animator writes every joint from a base every frame, and
+        wrong for anyone else: an AnimationMixer leaves an untracked bone where
+        the last clip left it. Only the five held poses (battleIdle, crouch,
+        hover, jumpRise, jumpFall) were full-body, which is why the idle always
+        looked right and every attack did not.
+
+        DEFECT 2 — THE TRANSFORM FOLD, and the one that tore the skin. The
+        export folds yaw+scale into the vertices and the root bone's rest, but
+        samples the animation from the LIVE BUILD, which is in neither frame.
+        The mesh is then bound in the folded frame while the clip drives the
+        skeleton toward the unfolded one, and every joint below the root
+        deforms its skin through a rotation the vertices never took. Standing
+        still it reads as a mech facing slightly wrong; a punch pulls the arm
+        into taffy, and the further the pose travels from bind the worse it
+        gets. Proven by exporting with the fold disabled: same clips, same
+        mesh, clean body.
+
+        THE FIX, in two halves. The exporter samples every bone (`keep` is now
+        passed for actions and gaits, as it always was for the held poses) and
+        exports UNFOLDED, so model, skeleton and animation share one frame by
+        construction. `tools/fold_export.py` then puts the yaw and scale on the
+        node ABOVE the joints — where glTF already has a place for it, and
+        where it applies rigidly after the skin has deformed. The file keeps
+        its contract (game units, +z forward) and nothing downstream changes.
+
+        THE TOOLS THAT FOUND IT, both kept because neither failure is visible
+        in a still: `tools/probe_clip_coverage.mjs` poses a state from two
+        different histories and reports the bones that disagree (a clip that is
+        not a function of itself), and `tools/verify_clip_fidelity.mjs` drives
+        BOTH games — MM's animator and our .glb — and diffs every bone at five
+        points in all 35 clips, dividing out the scale and the folded yaw by
+        fitting them. That is the check that says our mapping is exact.
+
 ## Decisions taken
 
 - mechs/lib/ (robotworld's animation runtime) stays REFERENCE ONLY; render3d
