@@ -432,6 +432,14 @@ const MAX_ROSTER_ROWS = 5;
 // is only ever taken as a last resort.
 const MIN_CARD_WIDTH = 96;
 
+// …and the same rule for the other axis: height/width under this is a
+// letterbox, cropped past the point where a mech is recognisable at a glance.
+// The deepest layouts are also the widest, so on area alone the fitter will
+// happily buy dead width with the mech's face — at 1280x720 it took a 138x69
+// slot over a 98x78 one, a quarter more area and half a portrait.
+// tools/smoke_select_layout.mjs holds the shipped screen to this same number.
+const MIN_CARD_SHAPE = 0.6;
+
 // How much bigger a deeper layout's cards have to come out before the extra row
 // is worth it. Without a margin, a rounding-sized win would keep stacking rows
 // for cards nobody can tell apart.
@@ -466,6 +474,48 @@ function rosterHeightBudget(grid) {
   return overlay.clientHeight - pad - others - gap * Math.max(items - 1, 0);
 }
 
+/** Picks the hero card's SHAPE: landscape while the seats in play still sit on
+ *  one row, portrait once they don't.
+ *
+ *  The landscape card stands the portrait beside its stats rather than above
+ *  them (see styles.css), which costs roughly double the width and gives back
+ *  about 150px of height — and height on this screen belongs to the roster,
+ *  which is the thing players are actually reading. So it is the shape to
+ *  prefer, and the only thing that can rule it out is running out of row: two
+ *  landscape cards fit almost anywhere, three want a wide window, four rarely
+ *  fit at all.
+ *
+ *  Tried rather than predicted from the player count, because what fits depends
+ *  on the window as much as on how many are playing. Must run BEFORE the roster
+ *  is measured — the bar's height is the largest single term in the grid's
+ *  budget. */
+function fitMatchupBar() {
+  const bar = els.matchupBar;
+  if (!bar || !bar.clientWidth) return;
+  bar.dataset.hero = "landscape";
+  if (!heroCardsFitOneRow(bar)) bar.dataset.hero = "portrait";
+}
+
+/** Whether the bar's seats + centre column fit across it without wrapping.
+ *
+ *  Summed from the children rather than read off the bar, because the bar is a
+ *  centred flex row: content that does not fit wraps or spills evenly out of
+ *  both ends, so neither scrollWidth nor a clientWidth comparison sees the
+ *  overflow honestly. The landscape cards are flex: none for the same reason —
+ *  a card that shrank to fit would report that everything was fine. */
+function heroCardsFitOneRow(bar) {
+  const gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
+  let width = 0;
+  let items = 0;
+  for (const child of bar.children) {
+    const box = child.getBoundingClientRect().width;
+    if (!box) continue; // a seat that is not in play
+    width += box;
+    items += 1;
+  }
+  return width + gap * Math.max(items - 1, 0) <= bar.clientWidth;
+}
+
 // Sizes the roster to the window. The row count is fixed across the whole grid
 // and each category claims however many columns its members need at that depth,
 // so the categories sit side by side and every row lines up end to end. Runs on
@@ -475,6 +525,9 @@ export function layoutCharacterGrid() {
   const grid = els.characterGrid;
   if (!grid || !grid.clientWidth) return; // hidden overlay: nothing to measure
   if (!grid.querySelector(".char-card")) return;
+  // The hero cards sit above the roster and are the biggest claim on its
+  // height, so their shape is settled first and the budget measured after.
+  fitMatchupBar();
   grid.style.removeProperty("--grid-height"); // measure the natural size first
   const budget = rosterHeightBudget(grid);
 
@@ -491,21 +544,47 @@ export function layoutCharacterGrid() {
       grid.style.setProperty("--card-aspect", aspect);
       if (grid.getBoundingClientRect().height > budget) continue; // crop harder
       const card = grid.querySelector(".char-card").getBoundingClientRect();
-      const fit = { rows, aspect, width: card.width, area: card.width * card.height };
+      const fit = { rows, aspect, width: card.width, area: card.width * card.height, shape: card.height / card.width };
       // Only the tallest crop that fits is worth scoring at a given depth: the
       // flatter ones below it are the same cards with more of the art thrown
       // away. Ties go to the shallower layout, which is why DEPTH_GAIN is a
       // multiplier rather than a plain >.
       if (!fallback || fit.area > fallback.area) fallback = fit;
-      if (fit.width >= MIN_CARD_WIDTH && (!best || fit.area > best.area * DEPTH_GAIN)) best = fit;
+      const legible = fit.width >= MIN_CARD_WIDTH && fit.shape >= MIN_CARD_SHAPE;
+      if (legible && (!best || fit.area > best.area * DEPTH_GAIN)) best = fit;
       break;
     }
   }
   const chosen = best ?? fallback ?? { rows: MIN_ROSTER_ROWS, aspect: ROSTER_ASPECTS[ROSTER_ASPECTS.length - 1] };
   placeRosterBlocks(grid, chosen.rows);
   grid.style.setProperty("--card-aspect", chosen.aspect);
+  growCardsIntoSpareHeight(grid, chosen.rows, budget);
   // Pin the fitted height so the roster cannot shift while a player is choosing.
   grid.style.setProperty("--grid-height", `${Math.ceil(grid.getBoundingClientRect().height)}px`);
+}
+
+/** Spends whatever the ladder's rungs left on the table.
+ *
+ *  ROSTER_ASPECTS is a handful of standard shapes, so the chosen crop is the
+ *  tallest STANDARD one that fits — and the gap up to the next rung is real
+ *  room: at 1280x720 the roster settles at 5/4 because 1/1 misses by five
+ *  pixels, and leaves 54px of its budget empty. Rows are the expensive axis
+ *  (each one costs a whole card's height); the last few pixels are free, so
+ *  they go to the cards rather than to the gap under them.
+ *
+ *  Only ever taller, never past 3/4 — the fitter's own ceiling, above which the
+ *  art stops being cropped and starts being letterboxed the other way. */
+function growCardsIntoSpareHeight(grid, rows, budget) {
+  const card = grid.querySelector(".char-card").getBoundingClientRect();
+  const spare = budget - grid.getBoundingClientRect().height;
+  if (spare < 1 || !card.height) return;
+  const height = Math.min(card.height + spare / rows, card.width * (4 / 3));
+  if (height <= card.height + 0.5) return;
+  const before = grid.style.getPropertyValue("--card-aspect");
+  grid.style.setProperty("--card-aspect", `${Math.round(card.width)} / ${Math.floor(height)}`);
+  // Sub-pixel rounding inside the grid can still tip it over; the ladder's own
+  // choice is known to fit, so it is what an overshoot falls back to.
+  if (grid.getBoundingClientRect().height > budget) grid.style.setProperty("--card-aspect", before);
 }
 
 // Lays the roster out at a given depth: each category becomes a block of
@@ -1168,9 +1247,11 @@ export function updateSelectionUi() {
   // Three and four hero cards share the same bar, so each one is much narrower
   // than in a 1v1. The full name has to shrink with them, and CSS cannot see a
   // flex item's computed width — so publish the count and let it key off that.
-  els.matchupBar.dataset.slots = String(
+  const slots = String(
     [1, 2, 3, 4].filter((id) => !els[`p${id}PickCard`].classList.contains("hidden")).length
   );
+  const seatsChanged = els.matchupBar.dataset.slots !== slots;
+  els.matchupBar.dataset.slots = slots;
   els.p2PickLabel.textContent = state.mode === "cpu" ? TEXT.slot.cpu : TEXT.slot.player(2);
   syncModeUi();
   const go = allReady();
@@ -1181,6 +1262,10 @@ export function updateSelectionUi() {
     : TEXT.menu.hintPicking;
   updateSpotlight();
   updatePickerCursorClasses();
+  // A seat arriving or leaving changes both what fits in the bar and how much
+  // height it leaves the roster, so the screen is re-fitted — but only then.
+  // This function also runs on every cursor move, and the fitter is a search.
+  if (seatsChanged && state.phase === "menu") layoutCharacterGrid();
 }
 
 export function syncControllerPlayers(count) {
