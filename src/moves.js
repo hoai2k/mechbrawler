@@ -33,7 +33,7 @@
 // 153 px Momo throws an up smash whose box floats 73 px above her own head.
 
 import { STRIKE_ARC, MELEE_GRACE, REACH_PRICE, SWEETSPOT, HEIGHT_BASE_PX } from "./config_tuning.js";
-import { SAKURAI } from "./constants.js";
+import { SAKURAI, SMASH_TILT_ANGLE } from "./constants.js";
 import { artReach, bodyWidth, bodyMetrics, rosterReach } from "./silhouette.js";
 import { clamp } from "./utils.js";
 
@@ -428,9 +428,21 @@ export function strikeArcs(m, bodyH) {
   const low = y0 > armY + STRIKE_ARC.lowStrike * bodyH;
   const pivotY = low ? (y0 + y1) / 2 : armY;
   const half = m.h / 2;
+  // WHICH WAY THE SWING WENT.
+  //
+  // Dead ahead unless the move was ANGLED, in which case swingMove recorded the
+  // tilt it swung the box by and the crescent turns with it. Taken from the move
+  // rather than re-derived from the box: a box's own geometry cannot tell a 45°
+  // uppercut apart from a level strike that simply hangs low, and guessing
+  // turned every ordinary attack's arc downward.
+  //
+  // The angled smash carried a note saying the arc followed the aim "for free".
+  // It did not — this was hardcoded to zero, and only `low` moved it, and only
+  // once a box had dropped far enough to trip that.
+  const aim = m.aimTilt || 0;
   const arcs = [];
   if (x1 >= STRIKE_ARC.minRadius) {
-    arcs.push({ pivotY, radius: x1, aim: 0, span: arcSpan(half, x1) });
+    arcs.push({ pivotY, radius: x1, aim, span: arcSpan(half, x1) });
   }
   // Backward too, for the down-smash quakes whose box spans both sides.
   if (-x0 >= STRIKE_ARC.minRadius) {
@@ -444,4 +456,33 @@ export function strikeArcs(m, bodyH) {
 function vertical(pivotY, radius, aim, half) {
   if (radius < STRIKE_ARC.minRadius) return [];
   return [{ pivotY, radius, aim, span: arcSpan(half, radius) }];
+}
+
+/**
+ * Swing a melee box about the fighter, by `tilt` radians (positive is DOWN, as
+ * y is). Mutates and returns the move.
+ *
+ * The box keeps its distance and travels along the new line rather than being
+ * nudged off the old one, so an angled attack reaches as far as a level one.
+ * The crescent follows because strikeArcs above reads the angle back off the
+ * box — which it did NOT do until the diagonals arrived, whatever the note
+ * there used to claim.
+ *
+ * Extracted from the angled smash, which had this inline and was the only thing
+ * that could aim. It is now the one definition of what "aim an attack" means to
+ * the hitbox, so a diagonal tilt and a charged smash's analogue tilt cannot
+ * drift apart — and so the POSE can be aimed at the same angle knowing the box
+ * went with it (fighter.js aimPointFor).
+ */
+export function swingMove(move, tilt) {
+  if (!tilt) return move;
+  // Kept so strikeArcs can turn the crescent the same way — see the note there
+  // for why it is recorded rather than measured back off the box.
+  move.aimTilt = (move.aimTilt || 0) + tilt;
+  const radius = move.ox + move.w * 0.5;
+  move.oy += Math.sin(tilt) * radius;
+  move.ox *= Math.cos(tilt);
+  move.w *= Math.cos(tilt);
+  move.angle = clamp(move.angle - tilt * SMASH_TILT_ANGLE, -1.2, 1.4);
+  return move;
 }

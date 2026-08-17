@@ -78,6 +78,7 @@ Gamepads are the intended way to play. The full pad map (generated from
 | Special | RT or B |
 | Dash | Shove the stick, or double-tap |
 | Dash attack | Light or heavy, while running |
+| Angled attack (45°) | Hold the stick into a corner, then attack |
 | Ultimate (at full attack energy) | LB |
 | Shield / dodges | LT |
 | Taunt | D-pad ▼ |

@@ -36,7 +36,7 @@ export const MODEL_REACH = {
 export const ENVELOPE_INPUTS = {
   "manifest": "70cedc89d726",
   "sprites": "missing",
-  "poses": "468881ca1918",
+  "poses": "720fd7a34571",
   "models": {
     "colossus": "4897362b6b45",
     "cranky": "44b516436434",

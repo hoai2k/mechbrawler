@@ -1,5 +1,6 @@
 // Central mutable game state shared by every module.
 import { DEFAULT_TIME_LIMIT } from "./constants.js";
+import { DEBUG_HITBOXES } from "./flags.js";
 
 export const state = {
   phase: "loading", // loading | title | menu | stageSelect | moves | playing | paused | roundOver | settings
@@ -71,7 +72,9 @@ export const state = {
   suddenDeath: false,
   // How the match ended, for the result screen: "ko" | "time" | "suddenDeath".
   endReason: "ko",
-  debugHitboxes: false,
+  // The hitbox overlay (render.js drawDebug), toggled live on backquote and
+  // started on by `?debug=hitbox` (flags.js).
+  debugHitboxes: DEBUG_HITBOXES,
   // Ad-hoc hit-test shapes registered by special/ultimate scripts while the
   // overlay is on (combat.js debugShape); drawn and decayed by drawDebug.
   debugShapes: [],
