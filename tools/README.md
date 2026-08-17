@@ -18,6 +18,10 @@ if yours is elsewhere).
   with K2's SFX replacement).
 - `check_battle_poses.mjs` — the render3d pose libraries still name real
   bones, cover the expected frames and hold reachable angles.
+- `check_menu_art.mjs` — every arena's painting is on disk and its menu
+  thumbnail is present and no older than it. The failure it exists to catch is
+  silent: a replaced background with no `make_thumbnails.py` run after it leaves
+  the arena card drawing the OLD painting while the match draws the new one.
 - `check_doc_links.py` — no dead relative links in docs/.
 - `check_model_facing.mjs`, `check_model_normals.mjs`,
   `audit_model_health.py` — GLB sanity.
@@ -55,6 +59,10 @@ if yours is elsewhere).
   `--check` (no browser) fails while that file is stale; `npm run check` runs
   it. Anchors that land behind the centre line or under the floor are rejected
   and named, not shipped — see docs/mm-exporter-notes.md.
+- `make_thumbnails.py` — the 480px copies the arena cards draw, from the
+  full-size paintings in `assets/backgrounds/arenas/`. Run it after delivering
+  or replacing a background; `--check` (used by `check_menu_art.mjs`) fails on a
+  thumbnail that is missing or older than its painting. Needs Pillow.
 - `blender_*.py`, `bake_*.py`, `*_model_*` — Blender/GLB surgery utilities.
 
 The JJK-era rigs (voice-take audits, the audio workbench bench, sprite-era
