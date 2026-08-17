@@ -25,6 +25,24 @@ export const OUTLINE = {
 
 const LIVE = new Set();
 
+// THE PUSH HAPPENS IN VIEW SPACE, NOT IN THE MESH'S OWN.
+//
+// `uWidth` is a distance in WORLD units — scene.js computes it from the camera
+// framing, which is the whole "one pen" guarantee. Adding it to `position`
+// spends it in the mesh's LOCAL space instead, and the two are only the same
+// number when the rig's transform chain has unit scale. The JJK deliveries did;
+// THE MECHS DO NOT. Every mech .glb carries its geometry in a unit cube (1.0
+// tall) under an Armature node scaled ~7-9x, so a 1.6 px line was inflated by
+// that same factor: a ~15 px hull that closed over the whole fighter, and on
+// any panel thinner than twice the width the inverted shell turned inside out
+// and drew in FRONT of the body. `?render=toon` on a mech was a black blob
+// with a few lit chips showing through, which is exactly what it looked like.
+//
+// So the vertex is skinned and taken to view space FIRST, and the offset is
+// applied there along the view-space normal. View space is world-scaled (the
+// camera matrix carries no scale of its own), so the pixels a width buys no
+// longer depend on how a delivery happens to be scaled internally. Rigs that
+// were already unit-scaled render exactly as they did.
 const VERT = /* glsl */ `
 #include <common>
 #include <skinning_pars_vertex>
@@ -41,9 +59,14 @@ void main() {
   #if defined( OUTLINE_CUTOUT )
     vCutoutUv = uv;
   #endif
-  vec3 transformed = position + normalize( objectNormal ) * w;
+  vec3 transformed = position;
   #include <skinning_vertex>
-  gl_Position = projectionMatrix * modelViewMatrix * vec4( transformed, 1.0 );
+  vec4 mvPosition = modelViewMatrix * vec4( transformed, 1.0 );
+  // normalMatrix takes the (already skinned) object-space normal to view
+  // space; normalizing after it is what makes a non-uniform bone scale a
+  // direction error at worst rather than a width error.
+  mvPosition.xyz += normalize( normalMatrix * objectNormal ) * w;
+  gl_Position = projectionMatrix * mvPosition;
 }
 `;
 
