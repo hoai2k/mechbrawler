@@ -194,12 +194,12 @@ export function aimable(state) {
 
 /**
  * The elevations, in degrees above level, that each attack is allowed to be
- * thrown at. The aim SNAPS to the nearest one.
+ * thrown at.
  *
  * A fighting game does not have a continuously-aimable punch; it has an up
  * attack, a side attack and a down attack, and choosing between them IS the
  * aiming. Letting the solver point a limb anywhere on a 100° arc produced the
- * thing that looked most wrong on the first delivered fighter: a standing jab
+ * thing that looked most wrong on the first delivered mech: a standing jab
  * angled down at the floor, because the opponent happened to be a little
  * lower. A grounded arm strike is level. Down-diagonal belongs to the moves
  * that are *about* going low — the crouch poke, the overhead that finishes
@@ -207,22 +207,78 @@ export function aimable(state) {
  * hitting what is beneath you.
  *
  * A state absent here keeps the free continuous aim, clamped to AIM_MAX_DEG.
+ *
+ * They are ANCHORS WITH A BAND, not points. Snapping to the point was half
+ * right: the reason it exists is that a jab must not angle at the floor because
+ * the opponent is a little lower, and that reason bounds the tilt rather than
+ * forbidding it. Pinned exactly, an up-smash at a target well overhead reached
+ * at the same 55° as one at a target barely above, and a side attack at someone
+ * on the platform above stayed dead level while the hitbox that went with it
+ * did not — the strike pointed at nothing in particular. Inside AIM_BAND_DEG
+ * the limb follows the real direction of the attack; outside it the move is
+ * simply not the move for that angle, which is what choosing between an up
+ * attack and a side attack is for.
  */
 export const AIM_ELEVATIONS = {
-  light:          [0],
-  sideHeavy:      [0],
+  // The side attacks carry the DIAGONALS (constants.ATTACK_DIAG_DEG): a stick
+  // pushed into a corner throws this same move angled 45°, with its hitbox
+  // swung to match (moves.swingMove), so the limb has to be allowed to follow
+  // it there. Level stays an anchor of its own, so a neutral press is still
+  // dead ahead rather than drifting toward whichever diagonal is nearer.
+  light:          [-45, 0, 45],
+  sideHeavy:      [-45, 0, 45],
+  airLight:       [-45, 0, 45],
   specialNeutral: [0],
   upHeavy:        [55],
   downHeavy:      [-25],
-  crouchAttack:   [-30],
+  crouchAttack:   [-45, -30],
   specialSide:    [-15],
-  airLight:       [-45, 0],
 };
+
+/** How far off its anchor an attack may be aimed, in degrees. Wide enough that
+ *  an opponent a platform up or a body down is visibly aimed at; narrow enough
+ *  that the limb stays inside the hitbox the move actually swings.
+ *
+ *  It is also strictly under HALF the gap between neighbouring anchors, which
+ *  is what keeps the diagonals from swallowing level: at 45° apart, a band of
+ *  more than 22° would let an opponent slightly above drag a neutral jab onto
+ *  the up-diagonal's anchor, and the mech would throw a level attack while
+ *  pointing 45° up. 20 leaves that margin and still covers a platform. */
+export const AIM_BAND_DEG = 20;
+
+/** …and narrower where the ANGLE IS THE MOVE.
+ *
+ *  A side attack is a side attack whether it tilts up at someone on the
+ *  platform above or not, so it can take the full band. A crouch poke that
+ *  comes up to level is not a crouch poke — its whole identity is going low,
+ *  and at the default band an opponent standing at chest height would pull it
+ *  from -30° to -4°, which is the move losing the thing it is for.
+ *
+ *  So the band is per state, and the rule is how much of the move's meaning is
+ *  its elevation. Absent means the default. */
+const AIM_BAND_BY_STATE = {
+  crouchAttack: 10,
+  downHeavy: 12,
+  specialSide: 14,
+  airLight: 18,
+};
+
+export function aimBandFor(state) {
+  return AIM_BAND_BY_STATE[clipNameFor(state)] ?? AIM_BAND_DEG;
+}
 
 function nearestElevation(list, deg) {
   let best = list[0];
   for (const e of list) if (Math.abs(e - deg) < Math.abs(best - deg)) best = e;
   return best;
+}
+
+/** The anchor nearest `deg`, with `deg` allowed to pull it up to a band away.
+ *  Anchoring first and banding second is what keeps `airLight`'s elevations
+ *  from merging into one continuous arc between them. */
+function bandedElevation(list, deg, band) {
+  const anchor = nearestElevation(list, deg);
+  return clamp(deg, anchor - band, anchor + band);
 }
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -264,7 +320,12 @@ export function aimSolve(x, footY, chestY, aim, facing = 1, state = null, reachP
     const fwd = Math.max(40, (aim.x - x) * sign);
     deg = (Math.atan2(chestY - aim.y, fwd) * 180) / Math.PI;
   }
-  deg = elevs ? nearestElevation(elevs, deg) : clamp(deg, -AIM_MAX_DEG, AIM_MAX_DEG);
+  // With no opponent to aim at there is no direction to follow, so the move
+  // sits exactly on its anchor — banding a `deg` of 0 would drag an up-smash
+  // down to 29° for a mech swinging at nobody.
+  deg = elevs
+    ? (aim ? bandedElevation(elevs, deg, aimBandFor(state)) : nearestElevation(elevs, deg))
+    : clamp(deg, -AIM_MAX_DEG, AIM_MAX_DEG);
   const rad = (deg * Math.PI) / 180;
 
   // The target is built from the STRIKE, not from the opponent's position: out

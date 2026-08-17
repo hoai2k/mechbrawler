@@ -155,6 +155,10 @@ const ROWS = [
   // what a keyboard has — a key cannot be shoved.
   { id: "dash", action: "Dash", pad: "Shove the stick, or double-tap" },
   { id: "dashAttack", action: "Dash attack", pad: "Light or heavy, while running" },
+  // A stick in a CORNER throws the neutral attack angled 45 degrees, hitbox and
+  // body together (fighter.js attackTilt). A cardinal direction still picks the
+  // up or down attack, which are their own moves.
+  { id: "angledAttack", action: "Angled attack (45°)", pad: "Hold the stick into a corner, then attack" },
   { id: "domain", action: "Ultimate (at full attack energy)", bind: "domain", short: "Ult" },
   { id: "shield", action: "Shield / dodges", bind: "shield", short: "Shield / dodge" },
   { id: "taunt", action: "Taunt", bind: "taunt", short: "Taunt" },

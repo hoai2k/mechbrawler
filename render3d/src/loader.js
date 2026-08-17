@@ -60,6 +60,15 @@ export function rigCount() {
   return RIGS.size;
 }
 
+/** Where this MODEL's mass sits, as a fraction of its own height — measured off
+ *  the rig's spine at registration (pose.measureComFrac), or null when this body
+ *  is built to a convention that cannot be read that way. The caller falls back
+ *  to the authored `comFrac` (src/body_points.js) then; see measureComFrac for
+ *  why the two are different numbers about different bodies. */
+export function rigComFrac(charKey) {
+  return RIGS.get(charKey)?._comFrac ?? null;
+}
+
 export function rigManifest() {
   return MANIFEST;
 }

@@ -1,13 +1,14 @@
 import { state } from "./state.js";
 import { CHARACTER_KEYS, CHARACTERS, RANDOM_KEY, RESOLVED_GROUPS, randomCharacterKey } from "./characters.js";
-import { STAGES, getStage, backgroundFile } from "./stages.js";
+import { STAGES, getStage, backgroundFile, thumbFile } from "./stages.js";
 import { audioSettings, audioUnlocked, cycleMusicMode, MUSIC_MODES, musicPlaying, setTitleLive, syncMusic, playSfx, toggleMute } from "./audio.js";
 import { cpuLevelName } from "./ai.js";
 import { METER_MAX, TIME_OPTIONS, INHERENT_ENERGY } from "./constants.js";
 import { clamp } from "./utils.js";
 import { padsMenuState, padsMenuStates } from "./input.js";
 import { preloadChar, frameStyle, setFrameStyle, renderStyle, setRenderStyle } from "./render_backend.js";
-import { previewCharacter, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
+import { previewCharacter, previewStage, claimCharacter, loadProgress, onLoadProgress } from "./assets.js";
+import { warmMenuArt } from "./menu_art.js";
 import { CHARACTER_QUOTES, QUOTE_INTRO, QUOTE_WIN, RANDOM_GROUP, TEXT } from "./config_menus.js";
 import { cardFocus } from "./config_cards.js";
 import { ROSTER_ASPECTS } from "./config_menus.js";
@@ -666,15 +667,95 @@ function buildStageGrid() {
   for (const stage of STAGES) {
     const btn = document.createElement("button");
     btn.className = "stage-card";
-    // The same plate the match will draw, so the card is a preview rather than
-    // a different painting of the same place (src/stages.js, backgroundFile).
-    const src = backgroundFile(stage);
-    const blurb = stage.desc ? `<small>${stage.desc}</small>` : "";
-    btn.innerHTML = `<img src="${src}" alt="${stage.name}" loading="lazy"><span>${stage.name}${blurb}</span>`;
+    // A menu-sized copy of the plate the match will draw, so the card is a
+    // preview of the real place rather than a different painting of it
+    // (src/stages.js, thumbFile). NOT `loading="lazy"`: these are ~29 kB each
+    // now, they are warmed before the screen opens (menu_art.js), and lazy was
+    // half of what made the grid fill in card by card in front of the player.
+    // `onerror` falls back to the full painting, so a board added before
+    // tools/make_thumbnails.py is run still shows — just slowly.
+    const img = document.createElement("img");
+    img.alt = stage.name;
+    img.decoding = "async";
+    img.addEventListener("error", () => {
+      if (img.dataset.fellBack) return;   // the painting is missing too; stop
+      img.dataset.fellBack = "1";
+      img.src = backgroundFile(stage);
+    });
+    img.src = thumbFile(stage);
+    const label = document.createElement("span");
+    label.append(stage.name);
+    if (stage.desc) {
+      const small = document.createElement("small");
+      small.textContent = stage.desc;
+      label.append(small);
+    }
+    btn.append(img, label);
     btn.dataset.stage = stage.key;
     btn.addEventListener("click", () => { if (!rouletteRunning) callbacks.startMatch(stage.key); });
+    // Looking at a board is a reason to start fetching it — see dwellOnStage.
+    // Both ways of looking: the mouse, and the pad/keyboard cursor, which moves
+    // focus rather than the pointer.
+    btn.addEventListener("mouseenter", () => dwellOnStage(stage.key));
+    btn.addEventListener("focus", () => dwellOnStage(stage.key));
     els.stageGrid.appendChild(btn);
   }
+}
+
+// --------------------------------------------- warming the next screen's art
+//
+// The rule is "whatever the player is about to look at, then whatever they are
+// about to look at after that". Menu pictures are HTML, so they are fetched when
+// their element renders and not a moment sooner — which is the moment the screen
+// opens, in front of the player. Asking for them a screen early turns every one
+// of those into a cache hit (src/menu_art.js).
+//
+// The lists are cheap to build and the warmer skips anything already asked for,
+// so this runs on every phase change rather than trying to be clever about which
+// transitions matter.
+
+/** Every picture the roster screen draws. The tile and the hero card are the
+ *  same file here (rosterTileSrc is heroCardSrc), so this is one per mech rather
+ *  than the two upstream needs. */
+function selectScreenArt() {
+  return CHARACTER_KEYS.map(rosterTileSrc);
+}
+
+/** Every picture the arena screen draws: one thumbnail per board. */
+function stageScreenArt() {
+  return STAGES.map((s) => thumbFile(s));
+}
+
+function warmForPhase(phase) {
+  if (phase === "title") {
+    // Next is the roster, then the arenas. And the Random board's full backdrop
+    // is already worth queueing: the pump has spare cycles this early, and it is
+    // the one stage that CANNOT be predicted from anything the player does later.
+    warmMenuArt([...selectScreenArt(), ...stageScreenArt()]);
+    previewStage(nextRandomStage());
+  } else if (phase === "menu") {
+    // On the roster now, so the arenas are next; the roster's own art is already
+    // asked for and the warmer will not repeat it.
+    warmMenuArt([...stageScreenArt(), ...selectScreenArt()]);
+    previewStage(nextRandomStage());
+  } else if (phase === "stageSelect") {
+    warmMenuArt(stageScreenArt());
+    previewStage(nextRandomStage());
+  }
+}
+
+// A board the player is LINGERING on is one they are considering, so its full
+// backdrop goes to the front of the queue. The delay is what makes it a dwell
+// rather than a sweep: steering across the grid with a pad brushes every card
+// between here and there, and promoting all of them would be the same as
+// promoting none.
+const STAGE_DWELL_MS = 260;
+let dwellTimer = 0;
+
+function dwellOnStage(stageKey) {
+  clearTimeout(dwellTimer);
+  if (!stageKey) return;
+  dwellTimer = setTimeout(() => previewStage(stageKey), STAGE_DWELL_MS);
 }
 
 // ------------------------------------------------- the Random Stage draw
@@ -685,6 +766,36 @@ function buildStageGrid() {
 // runs, nothing else on the screen answers — see updateMenuNav and the click
 // handlers above, which both bail on `rouletteRunning`.
 let rouletteRunning = false;
+
+// WHICH ARENA RANDOM WILL LAND ON, drawn well before anyone asks for it.
+//
+// The draw used to happen when the wheel span, which meant the winning board's
+// backdrop started downloading at the one moment the player is already waiting:
+// the roulette lands, the match loads, and the stage nobody could have predicted
+// has to arrive from cold. Sampling the RNG early changes nothing a player can
+// observe — the pick is uniform, and it is still unknown to them until the wheel
+// stops — but it means `previewStage` can have the backdrop in hand before the
+// wheel is even spun.
+let pendingRandomStage = null;
+
+function drawRandomStage() {
+  pendingRandomStage = STAGES[Math.floor(Math.random() * STAGES.length)]?.key || null;
+  return pendingRandomStage;
+}
+
+/** The board Random is currently holding, drawing one if it has none. */
+function nextRandomStage() {
+  return pendingRandomStage || drawRandomStage();
+}
+
+/** Spend the held draw, so the NEXT Random is a fresh one. Without this a second
+ *  Random lands on the same board as the first, for the rest of the session —
+ *  which is the one thing sampling the RNG early must not change. */
+function takeRandomStage() {
+  const key = nextRandomStage();
+  pendingRandomStage = null;
+  return key;
+}
 // Halved from the original 0.055/0.26. The draw reads the same — a sprint, an
 // ease-out, a landing — because what carries it is the SHAPE of the
 // deceleration, not its duration. The beat on the winning card is deliberately
@@ -708,7 +819,12 @@ async function runStageRoulette() {
   clearMenuFocus();
 
   const n = cards.length;
-  const target = Math.floor(Math.random() * n);
+  // The board was drawn in advance so its backdrop could be fetched in advance;
+  // find where it sits on the wheel. If it is not on this grid at all — a stage
+  // list that changed under the draw — roll again against what is actually here.
+  const drawn = takeRandomStage();
+  const at = cards.findIndex((c) => c.dataset.stage === drawn);
+  const target = at >= 0 ? at : Math.floor(Math.random() * n);
   // One full lap at a flat sprint (i < n), then a second lap that eases out
   // over the remaining hops and stops on `target`.
   const last = n + target;
@@ -1429,6 +1545,10 @@ export function setPhase(phase) {
   const changed = state.phase !== phase;
   state.prevPhase = state.phase;
   state.phase = phase;
+  // The art of the screen AFTER this one, asked for while the player is reading
+  // this one (warmForPhase). Only on a real change: re-entering the same phase
+  // would throw away a queue that is already in flight for it.
+  if (changed) warmForPhase(phase);
   for (const [ph, id] of Object.entries(OVERLAY_FOR_PHASE)) {
     if (id) els[id].classList.toggle("hidden", ph !== phase);
   }

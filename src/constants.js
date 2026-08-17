@@ -281,6 +281,14 @@ export const SAKURAI_KB = 620;        // where one becomes the other
 // How far the right stick can angle a charged side smash, in radians, and how
 // much of that carries into the launch angle. Smash's angled forward smash:
 // three attacks out of one, and the main vertical mixup in the grounded game.
+/** The angle a DIAGONAL attack is thrown at, in degrees off level — the stick
+ *  pushed into a corner. 45 because that is what a corner is, and because it
+ *  splits the gap between level and the vertical attacks cleanly: every
+ *  direction a mech can point is then either a distinct move or one diagonal
+ *  away from one. fighter.js attackTilt picks it; moves.swingMove swings the
+ *  hitbox by it and the pose is aimed along the same line. */
+export const ATTACK_DIAG_DEG = 45;
+
 export const SMASH_TILT = 0.42;
 export const SMASH_TILT_ANGLE = 0.6;
 

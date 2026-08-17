@@ -1,18 +1,22 @@
 // The seam between the flat renderer and the 2.5D camera (docs/arena-polish-plan.md).
 //
-// `?camera=3d` puts the scene — backdrop, platforms, fighters, projectiles —
-// on a WebGL canvas under the game canvas, with a perspective camera doing the
-// framing. Everything else about the game is untouched: the simulation, the
-// blast zones, `updateCamera()` and the flat renderer all keep running exactly
-// as they do today, and flat mode never loads a byte of the 3D module.
+// The 2.5D camera is what the game SHIPS with (main.js loads it unless
+// `?camera=flat` says otherwise): it puts the scene — backdrop, platforms,
+// fighters, projectiles — on a WebGL canvas under the game canvas, with a
+// perspective camera doing the framing. Everything else about the game is
+// untouched: the simulation, the blast zones, `updateCamera()` and the flat
+// renderer all keep running exactly as they do today, and flat mode never loads
+// a byte of the 3D module.
 //
 // This file is the only thing both sides import. It is deliberately tiny and
 // three.js-free: render.js asks it which mode is on and which module to hand
 // the frame to, main.js flips it after the lazy import succeeds, and stage
 // gimmicks poke `cameraCue` without knowing whether anyone is listening.
 
-/** "flat" | "3d". Flat is the default and the fallback — a missing WebGL
- *  context or a failed import must leave the game exactly as it ships. */
+/** "flat" | "3d". Flat is the STARTING value and the fallback, not the shipped
+ *  mode: main.js switches to "3d" as soon as the lazy import succeeds, and a
+ *  missing WebGL context or a failed import leaves it here rather than on a
+ *  broken screen. `?camera=flat` opts into it deliberately. */
 export let cameraMode = "flat";
 
 /** The loaded src/camera3d/index.js module, once `enable3dCamera` has run. */

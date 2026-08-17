@@ -164,18 +164,32 @@ export function fighterTransform(f) {
     rot += Math.sin(c * TAU) * A.runSway * f.facing;
     dy -= Math.abs(Math.sin(c * TAU)) * A.runBob * (frames > 2 ? 0.5 : 1);
   } else if (f.animKey === "teeter") {
-    // Out over the drop, and swaying back from it. Eased in over the same
-    // window the ledge lean uses, so arriving at the lip is a settle rather
-    // than a snap into a different posture.
-    const k = clamp(f.teeterT / A.ledgeLeanIn, 0, 1);
-    const w = Math.sin(t * A.teeterRate + phase(f));
-    rot += (f.teeterDir * A.teeterLean + w * A.teeterSway) * k;
-    dx += f.teeterDir * w * A.teeterShift * k;
+    // The lean itself is applied below, off teeterT rather than off this
+    // pose — so it can fade OUT after the pose has already moved on. This
+    // branch keeps only what the teeter shares with a stand: the breath bob.
     dy -= (Math.sin(t * A.breathRate + phase(f)) * 0.5 + 0.5) * A.idleBob;
   } else if (f.animKey === "idle" || f.animKey === "crouch") {
     const b = t * A.breathRate + phase(f);
     rot += Math.sin(b) * A.idleSway * f.facing;
     dy -= (Math.sin(b) * 0.5 + 0.5) * A.idleBob;
+  }
+
+  // The teeter lean, riding on teeterT INSTEAD of on the teeter pose.
+  //
+  // It used to live in the animKey branch above, which meant it existed only
+  // while the pose did: the instant the mech moved off the lip (or crossed the
+  // stillness gate adjusting its footing) the pose flipped and several degrees
+  // of body rotation vanished in one frame — the most visible pop at the edge.
+  // fighter.js now DECAYS teeterT instead of zeroing it, and this rides that
+  // timer wherever the pose has got to, so the lean out and the lean back are
+  // the same ramp. Grounded only: a mech that walked off the lip is falling,
+  // and a falling body fading out of a lean reads as glued to a ledge that is
+  // no longer there.
+  if (f.teeterT > 0 && f.teeterDir && f.grounded) {
+    const k = clamp(f.teeterT / A.ledgeLeanIn, 0, 1);
+    const w = Math.sin(t * A.teeterRate + phase(f));
+    rot += (f.teeterDir * A.teeterLean + w * A.teeterSway) * k;
+    dx += f.teeterDir * w * A.teeterShift * k;
   }
 
   // ---- squash & stretch, layered on top of whatever the pose is doing
