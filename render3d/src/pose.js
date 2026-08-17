@@ -885,6 +885,136 @@ function measureSoleDelta(root) {
   return meshMin - boneMin;
 }
 
+// The bones a mech's mass might be carried on, best first.
+//
+// `torso` and `hips` are this delivery's own names (tools/mech_intake.mjs, and
+// every rig in render3d/assets); the capitalised Mixamo names follow them so a
+// rig imported from anywhere else still measures rather than silently falling
+// back. Torso before hips because it is the nearer thing to a centre of mass on
+// a biped — hips sit low enough that some mechs' would be rejected by the
+// plausibility band in measureComFrac, which is what the ordering is for.
+//
+// A rig matching none of them has no measurable centre, and the authored
+// `comFrac` (src/body_points.js) is the answer then.
+const COM_BONES = [
+  "torso", "hips",
+  "Spine", "mixamorigSpine", "Spine1", "Hips", "mixamorigHips",
+];
+
+/** A bone's height in the fighter's OWN frame — root-local, so neither where the
+ *  rig is standing nor what it has been scaled to can leak into the answer. The
+ *  same frame `groundOffset` works in, and for the same reason. */
+function boneLocalY(root, bone) {
+  _vGround.setFromMatrixPosition(bone.matrixWorld);
+  root.worldToLocal(_vGround);
+  return _vGround.y;
+}
+
+/**
+ * THE BIND-POSE YARDSTICK a centre of mass is a fraction OF: where this rig's
+ * feet are and how tall its body is, both root-local, measured once.
+ *
+ * Measured off the DRAWN MESH rather than taken from `rig.height`, because those
+ * are not the same number here. `rig.height` is the delivery's declared height in
+ * metres (the manifest's `heightM`); a mech's geometry is authored in its own
+ * units and its bind pose does not stand on the origin — titanus is 9.04 units
+ * tall with its soles at y=4.52, against a declared 7.35. Dividing a bone height
+ * by the declared metres put every candidate above 1.0 and the plausibility band
+ * in measureComFrac then rejected the whole roster, which is a silent fallback to
+ * the very constant this is here to replace.
+ *
+ * Same mesh filter as measureSoleDelta: outlines are a doubled shell, and props
+ * and chains hang off the body rather than being it.
+ */
+function measureBindBody(root) {
+  const box = new THREE.Box3();
+  let any = false;
+  root.traverse((o) => {
+    if (!o.isMesh || o.userData.isOutline) return;
+    for (let p = o; p; p = p.parent) {
+      if (/^(Prop_|Chain_)/.test(p.name || "")) return;
+    }
+    box.expandByObject(o, true);
+    any = true;
+  });
+  if (!any || !Number.isFinite(box.min.y) || !Number.isFinite(box.max.y)) return null;
+  _vGround.set(0, box.min.y, 0);
+  root.worldToLocal(_vGround);
+  const floor = _vGround.y;
+  _vGround.set(0, box.max.y, 0);
+  root.worldToLocal(_vGround);
+  const bodyH = _vGround.y - floor;
+  return bodyH > 0 ? { floor, bodyH } : null;
+}
+
+/**
+ * Where this rig's mass sits, as a fraction of its own body height above its own
+ * soles — or null if it cannot be measured.
+ *
+ * MEASURED OFF THE MODEL, deliberately, because that is the body being turned.
+ * `comFrac` (src/body_points.js) is a fraction of the DRAWN height, placed by eye
+ * and currently the roster-wide default for every mech, and the drawing and the
+ * rig are not the same body. Rotating the RIG about the DRAWING's centre is what
+ * put the tumble pivot in the wrong place.
+ */
+function measureComFrac(root, base) {
+  if (!root || !base) return null;
+  const bones = {};
+  root.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+  for (const name of COM_BONES) {
+    const b = bones[name];
+    if (!b) continue;
+    const y = (boneLocalY(root, b) - base.floor) / base.bodyH;
+    // A bone below the floor or up at the shoulders is not a centre of mass; it
+    // is a rig built to a different convention, and the authored fraction is a
+    // better answer than a confident wrong one.
+    if (y > 0.3 && y < 0.8) return +y.toFixed(4);
+  }
+  return null;
+}
+
+/** This rig's COM bone, found once and cached on it. `null` (not `undefined`) is
+ *  the cached "this body has none", so the traverse happens once either way. */
+function comBone(rig) {
+  if (rig._comBone !== undefined) return rig._comBone;
+  let bone = null;
+  const found = {};
+  rig.root.traverse((o) => { if (o.isBone) found[o.name] = o; });
+  for (const name of COM_BONES) if (found[name]) { bone = found[name]; break; }
+  rig._comBone = bone;
+  return bone;
+}
+
+/** Where this rig's mass sits RIGHT NOW, as a fraction of its standing body
+ *  height — the posed answer, where `loader.rigComFrac` is the bind-pose one.
+ *
+ *  Read after posing (scene.renderPose) so the flat blit turns a rotation about
+ *  the point the in-scene layer turns the rig about: a fixed fraction of height
+ *  cannot know that a tuck carried the hips up and a crouch put them down.
+ *
+ *  Deliberately a fraction of the BIND body height rather than of whatever the
+ *  current pose measures, so a crouch reports a genuinely lower centre instead of
+ *  re-normalising itself back to the middle. Null when no COM bone is there. */
+export function posedComFrac(rig) {
+  const root = rig?.root;
+  if (!root || !rig._comBase) return null;
+  const bone = comBone(rig);
+  if (!bone) return null;
+  return (boneLocalY(root, bone) - rig._comBase.floor) / rig._comBase.bodyH;
+}
+
+/** The same point in SCENE units — what the in-scene layer (src/camera3d/
+ *  models.js, through the adapter) needs, since it has to put that point at a
+ *  particular world height rather than scale by it. */
+export function posedComWorldY(rig) {
+  const root = rig?.root;
+  if (!root) return null;
+  const bone = comBone(rig);
+  if (!bone) return null;
+  root.updateMatrixWorld(true);
+  return bone.matrixWorld.elements[13];
+}
+
 /**
  * EVERY PER-RIG CONSTANT, MEASURED IN THE POSE THAT DEFINES THEM.
  *
@@ -915,6 +1045,14 @@ export function measureBindMetrics(rig) {
   root.updateMatrixWorld(true);
   rig._compass = calibrateCompass(root);
   rig._soleDelta = measureSoleDelta(root);
+  // The tumble pivot, off the rig's own torso rather than off the authored
+  // fraction of drawn height — see measureComFrac. Measured here because this is
+  // where the bind pose is guaranteed; a lazy read would catch whatever pose the
+  // workbench last left the skeleton in and then cache that. `_comBase` is the
+  // yardstick posedComFrac keeps measuring against once the clips start moving
+  // the body, so it has to be the bind answer too.
+  rig._comBase = measureBindBody(root);
+  rig._comFrac = measureComFrac(root, rig._comBase);
   for (const [bone, q, p, s] of held) {
     bone.quaternion.copy(q); bone.position.copy(p); bone.scale.copy(s);
   }

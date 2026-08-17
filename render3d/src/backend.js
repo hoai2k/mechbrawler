@@ -338,6 +338,19 @@ export const scene3d = {
   releaseExcept(live) {
     if (ready) rigs.releaseInstancesExcept(live);
   },
+  /** Where this MODEL's mass sits, as a fraction of its height — measured off
+   *  the rig's spine, or null if this body cannot be measured. The caller falls
+   *  back to the authored `comFrac` then; see loader.rigComFrac for why the two
+   *  are different numbers about different bodies. */
+  comFrac(charKey) {
+    return ready ? rigs.rigComFrac(charKey) : null;
+  },
+  /** How high a posed instance's mass actually sits, in scene units — the read
+   *  the fraction above cannot make, because the clip moves the hips. Null when
+   *  this body has no COM bone. */
+  posedComWorldY(inst) {
+    return ready ? pose.posedComWorldY(inst) : null;
+  },
   /** Pose an instance for this frame. `opts` carries facing and the aim
    *  point, exactly as drawCharFrame receives them. */
   poseInstance(inst, charKey, animKey, animTime, opts = {}) {

@@ -58,6 +58,19 @@ export function makeModels() {
   let litFor = null;   // stage key the lights were derived for
   let drawn = 0;
 
+  /** The pivot a roll turns about, as a fraction of the drawn height.
+   *
+   *  The MODEL's own centre when the backend can measure it — the body being
+   *  turned here is the rig, and `comFrac` is a fraction of the DRAWN height,
+   *  placed by eye. They are not the same body: an ordinary biped's spine sits
+   *  around 0.58 while a hand-placed value sits nearer 0.5. The authored value
+   *  stays the fallback, which is what a mech with no rig (or a rig built to
+   *  some other convention) gets. */
+  const modelComFrac = (charKey) => {
+    const adapter = sceneAdapter();
+    return adapter?.comFrac?.(charKey) ?? comFrac(charKey);
+  };
+
   /** Sim pixels -> world units, the same mapping makeSimGroup applies, done
    *  by hand because this group must not inherit that group's -Y flip. */
   const worldX = (x) => (x - C.originX) * S;
@@ -109,14 +122,56 @@ export function makeModels() {
     // FEET, so rotating in place would swing the body like a felled tree;
     // displace the origin so the COM stays fixed under the roll instead.
     // (Scale stays foot-anchored on purpose: squash keeps the feet planted.)
+    //
+    // THE ROLL IS OUTSIDE THE YAW, and the order is the whole of it.
+    //
+    // `rotation.y` on this same object carries the facing and the presentation
+    // angle (pose.facingYaw), and three.js composes an Euler as XYZ by default —
+    // which applies Z FIRST and then yaws the result, so the roll axis came out
+    // as the BODY's local Z carried round by the yaw instead of the screen's.
+    // Measured, a 45° roll puts a point one metre up at:
+    //
+    //   yaw   0°   (-0.707, 0.707,  0.000)   the screen-plane roll it should be
+    //   yaw  60°   (-0.354, 0.707,  0.612)   half of it has become depth
+    //   yaw  80°   (-0.123, 0.707,  0.696)   almost all of it has
+    //
+    // So a tumbling mech barely tipped on screen and instead swung toward the
+    // lens — rolling about an axis pointing into the picture. ZYX applies the
+    // roll last, which makes it a screen-plane roll at every yaw (exact, not
+    // approximate: the numbers above are (-0.707, 0.707, 0) throughout). This
+    // game turns travel states out toward profile, so its yaws are at the bad
+    // end of that table.
+    root.rotation.order = "ZYX";
     const rot = -(m.rotation || 0);
     root.rotation.z = rot;
-    const com = onScreenPx * comFrac(charKey) * S * (m.scaleY ?? 1);
-    root.position.set(
-      worldX(f.x + (m.offsetX || 0)) + Math.sin(rot) * com,
-      worldY(f.y + (m.offsetY || 0)) + (1 - Math.cos(rot)) * com,
-      0,
-    );
+
+    // THE CENTRE OF MASS IS THE ANCHOR, not the feet.
+    //
+    // The rig's origin is on the floor between them (delivery spec), so planting
+    // the origin at `f.y` anchors the drawing by the soles. That is right on the
+    // ground and wrong in the air: a body has no feet on anything mid-somersault,
+    // and anchoring there makes the pose's own movement of the hips read as the
+    // whole mech bobbing. What should hold still is the mass, and everything
+    // else should hang off it.
+    //
+    // So: put the COM where the sim says the COM is, then — only when the mech is
+    // standing on something — leave the feet where standOnGround (pose.js) put
+    // them. Grounded, the two agree and the ground wins; airborne, the mass holds
+    // and the limbs move around it.
+    const com = onScreenPx * modelComFrac(charKey) * S * (m.scaleY ?? 1);
+    const baseX = worldX(f.x + (m.offsetX || 0));
+    const baseY = worldY(f.y + (m.offsetY || 0));
+    // Rotating about the COM rather than the origin: displace the origin by where
+    // the roll carries it, which is what keeps the mass fixed under the turn
+    // instead of swinging the body like a felled tree.
+    root.position.set(baseX + Math.sin(rot) * com, baseY + (1 - Math.cos(rot)) * com, 0);
+    // Where the POSED mass actually is, which the clip moves and the fraction
+    // above does not know about — a tuck carries it up, a crouch carries it down.
+    // Airborne, correct for the difference so the mass stays put.
+    if (!f.grounded) {
+      const posed = adapter.posedComWorldY?.(inst) ?? null;
+      if (posed !== null) root.position.y += (baseY + com) - posed;
+    }
     // Outline width is authored in blitted pixels; in-scene it has to be a
     // local displacement, since the rig is uniformly scaled to game size.
     adapter.setOutlineScale?.(root, inst.height, onScreenPx);
