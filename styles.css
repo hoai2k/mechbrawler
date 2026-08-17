@@ -1409,6 +1409,122 @@ html, body {
           drop-shadow(0 0 22px rgba(255, 77, 216, 0.35));
 }
 
+/* ---------- Landscape hero cards ----------
+ *
+ * The same card turned on its side: the portrait stands BESIDE its name and
+ * stats instead of above them, which costs about twice the width and a little
+ * over half the height. The roster grid is the screen — it is where the
+ * choosing happens — and every pixel this shape gives up, layoutCharacterGrid()
+ * spends on bigger tiles.
+ *
+ * So landscape is the card the select screen wants, and the only question is
+ * whether the seats in play still sit on one row: two players nearly always,
+ * three on a wide window, four almost never. fitMatchupBar() (src/ui.js)
+ * measures that and writes `data-hero`, falling back to the portrait card —
+ * which packs the same furniture into a quarter of the width — when they no
+ * longer fit. Nothing here is tied to a player count; the fit decides. */
+.matchup-bar[data-hero="landscape"] { width: min(96%, 1600px); }
+
+/* Measured, not squeezed: with the centre column free to shrink, a row that
+   overflows would quietly absorb the difference and read as fitting. */
+.matchup-bar[data-hero="landscape"] .matchup-center { flex: 0 0 auto; }
+
+.matchup-bar[data-hero="landscape"] .matchup-side {
+  /* Never shrink: a card that gave ground would always "fit", and the fitter
+     would never see the row overflow it is there to catch. */
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-areas:
+    "art label"
+    "art name"
+    "art info";
+  grid-template-columns: var(--hero-art-w) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 3px;
+  align-items: start;
+  justify-items: start;
+  text-align: left;
+  /* Height is the card's own budget here rather than art + furniture: the
+     portrait fills whatever the card is, and the column beside it is clipped to
+     the same fixed line budgets it always was, so an empty, browsing and
+     locked-in card still measure exactly the same. The floor is what that
+     column needs — seat chip, name, two lines of description, three stat bars,
+     two lines of ultimate — so the shortest card the clamp can produce still
+     holds all of it rather than clipping the ultimate off the bottom. */
+  --hero-card-w: clamp(300px, 27vw, 428px);
+  --hero-art-w: clamp(112px, 11vw, 168px);
+  width: var(--hero-card-w);
+  height: clamp(164px, 21vh, 196px);
+}
+
+.matchup-bar[data-hero="landscape"] .matchup-side img,
+.matchup-bar[data-hero="landscape"] .matchup-side .hero-random-art {
+  grid-area: art;
+  align-self: stretch;
+  width: var(--hero-art-w);
+  height: 100%;
+}
+
+.matchup-bar[data-hero="landscape"] .matchup-side .hero-slot-label { grid-area: label; }
+.matchup-bar[data-hero="landscape"] .matchup-side strong { grid-area: name; }
+
+/* The stats fill the column beside the portrait rather than bunching under the
+   name: description at the top, ultimate on the card's bottom line, the bars
+   spaced between them — the same bottom-anchored reading the portrait card gets
+   from `margin-top: auto`. */
+.matchup-bar[data-hero="landscape"] .matchup-side .hero-info {
+  grid-area: info;
+  align-self: stretch;
+  justify-content: space-between;
+  margin-top: 0;
+}
+
+/* The name has a column of its own now instead of the card's full width, so it
+   sizes off that column — and it no longer needs the data-slots step-down,
+   because a landscape card is the same width whoever is sitting in it. */
+.matchup-bar[data-hero="landscape"] .matchup-side strong {
+  font-size: clamp(0.76rem, 0.8vw + 0.24rem, 1.02rem);
+}
+
+/* Two lines apiece rather than three: the text column is only as tall as the
+   portrait beside it, and a shorter card is the whole point of the shape. */
+.matchup-bar[data-hero="landscape"] .hero-epithet {
+  height: calc(2 * 1.32em);
+  -webkit-line-clamp: 2;
+  text-align: left;
+}
+
+.matchup-bar[data-hero="landscape"] .hero-ult {
+  height: calc(2 * 1.3em);
+  -webkit-line-clamp: 2;
+  text-align: left;
+}
+
+/* Ready rides at the top of the text column, clear of the name, rather than
+   over the middle of a portrait that is no longer underneath it. */
+.matchup-bar[data-hero="landscape"] .hero-ready { top: 10px; right: 12px; }
+
+/* Empty slot: the dashed placeholder belongs in the ART cell, not in the name
+   line where the portrait card hangs it. A grid container's ::before is a grid
+   item, so it can simply be placed there. */
+.matchup-bar[data-hero="landscape"] .matchup-side.is-empty strong::before { content: none; }
+
+.matchup-bar[data-hero="landscape"] .matchup-side.is-empty::before {
+  content: "?";
+  grid-area: art;
+  align-self: stretch;
+  width: var(--hero-art-w);
+  height: 100%;
+  border: 1px dashed rgba(160, 190, 255, 0.35);
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: rgba(160, 190, 255, 0.55);
+}
+
 /* ---------- Match mode ---------- */
 
 /* The VS badge is the button that opens the mode picker, and its caption is

@@ -13,6 +13,14 @@
 // how much of the roster's height budget the roster occupies, and how flat the
 // cards ended up. Both are properties a player can see.
 //
+// The second half is about where that budget comes from. The hero cards above
+// the roster are its biggest single claim on the screen, so they have two
+// shapes: landscape while the seats in play fit across one row, portrait once
+// they don't (fitMatchupBar in src/ui.js). The checks are the same kind — what
+// a player sees — namely that a 1v1 gets the short card and a bigger roster
+// for it, that a four-player bar falls back rather than wrapping into the
+// grid, and that neither card clips the text it promises to hold.
+//
 // Usage: node tools/smoke_select_layout.mjs [baseUrl]
 import { chromium } from "playwright";
 import { pressStart } from "./smoke_boot.mjs";
@@ -90,6 +98,76 @@ for (const [w, h] of [[1280, 720], [1920, 1080], [2560, 1440]]) {
   check(m.spillTop <= 2 && m.spillBottom <= 2,
     `${at}: nothing spills out of the menu — ${m.spillTop}px over the top, ${m.spillBottom}px past the bottom`);
   await page.close();
+}
+
+// ---------------------------------------------------------- the hero cards
+//
+// Seats are set through the state module rather than by faking pads: what is
+// under test is the fitter's response to a seat count, and smoke_controllers
+// already owns the question of how a pad comes to be seated.
+async function selectScreen(w, h, players) {
+  const page = await browser.newPage({ viewport: { width: w, height: h } });
+  page.on("pageerror", (e) => console.log("page error:", String(e).slice(0, 200)));
+  await page.goto(`${BASE}/index.html?camera=flat`);
+  await pressStart(page);
+  await page.waitForTimeout(900);
+  await page.evaluate(async (n) => {
+    const { state } = await import("/src/state.js");
+    const ui = await import("/src/ui.js");
+    state.playerCount = n;
+    state.mode = n === 1 ? state.mode : "local";
+    // A mech in every seat, so the cards are measured carrying their furniture
+    // rather than as empty placeholders.
+    const picks = ["titanus", "vulcan", "viper", "rhino"];
+    for (let id = 1; id <= 4; id++) state.selection[id] = picks[id - 1];
+    ui.updateSelectionUi();
+  }, players);
+  await page.waitForTimeout(300);
+  return page;
+}
+
+const heroMetrics = (page) => page.evaluate(() => {
+  const bar = document.querySelector(".matchup-bar");
+  const grid = document.querySelector(".character-grid");
+  const barBox = bar.getBoundingClientRect();
+  const cards = [...bar.children].filter((c) => c.getBoundingClientRect().width);
+  const gap = parseFloat(getComputedStyle(bar).columnGap) || 0;
+  const need = cards.reduce((t, c) => t + c.getBoundingClientRect().width, 0)
+    + gap * Math.max(cards.length - 1, 0);
+  // One row means one row: every card shares a top edge with the first.
+  const tops = cards.map((c) => Math.round(c.getBoundingClientRect().top));
+  const card = document.querySelector("#p1PickCard");
+  const ult = card.querySelector(".hero-ult");
+  return {
+    hero: bar.dataset.hero,
+    barH: Math.round(barBox.height),
+    gridH: Math.round(grid.getBoundingClientRect().height),
+    overflow: Math.round(need - bar.clientWidth),
+    rows: new Set(tops).size,
+    // How much of the last thing on the card — the ultimate's name — is left
+    // hanging below the card's own bottom edge.
+    clipped: Math.round(ult.getBoundingClientRect().bottom - card.getBoundingClientRect().bottom),
+  };
+});
+
+for (const [w, h] of [[1280, 720], [1920, 1080]]) {
+  const at = `${w}x${h}`;
+  const solo = await selectScreen(w, h, 1);
+  const duo = await heroMetrics(solo);
+  await solo.close();
+  const party = await selectScreen(w, h, 4);
+  const four = await heroMetrics(party);
+  await party.close();
+
+  check(duo.hero === "landscape",
+    `${at}: two seats get the landscape hero card — ${duo.hero}, ${duo.barH}px tall`);
+  check(duo.gridH > four.gridH,
+    `${at}: ...and the roster is bigger for it — ${duo.gridH}px against ${four.gridH}px on the portrait card`);
+  check(four.hero === "portrait" && four.rows === 1 && four.overflow <= 0,
+    `${at}: four seats fall back to the portrait card rather than wrapping — `
+    + `${four.hero}, ${four.rows} row(s), ${four.overflow}px over`);
+  check(duo.clipped <= 0 && four.clipped <= 0,
+    `${at}: neither card clips its ultimate — ${duo.clipped}px landscape, ${four.clipped}px portrait`);
 }
 
 await browser.close();
