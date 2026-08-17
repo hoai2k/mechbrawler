@@ -339,12 +339,37 @@ async function bootAndFight(page, url) {
       if (o.userData.isOutline) { outlines++; return; }
       if (o.isMesh && o.material?.userData?.toonified) toonified++;
     });
+    // HOW MUCH OF THE FIGHTER IS INK. The ink shell is pushed out by a width
+    // in WORLD units, and it used to spend that width in the mesh's own local
+    // space — fine for a unit-scaled rig, catastrophic for a mech, whose
+    // geometry lives in a unit cube under an Armature scaled ~7-9x. The line
+    // came out that many times too thick, closed over the whole body, and
+    // turned inside out on every panel thinner than it: `?render=toon` drew a
+    // black blob. Nothing here noticed, because every assertion in this block
+    // was about materials EXISTING rather than about what they drew.
+    //
+    // So: of the pose texture's opaque pixels, what fraction is near-black?
+    // A correct line sits around a third (mechs carry plenty of genuinely dark
+    // paint and a crease line between every plate); the 9x line measured 89%.
+    const shot = scn.renderPose("titanus", "idle", 0,
+      rig, loader.resolveClip("titanus", "idle"), {});
+    let body = 0, ink = 0;
+    if (shot) {
+      const px = shot.canvas.getContext("2d")
+        .getImageData(0, 0, shot.canvas.width, shot.canvas.height).data;
+      for (let i = 0; i < px.length; i += 4) {
+        if (px[i + 3] < 200) continue;
+        body++;
+        if (Math.max(px[i], px[i + 1], px[i + 2]) < 60) ink++;
+      }
+    }
     const c = document.createElement("canvas");
     c.width = 300; c.height = 300;
     const drew = backend.drawCharFrame(c.getContext("2d"), "titanus",
       backend.currentFrame("titanus", "idle", 0.5), 150, 280, { facing: 1 });
     return {
       toonified, outlines,
+      inkPct: body ? (100 * ink) / body : 100,
       toneMapping: window.__render3d.renderer.toneMapping,
       lightKey: scn.lightKey(),
       idleSrc: loader.resolveClip("titanus", "idle")?.source,
@@ -357,6 +382,8 @@ async function bootAndFight(page, url) {
   check(r.toonified > 0 && r.outlines > 0,
     "?render=toon keeps the toon materials and ink shells",
     `${r.toonified} toonified / ${r.outlines} outline meshes`);
+  check(r.inkPct < 50, "the ink line draws a line, not a silhouette",
+    `${r.inkPct.toFixed(1)}% of the body is ink`);
   check(/@toon$/.test(r.lightKey), "the cache's light key carries the toon style", r.lightKey);
   check(r.idleSrc === "glb:battleIdle", "clip resolution is style-independent", r.idleSrc);
   check(r.drew === true, "the toon path still draws through drawCharFrame");

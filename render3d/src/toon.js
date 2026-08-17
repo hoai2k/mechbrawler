@@ -92,8 +92,18 @@ export function characterToon(entry) {
 
 /** The look, in one place. Colors are [r, g, b] 0..1. */
 export const TOON = {
-  // ramp coordinate (dotNL * 0.5 + 0.5) below which a texel falls into shade
-  shadeThreshold: 0.62,
+  // ramp coordinate (dotNL * 0.5 + 0.5) below which a texel falls into shade.
+  //
+  // 0.62 was the number for a key that stood at +X, i.e. BEHIND the far flank
+  // (light_rig.js says why that moved): with the lit side turned away, almost
+  // everything the lens could see sat under the threshold anyway, so where
+  // exactly it sat hardly mattered. With the key over the camera's shoulder it
+  // matters completely — 0.62 puts the terminator ~76° off the key, which is
+  // past the silhouette on most of a mech's panels, and the figure comes out
+  // as one flat lit wash. 0.78 lands it around 64°, so the shade band actually
+  // crosses the body: under the shoulder plates, the inboard leg, the far side
+  // of the head.
+  shadeThreshold: 0.78,
   // half-width of the terminator; near-zero = the hard drawn line
   shadeSoftness: 0.02,
   // the painted shadow palette: shade texels show baseColor * this. Cool and
@@ -103,13 +113,23 @@ export const TOON = {
   biasScale: 0.5,
   // rim: stage-colored (scene.js overrides the color per stage), shaded side
   rimColor: [0.72, 0.80, 1.0],
-  rimStrength: 0.28,
+  // A little hotter than the JJK roster's 0.28: painted costumes came with
+  // their own edge highlights, bare metal does not, and the rim is what keeps
+  // a dark mech off a dark arena.
+  rimStrength: 0.38,
   rimPower: 3.0,
   // Overall gain on the lit result, before the rim is added. A delivery that
   // arrives dark — baked-in ambient occlusion, a texture graded for a brighter
   // room, a costume that is simply black — cannot be fixed by moving the
   // terminator: the whole figure needs lifting. 1 is as delivered.
-  brightness: 1.0,
+  //
+  // The mech deliveries are exactly that case. Every one of them is
+  // metallicFactor 1 with the colour in the baseColor texture, authored to be
+  // finished by an environment map — which the PBR path gives them and a toon
+  // material has no concept of. Rendered from albedo alone they arrive a stop
+  // or so under where the same body sits under the ACES grade, so the whole
+  // figure is lifted rather than the terminator being dragged around to fake it.
+  brightness: 1.12,
 };
 
 // Uniform sets of every live toon material, so the workbench dials update

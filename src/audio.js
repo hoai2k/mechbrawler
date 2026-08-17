@@ -121,6 +121,53 @@ let matchLive = false;
  *  stage, so the screens above know which of their two meanings applies. */
 export function setMatchLive(live) {
   matchLive = live;
+  // Leaving a match while the fight's sound was held (quit from the pause
+  // screen) has to let the menu make noise again, and nothing else would ask.
+  syncSfxHold(state.phase);
+}
+
+// ------------------------------------------------------------- pausing sound
+//
+// A PAUSED FIGHT MAKES NO SOUND. The music holds where it is (see
+// MATCH_HOLD_PHASES above), and everything else stops: the arena bed, the
+// shield and domain loops, and whatever one-shots were mid-flight when the
+// player hit pause — an explosion tail, a KO cry, a spoken ultimate. Gating
+// only the NEW calls would leave those ringing on under the overlay, which is
+// what a paused game sounding busy actually is; and with the music ducked out
+// they are the only thing left, so they read as loud on top of it.
+//
+// The `ui` category is the exception, and deliberately: the pause sting itself
+// is a UI sound, so is the one that resumes, and so is every button on the
+// overlay. Pause silences the FIGHT, not the cabinet.
+let sfxHeld = false;
+
+/** Whether a sound belongs to the fight (and so stops when it is paused)
+ *  rather than to the menus. */
+const isMatchSound = (entry) => entry?.category !== "ui";
+
+/** Follow the phase: hold the fight's sound while the match is paused (or
+ *  covered by a screen opened from it), release it on the way back. Called
+ *  from syncMusic — so every setPhase reaches it — and re-asked each frame
+ *  from stepAudio, the same self-healing shape as the arena bed. */
+function syncSfxHold(phase) {
+  const held = MATCH_HOLD_PHASES.has(phase) && matchLive;
+  if (held === sfxHeld) return;
+  sfxHeld = held;
+  if (!held) return; // the loops re-ask for themselves; see stepAudio
+  for (const name of [...loops.keys()]) stopLoop(name);
+  // Everything the fight had in flight, cut where it stands. `active` is an
+  // honest list of what is sounding (see sweepVoices), so this reaches the
+  // long tails too — the explosion, the KO cry, the spoken ultimate.
+  for (const el of [...active]) {
+    if (!isMatchSound(el.__sfxEntry)) continue;
+    el.pause();
+    active.delete(el);
+  }
+}
+
+/** Whether the fight's sound is currently held silent by a pause. */
+export function sfxHeldForPause() {
+  return sfxHeld;
 }
 
 // The same question for the title splash, which now has the corner menus on it:
@@ -311,8 +358,13 @@ export function playCharSfx(charKey, name, intensity = 1, rate = 0) {
 export function playSfxEntry(entry, intensity = 1, rate = 0) {
   if (!unlocked || suspended || audioSettings.muted || !state.sfxEnabled || audioSettings.sfxVolume <= 0) return null;
   if (!entry) return null; // an undelivered sound is silence, not an error
+  if (sfxHeld && isMatchSound(entry)) return null; // paused: the fight is silent
   if (active.size > MAX_VOICES) return null; // safety valve
   const el = new Audio(srcFor(entry));
+  // Which sound this element is playing, so a pause can tell the fight's
+  // voices (which it cuts) from the menu's (which it leaves alone).
+  el.__sfxEntry = entry;
+  el.__startedAt = nowSeconds();
   el.muted = audioSettings.muted;
   el.volume = gainFor(entry, intensity);
   el.playbackRate = rate || 0.96 + Math.random() * 0.08;
@@ -320,9 +372,38 @@ export function playSfxEntry(entry, intensity = 1, rate = 0) {
   const drop = () => active.delete(el);
   el.addEventListener("ended", drop);
   el.addEventListener("error", drop);
-  setTimeout(drop, 6000); // stalled elements must not clog the voice cap
   el.play().catch(drop);
   return el;
+}
+
+const nowSeconds = () =>
+  (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
+
+/**
+ * Forget one-shots that have stopped. Called once a frame from stepAudio.
+ *
+ * `active` is two things at once — the voice budget, and the list of what is
+ * actually making noise — and it only works as the second if entries leave it
+ * when the SOUND ends. It used to leave on a flat `setTimeout(drop, 6000)`,
+ * which is fine for the budget and wrong for the other job: a one-shot longer
+ * than six seconds was forgotten while still playing, so a pause had nothing
+ * to cut and the tail carried on over the overlay. (That is the bug you hear
+ * as "a paused game is still making noise" — the ambience bed is the loud
+ * half, but this is the half that survives the loop being stopped.)
+ *
+ * The stall the timer was really guarding against — an element the browser
+ * never starts, so it neither ends nor errors — is asked about directly
+ * instead: six seconds in with the playhead still at zero is not a sound, it
+ * is a clog, and it stops counting against the cap.
+ */
+const STALL_AFTER = 6;
+function sweepVoices() {
+  for (const el of active) {
+    if (el.ended || el.paused
+        || (nowSeconds() - (el.__startedAt ?? 0) > STALL_AFTER && !el.currentTime)) {
+      active.delete(el);
+    }
+  }
 }
 
 /**
@@ -411,6 +492,8 @@ export function playKoCry(charKey) {
 function startLoop(name) {
   if (loops.has(name)) return;
   if (!unlocked || suspended || audioSettings.muted || !state.sfxEnabled || audioSettings.sfxVolume <= 0) return;
+  // Every held sound is a sound of the fight, so a pause silences all of them.
+  if (sfxHeld) return;
   const entry = entryFor(name);
   if (!entry) return; // an undelivered loop is silence, same as a one-shot
   const el = new Audio(srcFor(entry));
@@ -472,11 +555,15 @@ export function setBattleStage(stageKey) {
 // Each arena has its own looping bed in the bank (`amb_<stageKey>`, category
 // "ambience" — the 0.35 category trim is what keeps it a bed rather than a
 // layer). It runs while the match is audibly on: started when the phase
-// reaches "playing", held through the screens that hold the battle track
-// (pause, Settings-from-a-match), stopped when the match phase ends. Driven
-// from syncMusic for the transitions and re-asked from stepAudio each frame,
-// so it also comes back by itself after a mute or a suspended tab — same
-// self-healing shape as the fire loop.
+// reaches "playing", stopped when the match phase ends. Driven from syncMusic
+// for the transitions and re-asked from stepAudio each frame, so it also comes
+// back by itself after a mute or a suspended tab — same self-healing shape as
+// the fire loop.
+//
+// The screens that HOLD the battle track (pause, Settings-from-a-match) keep
+// `ambName` set but do not sound: the pause hold above silences the bed with
+// everything else the fight makes, and the name surviving is what brings it
+// straight back on resume rather than at the next stage change.
 let ambName = null;
 
 function syncAmbience(phase) {
@@ -493,6 +580,9 @@ function syncAmbience(phase) {
 }
 
 export function syncMusic(phase) {
+  // Before the musicEl guard: a page whose music element is missing must still
+  // stop making fight noises when it pauses.
+  syncSfxHold(phase);
   if (!musicEl) return;
   // A hidden tab is silent whatever the phase says; the phase is re-applied
   // when the page comes back (setAudioSuspended below).
@@ -547,6 +637,10 @@ export function duckMusic(to = 0.2, seconds = 0.4) {
 /** Called once per frame from the main loop; only touches the music element
  *  while a duck is live or just ended. */
 export function stepAudio(dt) {
+  sweepVoices();
+  // Re-asked per frame as well as per phase change, so a pause reached by a
+  // path that never calls syncMusic still goes quiet within a frame.
+  if (!suspended) syncSfxHold(state.phase);
   // Before the music guard below: the fire bed has to stop even in a match with
   // no music playing.
   if (fireWanted) startLoop("fireBurnLoop");

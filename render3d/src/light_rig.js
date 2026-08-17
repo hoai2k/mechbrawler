@@ -16,9 +16,24 @@
 // edge. The rebalance shifts the same overall exposure toward the banded key
 // (hemi 1.0, key 2.6), so the terminator is the key's to draw and the
 // hemisphere is fill — ambient bounce, not a second sun.
+//
+// WHERE THE KEY STANDS. It used to sit at +X, and the offscreen camera sits at
+// yaw −78° — mostly −X (scene.js CAMERA_YAW_DEG). So the key lit the flank
+// FACING AWAY from the lens: dot(camera-facing normal, key) came out negative,
+// every surface the viewer could see fell on the shade side of the ramp, and a
+// two-band shader with nothing in the lit band is not a drawn look, it is a
+// flat wash of the shade tint. The PBR rig had already been moved for exactly
+// this reason (see PBR_LIGHT_RIG below, "a mech in its own shadow"); the toon
+// rig kept the old position because the JJK roster's painted textures carried
+// enough of their own shading to survive it. The mechs' do not.
+//
+// So the key comes over the camera's shoulder here too — the same side as the
+// PBR key, a touch further round so the terminator crosses the body rather
+// than hugging the silhouette, and high enough that the shade band lands under
+// the overhangs where a painter would put it.
 export const LIGHT_RIG = {
   hemi: { sky: 0xf4f6ff, ground: 0x3a4152, intensity: 1.0 },
-  key: { color: 0xffffff, intensity: 2.6, position: [1.5, 2.5, 2.0] },
+  key: { color: 0xffffff, intensity: 2.6, position: [-2.0, 2.4, 1.6] },
 };
 
 // THE PBR RIG (K6) — Mech Mayhem's balance, read straight off robotworld
