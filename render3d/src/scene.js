@@ -31,7 +31,7 @@ import { clipNameFor, aimable } from "./states.js";
 import { swayChains, simulateChains, simulates } from "./props.js";
 import { state } from "../../src/state.js";
 import { getStage } from "../../src/stages.js";
-import { DIALS, sampleTime, poseRig, posedComFrac } from "./pose.js";
+import { DIALS, sampleTime, poseRig } from "./pose.js";
 import { setRimColor, TOON, TOON_STYLE, RENDER_STYLE } from "./toon.js";
 import { LIGHT_RIG, PBR_LIGHT_RIG } from "./light_rig.js";
 import { setWorldWidth, OUTLINE } from "./outline.js";
@@ -668,13 +668,6 @@ export function renderPose(charKey, animKey, animTime, rig, resolved, layers = {
     // consumer applies the artist's intent explicitly.
     renderScale: rig.renderScale ?? 1,
     rowsPerMetre: TEX_SIZE / frameH,
-    // Where this pose left the mass, as a fraction of the rig's standing body
-    // height. The blit turns rotations about it, which a fixed fraction cannot
-    // follow: the clip is what moves the hips. A FRACTION rather than a height,
-    // because `heightM` below is the manifest's declared metres while the rig's
-    // geometry is in its own units — see pose.measureBindBody. Null for a body
-    // with no COM bone, and blit.js falls back to the constant then.
-    comFrac: posedComFrac(rig),
     // With the turnaround on, facing lives in the render (yaw 0 or 180°) and
     // the blit must NOT mirror; with it off, blit-time mirroring owns facing.
     yawed: DIALS.turnaround,

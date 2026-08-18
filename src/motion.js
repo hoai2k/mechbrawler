@@ -17,6 +17,7 @@ import { clamp } from "./utils.js";
 import { cyclePhase } from "./render_backend.js";
 import { DASH_FX } from "./config_fx.js";
 import { headHeightTarget } from "./heights.js";
+import { comFrac } from "./body_points.js";
 import { SHIELD_MAX, MAX_FALL } from "./constants.js";
 import {
   MOTION as A, SQUASH, SQUASH_DEPTH as S, TRAIL_STRENGTH,
@@ -110,7 +111,11 @@ export function fighterTransform(f) {
   // back up as the get-up unwinds.
   if (f.prone > 0 && f.hitstun <= 0 && f.grounded) {
     const flatness = Math.min(1, Math.abs(f.spinAngle) / (Math.PI / 2));
-    dy += flatness * (headHeightTarget(f.spriteChar || f.charKey) * 0.55 - 26);
+    // …by this mech's OWN centre of mass, not a roster-wide 0.55. The drop is
+    // "how far is the mass above the floor", so a machine that carries its
+    // weight low has less of it to travel.
+    const key = f.spriteChar || f.charKey;
+    dy += flatness * (headHeightTarget(key) * comFrac(key, f.animKey) - 26);
   }
 
   if (f.dizzy > 0) {
