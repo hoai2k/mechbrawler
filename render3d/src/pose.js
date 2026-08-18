@@ -838,6 +838,166 @@ function supportBones(root) {
   return bones;
 }
 
+// ------------------------------------------------- where the body really ends
+//
+// THE LOWEST POINT OF THE DRAWING, per pose — what "standing on the deck" is
+// actually about.
+//
+// The pass below settles a fighter by their SUPPORT BONES plus a bind-pose
+// constant (`soleDelta`) saying how far the visible soles sit from those bones.
+// That holds while the foot is rigid on its ankle, which is true of the
+// hand-rigged mechs and false of the auto-rigged ones: rhino's `ankleL`/`ankleR`
+// do not move at all through his run — his legs are driven by other bones — so
+// the settle held the ankles at a fixed height while the drawn foot swung 130 px
+// through the deck. Measured, his sole-to-ankle gap goes from +3.05 at rest to
+// -3.39 mid-stride, against titanus's -0.41 to -0.70.
+//
+// So the sole is MEASURED IN THE POSE rather than predicted from bind. Not by
+// scanning the whole body every frame — a mech is 140-220k vertices — but by
+// picking the candidates ONCE (the lowest slice of the body in its own
+// geometry, which is its feet) and running only those through the skin each
+// time. A couple of hundred vertices is nothing beside the pose itself, and it
+// answers for any rig without caring what its bones are called or which of them
+// its clips animate.
+
+// How many of the body's lowest vertices to carry ON TOP of the per-bone
+// delegates. The sole is a broad flat region rather than a spike, so this is
+// about covering BOTH feet densely rather than about precision on one of them.
+const SOLE_SAMPLE_MAX = 64;
+// Each BONE additionally contributes the extremes of its own region — see
+// soleSamples — so a limb that turns is still represented by whichever part of
+// it comes down.
+// How many times the settle may re-measure and re-apply what is left, and how
+// close to the floor counts as arrived. The epsilon is in the rig's own units —
+// a mech is 5-9 of them tall, so 0.002 is well under a pixel on screen.
+const SETTLE_PASSES = 2;
+const SETTLE_EPSILON = 0.002;
+// …drawn from this many, strided across each mesh. Generous, because choosing the
+// delegates is a ONE-TIME cost per rig while carrying them is the per-frame one:
+// at 1-in-25 the stride kept missing the actual lowest vertex of a foot by up to
+// 12 px, which is a settle that is right about the wrong point.
+const SOLE_SCAN_MAX = 60000;
+
+let _vSole = null;
+
+/**
+ * The vertices that can be this body's lowest point, chosen once.
+ *
+ * ONE PER BONE, plus the body's lowest few overall.
+ *
+ * Taking simply the lowest vertices at bind is not enough, and tritone is why:
+ * his lowest bind geometry is not what reaches furthest down once he is posed,
+ * so a candidate set drawn only from the feet left him sunk 23 px into the deck
+ * in every state. Whichever limb swings lowest has to be REPRESENTED in the set,
+ * and the cheap way to guarantee that is to keep the lowest vertex bound to each
+ * bone: every part of the body then has a delegate, and a leg that extends or an
+ * arm that reaches the floor is measured rather than missed.
+ *
+ * Picked on the RAW geometry, which for a skinned mesh is the bind pose. That is
+ * all this needs to be right about — which vertices are candidates. Where they
+ * actually ARE is asked per pose, through the skin.
+ */
+function soleSamples(rig) {
+  if (rig._soleSamples !== undefined) return rig._soleSamples;
+  const perBone = new Map();   // "meshUuid:boneIndex" -> [[mesh, index, y], ...]
+  const all = [];
+  rig.root.traverse((o) => {
+    if (!isBodyMesh(o)) return;
+    const geom = o.geometry;
+    const pos = geom?.attributes?.position;
+    if (!pos || !pos.count) return;
+    const si = geom.attributes.skinIndex;
+    const sw = geom.attributes.skinWeight;
+    const stride = Math.max(1, Math.ceil(pos.count / SOLE_SCAN_MAX));
+    for (let i = 0; i < pos.count; i += stride) {
+      const y = pos.getY(i);
+      all.push([o, i, y]);
+      if (!si || !sw) continue;
+      // The bone this vertex mostly belongs to — its delegate for "how low can
+      // this part of the body get".
+      let bone = -1;
+      let best = 0;
+      for (let k = 0; k < 4; k++) {
+        const w = sw.getComponent(i, k);
+        if (w > best) { best = w; bone = si.getComponent(i, k); }
+      }
+      if (bone < 0) continue;
+      // THE EXTREMES OF EACH BONE'S REGION, on every axis — not just its lowest
+      // vertex.
+      //
+      // A bone ROTATES, and which part of it ends up nearest the floor rotates
+      // with it: a leg that swings forward brings what was its FRONT down, a
+      // body that pitches brings its back down. Keeping only the lowest-at-bind
+      // vertex per bone is therefore right for a stance and wrong for everything
+      // else, and it left saurion's run and frogger's crouch sunk by half a rig
+      // unit — measured, the settle converged exactly onto its own candidates
+      // while the real lowest vertex sat 0.34-0.50 below them.
+      //
+      // Six extremes cover the rotation: whichever way the bone turns, the point
+      // that comes down is at or beside one of them.
+      const key = `${o.uuid}:${bone}`;
+      let held = perBone.get(key);
+      if (!held) { held = { minX: null, maxX: null, minY: null, maxY: null, minZ: null, maxZ: null }; perBone.set(key, held); }
+      const px = pos.getX(i), pz = pos.getZ(i);
+      const keep = (slot, value, lower) => {
+        const cur = held[slot];
+        if (cur === null || (lower ? value < cur[2] : value > cur[2])) held[slot] = [o, i, value];
+      };
+      keep("minX", px, true); keep("maxX", px, false);
+      keep("minY", y, true);  keep("maxY", y, false);
+      keep("minZ", pz, true); keep("maxZ", pz, false);
+    }
+  });
+  if (!all.length) { rig._soleSamples = null; return null; }
+  all.sort((a, b) => a[2] - b[2]);
+  const out = [];
+  const seen = new Set();
+  const take = ([o, i]) => {
+    const k = `${o.uuid}:${i}`;
+    if (seen.has(k)) return;
+    seen.add(k);
+    out.push([o, i]);
+  };
+  for (const held of perBone.values()) {
+    for (const slot of ["minY", "minX", "maxX", "minZ", "maxZ", "maxY"]) {
+      if (held[slot]) take(held[slot]);
+    }
+  }
+  for (let n = 0; n < Math.min(all.length, SOLE_SAMPLE_MAX); n++) take(all[n]);
+  rig._soleSamples = out;
+  return out;
+}
+
+/** How low the drawn body reaches right now, in the ROOT's own frame — the same
+ *  frame `groundOffset` works in, so the two are interchangeable as a drop.
+ *
+ *  Null when it cannot be measured: before the first frame is drawn the skinning
+ *  palette does not exist and `applyBoneTransform` returns NaN (see ensureCom),
+ *  and the caller falls back to the bone-and-constant answer for that frame. */
+function drawnSoleY(rig) {
+  const samples = soleSamples(rig);
+  if (!samples || !samples.length || !THREE) return null;
+  if (!_vSole) _vSole = new THREE.Vector3();
+  const root = rig.root;
+  let low = Infinity;
+  for (let n = 0; n < samples.length; n++) {
+    const o = samples[n][0];
+    const i = samples[n][1];
+    const pos = o.geometry?.attributes?.position;
+    if (!pos) continue;
+    // Seeded first: applyBoneTransform takes the base position IN the vector.
+    _vSole.fromBufferAttribute(pos, i);
+    if (o.isSkinnedMesh) {
+      const fn = o.applyBoneTransform || o.boneTransform;
+      if (typeof fn === "function") fn.call(o, i, _vSole);
+    }
+    o.localToWorld(_vSole);
+    root.worldToLocal(_vSole);
+    if (_vSole.y < low) low = _vSole.y;
+  }
+  return Number.isFinite(low) ? low : null;
+}
+
 /**
  * How far the VISIBLE soles sit below (or above) the support bones, metres in
  * the root's frame — a fact about the DELIVERY, and therefore measured from
@@ -1229,7 +1389,20 @@ function standOnGround(rig, animKey) {
     // PBR made the crop impossible to blame on the toon pass).
     const hips = root.getObjectByName("hips") || root.getObjectByName("Hips")
       || root.getObjectByName("mixamorigHips");
-    _armature.set(root, hips || null);
+    // …and then CLIMB TO THE ROOT BONE, because the pelvis is not always the
+    // thing the body hangs from. On the hand-rigged mechs `hips` is the topmost
+    // bone and this changes nothing. The auto-rigged five carry a `tripoRoot`
+    // ABOVE it, with the legs parented to that rather than to the pelvis — so
+    // dropping `hips` moved the torso and left the legs, the feet and the whole
+    // skinned body exactly where they were. Saurion floated 66 px above the deck
+    // on every board for that reason: the correction was computed correctly,
+    // applied correctly, and landed on a bone that carries a third of him.
+    //
+    // Whatever the skeleton's own convention, the bone with no bone above it is
+    // the one that moves all of it.
+    let top = hips;
+    while (top?.parent?.isBone) top = top.parent;
+    _armature.set(root, top || null);
     node = _armature.get(root);
   }
   if (!node) return;
@@ -1239,7 +1412,12 @@ function standOnGround(rig, animKey) {
   // Measured in the ROOT's frame: `node.position.y` is local to the root, and
   // so is the floor the fighter stands on. See groundOffset. The bones alone
   // are not the whole answer — measureSoleDelta says why.
-  const drop = groundOffset(bones, root) - soleDelta(rig);
+  // WHERE THE DRAWING ENDS, measured in this pose — see the block above
+  // soleSamples. The bone-and-bind-constant answer stays as the fallback for a
+  // frame that cannot be measured (nothing drawn yet, so no skinning palette),
+  // and is what every mech used to get.
+  const soleY = drawnSoleY(rig);
+  const drop = soleY !== null ? -soleY : groundOffset(bones, root) - soleDelta(rig);
   // The magnitude limit stays, and stays generous: it is here so that one bone
   // measured somewhere absurd cannot fling the body out of frame, not to pick
   // a direction. It scales with the body — 0.6 m was a third of the JJK
@@ -1266,6 +1444,29 @@ function standOnGround(rig, animKey) {
     / (_vScale.setFromMatrixScale(root.matrixWorld).y || 1);
   node.position.y += Math.max(-limit, Math.min(limit, drop)) / pScale;
   root.updateMatrixWorld(true);
+
+  // …AND SETTLE AGAIN UNTIL IT STOPS MOVING.
+  //
+  // One pass assumes the body travels exactly as far as the bone was moved, and
+  // it does not always: the conversion above goes through two world scales, and
+  // a rig whose geometry does not hang entirely off the moved bone carries some
+  // of itself independently. Measured, that left colossus, saurion and frogger
+  // 7-11 px out in a run or a crouch after a single pass — small, but it is the
+  // same fault that had Saurion 66 px in the air, just further down the tail.
+  //
+  // Re-measuring and re-applying the REMAINDER converges on the answer without
+  // needing to know which of those it was. Two extra passes is the most any mech
+  // here uses; the epsilon stops a body that is already down from paying for
+  // them, and a pose that will not converge simply stops improving rather than
+  // oscillating, because each pass only ever removes what is left.
+  if (soleY !== null) {
+    for (let pass = 0; pass < SETTLE_PASSES; pass++) {
+      const left = drawnSoleY(rig);
+      if (left === null || Math.abs(left) <= SETTLE_EPSILON) break;
+      node.position.y += Math.max(-limit, Math.min(limit, -left)) / pScale;
+      root.updateMatrixWorld(true);
+    }
+  }
 }
 
 // ------------------------------------------------------ both feet on the floor

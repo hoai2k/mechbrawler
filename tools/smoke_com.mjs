@@ -18,8 +18,10 @@
 //   3. THE BODY STANDS ON THE FLOOR. A centre of mass measured as a fraction of
 //      drawn height is only in the right PLACE if the drawing itself is in the
 //      right place. smoke_ground3d checks this thoroughly, but only ever for the
-//      mech it puts in the match — which is why a mech floating 65 px above the
-//      deck went unnoticed. This sweeps the whole roster.
+//      mech it puts in the match, in whatever state it happened to be in — which
+//      is why Saurion floating 66 px above the deck went unnoticed. This sweeps
+//      the whole roster, across every grounded state, which is the only shape of
+//      check that would have caught it.
 //
 // Needs playwright + Chromium (CHROMIUM_PATH to override) and the game served:
 //   node server.mjs   then:  node tools/smoke_com.mjs [baseUrl]
@@ -96,7 +98,19 @@ check(!known.disagreeing.length,
   known.disagreeing.length ? known.disagreeing.join(", ") : `all ${known.roster} agree`);
 
 // ------------------------------------------------------ and standing on it
-const plants = await page.evaluate(async ({ SAMPLES }) => {
+// The grounded states, from pose.js's own GROUNDED set. A rig can settle in its
+// stance and float in a crouch or a knockdown — the correction is computed per
+// pose, so one pose passing says nothing about the others.
+// A spread rather than all twenty-two: a stance, both travel states, the two
+// crouched poses, a swing, a knockdown and the getup off it. Each re-renders the
+// whole roster, so the list is what fits in a smoke run — the shapes that differ
+// (upright, moving, ducked, swinging, on the floor) are all represented.
+const GROUNDED_STATES = [
+  "idle", "walk", "run", "crouch", "crouchAttack",
+  "sideHeavy", "hurt", "prone", "getup",
+];
+
+const plants = await page.evaluate(async ({ SAMPLES, GROUNDED_STATES }) => {
   const { state } = await import("/src/state.js");
   const { CHARACTER_KEYS } = await import("/src/characters.js");
   const { CAMERA } = await import("/src/config_camera.js");
@@ -106,15 +120,19 @@ const plants = await page.evaluate(async ({ SAMPLES }) => {
   const main = state.platforms.find((p) => p.kind === "main");
   const out = [];
   for (const key of CHARACTER_KEYS) {
+    for (const st of GROUNDED_STATES) {
     // Wear each mech in turn on a fighter the scene is already drawing, so this
     // measures the SHIPPED placement path rather than a rig posed on the side.
     f.spriteChar = key;
     Object.assign(f, { x: 640, y: main.y, vx: 0, vy: 0, grounded: true,
       hitstun: 0, dead: false, respawnTimer: 0, invuln: 0, action: null });
+    try {
+      Object.defineProperty(f, "animKey", { get: () => st, set: () => {}, configurable: true });
+    } catch { /* already pinned */ }
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     await new Promise((r) => requestAnimationFrame(r));
     const inst = rigs.acquireInstance(key, f.id);
-    if (!inst) { out.push({ key, error: "no instance" }); continue; }
+    if (!inst) { out.push({ key, state: st, error: "no instance" }); continue; }
     const root = inst.root;
     root.updateMatrixWorld(true);
     // THE LOWEST DRAWN POINT, not the lowest bone — smoke_ground3d says why at
@@ -126,6 +144,11 @@ const plants = await page.evaluate(async ({ SAMPLES }) => {
     root.traverse((o) => {
       const pos = o.isMesh && !o.userData.isOutline && o.geometry?.attributes?.position;
       if (!pos) return;
+      // The same BODY filter the settle uses (pose.js isBodyMesh): a chain or a
+      // slung prop hangs below the feet by design and is not what "standing on
+      // the deck" is about. Measuring it here and not there reports a mech as
+      // sunk for carrying something.
+      for (let q = o; q; q = q.parent) if (/^(Prop_|Chain_)/.test(q.name || "")) return;
       const stride = Math.max(1, Math.floor(pos.count / SAMPLES));
       for (let i = 0; i < pos.count; i += stride) {
         v.fromBufferAttribute(pos, i);
@@ -134,24 +157,27 @@ const plants = await page.evaluate(async ({ SAMPLES }) => {
         if (low === null || v.y < low) low = v.y;
       }
     });
-    if (low === null) { out.push({ key, error: "nothing drawn" }); continue; }
+    if (low === null) { out.push({ key, state: st, error: "nothing drawn" }); continue; }
     // World y back into sim pixels. Positive = the body hangs below the foot
     // line, negative = it floats above it.
-    out.push({ key, px: +((root.position.y - low) / CAMERA.simScale).toFixed(2) });
+    out.push({ key, state: st, px: +((root.position.y - low) / CAMERA.simScale).toFixed(2) });
+    }
   }
   f.spriteChar = null;
   return out;
-}, { SAMPLES: 3000 });
+}, { SAMPLES: 1500, GROUNDED_STATES });
 
 const drawn = plants.filter((p) => !p.error);
-const floating = drawn.filter((p) => Math.abs(p.px) > PLANT_TOLERANCE);
-check(drawn.length === known.roster, "every mech draws a body to measure",
-  `${drawn.length} of ${known.roster}`);
-check(!floating.length,
-  "every mech stands on the deck rather than in the air",
-  floating.length
-    ? floating.map((p) => `${p.key} ${p.px > 0 ? "sunk" : "floating"} ${Math.abs(p.px)}px`).join(", ")
-    : `worst ${Math.max(...drawn.map((p) => Math.abs(p.px))).toFixed(2)} px of ${PLANT_TOLERANCE}`);
+const off = drawn.filter((p) => Math.abs(p.px) > PLANT_TOLERANCE);
+const mechsDrawn = new Set(drawn.map((p) => p.key)).size;
+check(mechsDrawn === known.roster, "every mech draws a body to measure",
+  `${mechsDrawn} of ${known.roster}, over ${drawn.length} pose(s)`);
+check(!off.length,
+  "every mech stands on the deck rather than in the air, in every grounded state",
+  off.length
+    ? off.slice(0, 8).map((p) => `${p.key}/${p.state} ${p.px > 0 ? "sunk" : "floating"} ${Math.abs(p.px)}px`).join(", ")
+      + (off.length > 8 ? ` (+${off.length - 8} more)` : "")
+    : `worst ${Math.max(...drawn.map((p) => Math.abs(p.px))).toFixed(2)} px of ${PLANT_TOLERANCE}, over ${drawn.length} pose(s)`);
 
 await browser.close();
 console.log(failed ? `\n${failed} check(s) failed` : "\nall centre-of-mass checks passed");
