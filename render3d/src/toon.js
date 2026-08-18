@@ -45,6 +45,7 @@
  *  lights and cache tag — read one constant and cannot disagree mid-session. */
 export { RENDER_STYLE } from "./style.js";
 import { RENDER_STYLE } from "./style.js";
+import { celTexture } from "./cel_palette.js";
 
 export const TOON_STYLE = RENDER_STYLE === "toon";
 
@@ -92,23 +93,45 @@ export function characterToon(entry) {
 
 /** The look, in one place. Colors are [r, g, b] 0..1. */
 export const TOON = {
-  // ramp coordinate (dotNL * 0.5 + 0.5) below which a texel falls into shade
-  shadeThreshold: 0.62,
+  // ramp coordinate (dotNL * 0.5 + 0.5) below which a texel falls into shade.
+  //
+  // 0.62 was the number for a key that stood at +X, i.e. BEHIND the far flank
+  // (light_rig.js says why that moved): with the lit side turned away, almost
+  // everything the lens could see sat under the threshold anyway, so where
+  // exactly it sat hardly mattered. With the key over the camera's shoulder it
+  // matters completely — 0.62 puts the terminator ~76° off the key, which is
+  // past the silhouette on most of a mech's panels, and the figure comes out
+  // as one flat lit wash. 0.78 lands it around 64°, so the shade band actually
+  // crosses the body: under the shoulder plates, the inboard leg, the far side
+  // of the head.
+  shadeThreshold: 0.78,
   // half-width of the terminator; near-zero = the hard drawn line
   shadeSoftness: 0.02,
-  // the painted shadow palette: shade texels show baseColor * this. Cool and
-  // a touch dark, per the sprite art's own shading.
-  shadeTint: [0.52, 0.56, 0.74],
+  // the painted shadow palette: shade texels show baseColor * this. Cool but
+  // LIGHT — with the cel palette (cel_palette.js) the fills are already the
+  // bright cartoon colours, and a drawn shadow over those is a colour choice,
+  // not a darkness: too low and the shade band reads as the old 3D shading
+  // creeping back in over the flats.
+  shadeTint: [0.66, 0.70, 0.88],
   // how far a shade-bias texel (0..1, 0.5 neutral) can push the terminator
   biasScale: 0.5,
   // rim: stage-colored (scene.js overrides the color per stage), shaded side
   rimColor: [0.72, 0.80, 1.0],
-  rimStrength: 0.28,
+  // A little hotter than the JJK roster's 0.28: painted costumes came with
+  // their own edge highlights, bare metal does not, and the rim is what keeps
+  // a dark mech off a dark arena.
+  rimStrength: 0.38,
   rimPower: 3.0,
   // Overall gain on the lit result, before the rim is added. A delivery that
   // arrives dark — baked-in ambient occlusion, a texture graded for a brighter
   // room, a costume that is simply black — cannot be fixed by moving the
   // terminator: the whole figure needs lifting. 1 is as delivered.
+  //
+  // The mech deliveries used to be exactly that case — metallic albedo
+  // authored to be finished by an environment map, arriving a stop dark — and
+  // this sat at 1.12 to lift them. The cel palette (cel_palette.js) now does
+  // the lifting where it belongs, in the fills themselves, and a gain on top
+  // of an already-bright palette just clips the flats toward white.
   brightness: 1.0,
 };
 
@@ -161,7 +184,11 @@ export function makeToonMaterial(THREE, src, overrides = {}) {
   const p = { ...TOON, ...overrides, ...extras };
   const mat = new THREE.MeshToonMaterial({
     color: src?.color ? src.color.clone() : new THREE.Color(0xffffff),
-    map: src?.map || null,
+    // The cel palette: the delivery's PBR albedo flattened to a few solid,
+    // brightened fills (cel_palette.js) — the difference between "3D model
+    // under a toon shader" and a coloured drawing. Alpha (cutout or the
+    // shade-bias map below) passes through the flattening untouched.
+    map: celTexture(THREE, src?.map) || null,
     transparent: !!src?.transparent,
     opacity: src?.opacity ?? 1,
     side: src?.side ?? THREE.FrontSide,

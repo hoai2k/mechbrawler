@@ -40,6 +40,10 @@ if yours is elsewhere).
   `smoke_ground3d.mjs`, `smoke_render3d.mjs`, `smoke_render_backend.mjs` —
   the 2.5D/3D camera and render backends.
 - `smoke_controllers.mjs`, `smoke_select_layout.mjs` — input and menus.
+- `smoke_pause_audio.mjs` — a paused match makes no noise: the arena bed, the
+  held loops and every one-shot in flight all stop, while the pause screen's
+  own buttons still answer. Measured on the media elements themselves, since
+  the game's one-shots are `new Audio()` and never enter the DOM.
 - `smoke_workbench.mjs` — every control in the effect workbench reaches the
   picture (Size, X, Y, Rotate, Mirror), the launch cross sits on the muzzle
   combat.js spawns from, and both workbenches boot clean at desk and phone

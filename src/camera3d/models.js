@@ -169,9 +169,11 @@ export function makeModels() {
     // vertically for as long as it was off the ground.
 
     root.position.set(baseX + Math.sin(rot) * com, baseY + (1 - Math.cos(rot)) * com, 0);
-    // Outline width is authored in blitted pixels; in-scene it has to be a
-    // local displacement, since the rig is uniformly scaled to game size.
-    adapter.setOutlineScale?.(root, inst.height, onScreenPx);
+    // Outline width is authored in blitted pixels, and the ink shader spends
+    // it in view space — so it takes world units per blitted pixel. One sim
+    // pixel is S world units; the size dial rides along because a rig drawn
+    // 1.2x bigger carries a 1.2x heavier line on the flat path too.
+    adapter.setOutlineScale?.(root, S * (inst.renderScale ?? 1));
 
     if (root.parent !== group) group.add(root);
     root.visible = true;

@@ -417,10 +417,18 @@ plays nothing like a platform fighter.
   stacks (Bahnschrift/DIN/Oswald 900 italic uppercase) — Barlow Condensed
   900 italic is the match, no new font needed.
 - **Toon grade**: render3d uses NoToneMapping deliberately (two-band ramp);
-  chase MM's bright-neon in toon.js TOON (shadeThreshold .62, tint
-  [.52,.56,.74], rim .28) + stageLightTint boost, NOT tone mapping. MM
-  numbers: exposure 1.02-1.10, hemi .6-.75, neon stages = dim sun + HOT
-  colored rim 1.25-1.4 (magenta/violet/orange).
+  chase MM's bright-neon in toon.js TOON + stageLightTint boost, NOT tone
+  mapping. MM numbers: exposure 1.02-1.10, hemi .6-.75, neon stages = dim sun
+  + HOT colored rim 1.25-1.4 (magenta/violet/orange). The JJK-era dials
+  (shadeThreshold .62, tint [.52,.56,.74], rim .28, key at +X) were retuned
+  for the mechs: the key moved over the camera's shoulder (light_rig.js — at
+  +X it lit the flank facing AWAY from the lens, so every visible texel sat in
+  the shade band), the threshold went to .78 to put a terminator back on the
+  body, and brightness to 1.12 because a metallicFactor-1 delivery rendered
+  from albedo alone lands under where the ACES path puts it. Same pass fixed
+  the ink shell, which was spending a world-space width in the mesh's local
+  space — harmless on the unit-scaled JJK rigs, ~9x too thick on a mech
+  (outline.js), which is what made `?render=toon` a black blob.
 - **Music (MM)**: per-arena tracks match by normalized filename ("Neon
   District 2" -> neondistrict). 24 arena files (11 arenas, foundry none),
   6 general battle loops, menu = "Bohemian Cello Flame Hybrid Suite.mp3"

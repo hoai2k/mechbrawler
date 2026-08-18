@@ -392,11 +392,15 @@ export const scene3d = {
   /** The stage-derived key/rim colours, so the camera's own light rig agrees
    *  with the one the flat path renders under. */
   lightTint: () => scene.stageLightTint(),
-  /** Outline width is authored in blitted pixels; in-scene it has to become a
-   *  LOCAL displacement, since the instance is uniformly scaled to game size.
-   *  local = px * heightM / onScreenHeightPx, applied by outline.js. */
-  setOutlineScale(root, heightM, onScreenPx) {
-    outline.setWorldWidth(root, onScreenPx > 0 ? heightM / onScreenPx : 0);
+  /** Outline width is authored in blitted pixels, and outline.js spends it in
+   *  VIEW space (see the vertex shader there) — so what it wants is world
+   *  units per blitted pixel, which in this scene is the sim-px-to-world scale
+   *  times the rig's own size dial. It used to be handed a LOCAL displacement
+   *  instead (heightM / onScreenPx), which was the right answer while the
+   *  shader pushed the vertex in its own space, and is off by the instance's
+   *  scale now that it does not. */
+  setOutlineScale(root, worldPerPx) {
+    outline.setWorldWidth(root, worldPerPx);
   },
 };
 
