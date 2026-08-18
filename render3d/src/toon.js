@@ -45,6 +45,7 @@
  *  lights and cache tag — read one constant and cannot disagree mid-session. */
 export { RENDER_STYLE } from "./style.js";
 import { RENDER_STYLE } from "./style.js";
+import { celTexture } from "./cel_palette.js";
 
 export const TOON_STYLE = RENDER_STYLE === "toon";
 
@@ -106,9 +107,12 @@ export const TOON = {
   shadeThreshold: 0.78,
   // half-width of the terminator; near-zero = the hard drawn line
   shadeSoftness: 0.02,
-  // the painted shadow palette: shade texels show baseColor * this. Cool and
-  // a touch dark, per the sprite art's own shading.
-  shadeTint: [0.52, 0.56, 0.74],
+  // the painted shadow palette: shade texels show baseColor * this. Cool but
+  // LIGHT — with the cel palette (cel_palette.js) the fills are already the
+  // bright cartoon colours, and a drawn shadow over those is a colour choice,
+  // not a darkness: too low and the shade band reads as the old 3D shading
+  // creeping back in over the flats.
+  shadeTint: [0.66, 0.70, 0.88],
   // how far a shade-bias texel (0..1, 0.5 neutral) can push the terminator
   biasScale: 0.5,
   // rim: stage-colored (scene.js overrides the color per stage), shaded side
@@ -123,13 +127,12 @@ export const TOON = {
   // room, a costume that is simply black — cannot be fixed by moving the
   // terminator: the whole figure needs lifting. 1 is as delivered.
   //
-  // The mech deliveries are exactly that case. Every one of them is
-  // metallicFactor 1 with the colour in the baseColor texture, authored to be
-  // finished by an environment map — which the PBR path gives them and a toon
-  // material has no concept of. Rendered from albedo alone they arrive a stop
-  // or so under where the same body sits under the ACES grade, so the whole
-  // figure is lifted rather than the terminator being dragged around to fake it.
-  brightness: 1.12,
+  // The mech deliveries used to be exactly that case — metallic albedo
+  // authored to be finished by an environment map, arriving a stop dark — and
+  // this sat at 1.12 to lift them. The cel palette (cel_palette.js) now does
+  // the lifting where it belongs, in the fills themselves, and a gain on top
+  // of an already-bright palette just clips the flats toward white.
+  brightness: 1.0,
 };
 
 // Uniform sets of every live toon material, so the workbench dials update
@@ -181,7 +184,11 @@ export function makeToonMaterial(THREE, src, overrides = {}) {
   const p = { ...TOON, ...overrides, ...extras };
   const mat = new THREE.MeshToonMaterial({
     color: src?.color ? src.color.clone() : new THREE.Color(0xffffff),
-    map: src?.map || null,
+    // The cel palette: the delivery's PBR albedo flattened to a few solid,
+    // brightened fills (cel_palette.js) — the difference between "3D model
+    // under a toon shader" and a coloured drawing. Alpha (cutout or the
+    // shade-bias map below) passes through the flattening untouched.
+    map: celTexture(THREE, src?.map) || null,
     transparent: !!src?.transparent,
     opacity: src?.opacity ?? 1,
     side: src?.side ?? THREE.FrontSide,
