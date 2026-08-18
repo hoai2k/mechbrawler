@@ -60,6 +60,15 @@ export function rigCount() {
   return RIGS.size;
 }
 
+/** Where this MODEL's mass sits, as a fraction of its own body height — weighed
+ *  off its triangles at bind (pose.measureCom), or null when it could not be
+ *  measured. tools/derive_com.mjs reads this into src/config_model_com.js so the
+ *  simulation can ask for it synchronously; the LIVE point, which follows the
+ *  pose, is pose.comWorldPoint. Both are the same measurement. */
+export function rigComFrac(charKey) {
+  return RIGS.get(charKey)?._comFrac ?? null;
+}
+
 
 export function rigManifest() {
   return MANIFEST;
@@ -237,6 +246,10 @@ export function acquireInstance(charKey, instanceId) {
   // is only recoverable from the base's. Same file, same numbers.
   inst._compass = base._compass;
   inst._soleDelta = base._soleDelta;
+  // The centre of mass is measured per rig OBJECT rather than copied, because it
+  // can only be taken once a body has actually been drawn (pose.ensureCom) and
+  // the base may never be: in `?camera=3d` it is the instances that get posed.
+  // The offset is hip-LOCAL, so every copy arrives at the same answer anyway.
   INSTANCES.set(key, inst);
   return inst;
 }

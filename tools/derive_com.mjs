@@ -26,7 +26,7 @@
 // weighted average is the origin. There are two rig families in this roster and
 // no skeleton-level question has one answer across both.
 //
-// WHAT IS MEASURED INSTEAD is the drawing: the alpha-weighted centroid of the
+// WHAT IS MEASURED INSTEAD is the body: the alpha-weighted centroid of the
 // mech as the game actually renders it, as a fraction of that drawing's own
 // height above its foot line. That is the honest reading of "where does this
 // machine's mass look like it is", it is exactly the quantity every consumer
@@ -35,12 +35,14 @@
 // delivery is rigged with. Measured through drawCharFrame, so it is the same
 // pipeline the game draws with rather than a parallel one.
 //
-// PER STATE, not just per mech. A pose moves the mass: a fall tucks the legs and
-// carries it up around a tenth of a body height, a knockdown puts it on the
-// floor. The base is the idle stance and states are listed only where they
-// differ from it by more than THRESHOLD, so the config stays about what actually
-// varies. Runtime cost is a lookup — this is the whole reason the measurement is
-// offline rather than in the frame loop.
+// ONE NUMBER PER MECH, deliberately — not a table per animation state. A pose
+// does move the mass, but a per-state constant is a sprite's answer to that: it
+// cannot follow the mass THROUGH a clip, and measured against a roll, shifting a
+// body by one moved its drawn centre MORE than not shifting it at all. The engine
+// follows the pose properly instead, by carrying the centre as a fixed offset
+// from the hip bone (render3d/src/pose.js). What is written here is the STANCE
+// value, for the simulation — which needs an answer synchronously, before any rig
+// has been drawn.
 //
 // THE MODELS ARE IN FLUX, so this is a PIPELINE and not a one-off, exactly like
 // tools/derive_muzzles.mjs: the generated config fingerprints everything the
@@ -56,19 +58,6 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "src", "config_model_com.js");
 const BASE = process.env.BASE || "http://127.0.0.1:5174";
 const CHECK = process.argv.includes("--check");
-
-// How far a state's centre must sit from the idle one to be worth storing.
-// 0.02 of body height is about 3 px on a 150 px mech — under the width of the
-// pivot dot the workbench draws, and well under anything a player could see.
-const THRESHOLD = 0.02;
-
-// The states worth asking about: everything the game plays while a body is off
-// the ground or off its feet, which is where an anchor that disagrees with the
-// pose is visible. A grounded stance is the base and does not need listing.
-const STATES = [
-  "fall", "jump", "hover", "hurt", "dizzy", "prone", "getup",
-  "dodge_roll", "dodge_air", "ledge", "crouch", "land",
-];
 
 const POSE_SOURCES = [
   "render3d/src/states.js", "render3d/src/pose.js",
@@ -135,73 +124,37 @@ page.on("pageerror", (e) => console.error("PAGEERROR", String(e).slice(0, 200)))
 await page.goto(`${BASE}/?camera=flat&rigs=eager`);
 await page.waitForFunction(() => window.__render3d?.ready === true, { timeout: 240000 });
 
-const measured = await page.evaluate(async ({ STATES, THRESHOLD }) => {
+const measured = await page.evaluate(async () => {
   const rd = await import("/render3d/src/backend.js");
+  const rigs = await import("/render3d/src/loader.js");
   const { CHARACTER_KEYS } = await import("/src/characters.js");
 
-  // Big enough that a mech lands on a couple of hundred rows — the centroid is
-  // an average over thousands of pixels, so this is already far more precision
-  // than four decimal places of body height.
-  const S = 512;
+  // Drawing the stance is what triggers the weigh-in: the skinning palette only
+  // exists once a frame has been rendered, so pose.ensureCom waits for the first
+  // `idle` (it explains why at length). One draw per mech, then read the answer
+  // the ENGINE arrived at — this pass is a transcription of the runtime
+  // measurement, not a second opinion about it.
   const canvas = document.createElement("canvas");
-  canvas.width = S; canvas.height = S;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-
-  /** The alpha-weighted centroid of one drawn pose, as a fraction of the drawn
-   *  body's height above its lowest row. Null when nothing was drawn. */
-  const measure = (key, animKey) => {
-    ctx.clearRect(0, 0, S, S);
-    const token = rd.currentFrame(key, animKey, 0.1);
-    if (!token) return null;
-    // Feet near the bottom of the square, body centred: a pose that reaches is
-    // still inside the frame, and the measurement is of the pixels either way.
-    if (!rd.drawCharFrame(ctx, key, token, S / 2, S * 0.92, { facing: 1, scale: 1 })) return null;
-    const d = ctx.getImageData(0, 0, S, S).data;
-    let top = Infinity, bottom = -Infinity, mass = 0, acc = 0;
-    for (let y = 0; y < S; y++) {
-      for (let x = 0; x < S; x++) {
-        // 8/255 rather than 0: a premultiplied edge leaves a dusting of nearly
-        // transparent pixels well outside the body, and letting those set the
-        // bounds would stretch the height the fraction is taken against.
-        const a = d[((y * S) + x) * 4 + 3];
-        if (a < 8) continue;
-        if (y < top) top = y;
-        if (y > bottom) bottom = y;
-        mass += a;
-        acc += a * y;
-      }
-    }
-    if (!(mass > 0) || !(bottom > top)) return null;
-    // Image y grows DOWNWARD, so height above the foot line is bottom minus the
-    // centroid, over the body's own span.
-    return (bottom - (acc / mass)) / (bottom - top);
-  };
+  canvas.width = 512; canvas.height = 512;
+  const ctx = canvas.getContext("2d");
 
   const rows = [];
   for (const key of CHARACTER_KEYS) {
-    const base = measure(key, "idle");
-    if (base == null) { rows.push({ key, error: "idle did not draw" }); continue; }
-    const states = {};
-    for (const st of STATES) {
-      const v = measure(key, st);
-      if (v == null) continue;
-      if (Math.abs(v - base) > THRESHOLD) states[st] = +v.toFixed(4);
-    }
-    rows.push({ key, base: +base.toFixed(4), states });
+    const token = rd.currentFrame(key, "idle", 0.1);
+    if (token) rd.drawCharFrame(ctx, key, token, 256, 470, { facing: 1, scale: 1 });
+    const frac = rigs.rigComFrac(key);
+    if (typeof frac !== "number") { rows.push({ key, error: "could not be weighed" }); continue; }
+    rows.push({ key, base: +frac.toFixed(4) });
   }
   return rows;
-}, { STATES, THRESHOLD });
+});
 
 await browser.close();
 
 const failed = measured.filter((r) => r.error);
 const ok = measured.filter((r) => !r.error).sort((a, b) => a.key.localeCompare(b.key));
 
-for (const r of ok) {
-  const extra = Object.entries(r.states);
-  console.log(`  ${r.key.padEnd(10)} ${r.base.toFixed(3)}`
-    + (extra.length ? `   ${extra.map(([k, v]) => `${k} ${v.toFixed(2)}`).join(", ")}` : ""));
-}
+for (const r of ok) console.log(`  ${r.key.padEnd(10)} ${r.base.toFixed(3)}`);
 for (const r of failed) console.log(`  ${r.key.padEnd(10)} FAILED — ${r.error}`);
 
 if (!ok.length) {
@@ -209,10 +162,7 @@ if (!ok.length) {
   process.exit(1);
 }
 
-const body = ok.map((r) => {
-  const states = Object.keys(r.states).length ? `, "states":${JSON.stringify(r.states)}` : "";
-  return `  "${r.key}": {"base":${r.base}${states}},`;
-}).join("\n");
+const body = ok.map((r) => `  "${r.key}": ${r.base},`).join("\n");
 
 writeFileSync(OUT, `// GENERATED by tools/derive_com.mjs — do not edit by hand.
 //
@@ -222,12 +172,13 @@ writeFileSync(OUT, `// GENERATED by tools/derive_com.mjs — do not edit by hand
 // turns about, the anchor an airborne body hangs from, the chest line an aim
 // solves from, and the centre a launched hurtbox hangs on.
 //
-// Measured as the alpha-weighted centroid of the mech as the game draws it, in
-// its idle stance (\`base\`) and again in the states that move the mass more than
-// ${THRESHOLD} of body height (\`states\`) — a fall tucks the legs and carries the centre
-// up, a knockdown puts it on the floor. Measured off the DRAWING rather than off
-// the skeleton because this roster has two rig families and no bone-level
-// question has one answer across both; tools/derive_com.mjs explains at length.
+// Weighed off each mech's own triangles in its stance — the area-weighted
+// centroid of the body, which is the centre of mass of a uniform shell. This is a
+// transcription of the number the ENGINE measures at runtime
+// (render3d/src/pose.js measureCom), so the simulation and the renderer cannot
+// hold two opinions about where a mech's mass is. The renderer additionally
+// carries it as an offset from the hip bone, so it follows the pose; this is the
+// standing value, which is what the simulation scales by.
 //
 // Read by src/body_points.js BELOW a human decision in src/config_body_points.js
 // and ABOVE the roster-wide COM_BODY_FRAC fallback: measurement beats the

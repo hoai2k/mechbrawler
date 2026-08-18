@@ -9,8 +9,8 @@
 //
 //   1. IT IS KNOWN, for every mech. It used to be the roster-wide 0.55 for all
 //      seventeen (src/config_body_points.js is empty), and a first attempt to
-//      measure it off the skeleton answered for five of them not at all and gave
-//      the CHEST for the other twelve.
+//      measure it off a named bone answered for five of them not at all and gave
+//      the CHEST for the other twelve. It is weighed off the body itself now.
 //   2. THE GAME ANSWERS WITH IT. A measurement nothing reads is decoration, and a
 //      pivot that is not the number body_points hands out is a pivot nothing else
 //      shares — which is how an airborne mech ended up anchored to one point and
@@ -73,16 +73,15 @@ const known = await page.evaluate(async () => {
   const { CHARACTER_KEYS } = await import("/src/characters.js");
   return {
     roster: CHARACTER_KEYS.length,
-    measured: CHARACTER_KEYS.filter((k) => typeof MODEL_COM[k]?.base === "number").length,
+    measured: CHARACTER_KEYS.filter((k) => typeof MODEL_COM[k] === "number").length,
     outOfBand: CHARACTER_KEYS.filter((k) => {
-      const v = MODEL_COM[k]?.base;
+      const v = MODEL_COM[k];
       return typeof v === "number" && !(v > 0.35 && v < 0.7);
     }),
     disagreeing: CHARACTER_KEYS.filter((k) => {
-      const v = MODEL_COM[k]?.base;
+      const v = MODEL_COM[k];
       return typeof v === "number" && Math.abs(comFrac(k) - v) > 0.0005;
     }),
-    states: Object.values(MODEL_COM).reduce((n, m) => n + Object.keys(m.states || {}).length, 0),
   };
 });
 
@@ -95,9 +94,6 @@ check(!known.outOfBand.length,
 check(!known.disagreeing.length,
   "...and body_points.comFrac hands out the measurement, not the 0.55 default",
   known.disagreeing.length ? known.disagreeing.join(", ") : `all ${known.roster} agree`);
-check(known.states > 0,
-  "...and the states that move the mass carry their own centre",
-  `${known.states} state override(s) across the roster`);
 
 // ------------------------------------------------------ and standing on it
 const plants = await page.evaluate(async ({ SAMPLES }) => {

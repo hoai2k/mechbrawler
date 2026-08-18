@@ -115,7 +115,7 @@ export function fighterTransform(f) {
     // "how far is the mass above the floor", so a machine that carries its
     // weight low has less of it to travel.
     const key = f.spriteChar || f.charKey;
-    dy += flatness * (headHeightTarget(key) * comFrac(key, f.animKey) - 26);
+    dy += flatness * (headHeightTarget(key) * comFrac(key) - 26);
   }
 
   if (f.dizzy > 0) {

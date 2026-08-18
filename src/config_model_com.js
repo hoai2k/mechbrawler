@@ -6,12 +6,13 @@
 // turns about, the anchor an airborne body hangs from, the chest line an aim
 // solves from, and the centre a launched hurtbox hangs on.
 //
-// Measured as the alpha-weighted centroid of the mech as the game draws it, in
-// its idle stance (`base`) and again in the states that move the mass more than
-// 0.02 of body height (`states`) — a fall tucks the legs and carries the centre
-// up, a knockdown puts it on the floor. Measured off the DRAWING rather than off
-// the skeleton because this roster has two rig families and no bone-level
-// question has one answer across both; tools/derive_com.mjs explains at length.
+// Weighed off each mech's own triangles in its stance — the area-weighted
+// centroid of the body, which is the centre of mass of a uniform shell. This is a
+// transcription of the number the ENGINE measures at runtime
+// (render3d/src/pose.js measureCom), so the simulation and the renderer cannot
+// hold two opinions about where a mech's mass is. The renderer additionally
+// carries it as an offset from the hip bone, so it follows the pose; this is the
+// standing value, which is what the simulation scales by.
 //
 // Read by src/body_points.js BELOW a human decision in src/config_body_points.js
 // and ABOVE the roster-wide COM_BODY_FRAC fallback: measurement beats the
@@ -23,30 +24,30 @@
 // `--check` fails while this file is stale.
 
 export const MODEL_COM = {
-  "colossus": {"base":0.4462, "states":{"fall":0.5216,"jump":0.5058,"hover":0.5754,"hurt":0.4706,"dizzy":0.4737,"prone":0.5164,"getup":0.5519,"dodge_roll":0.5245,"dodge_air":0.5245,"ledge":0.4808}},
-  "cranky": {"base":0.4772, "states":{"fall":0.6338,"jump":0.5752,"hover":0.5927,"hurt":0.5715,"dizzy":0.5705,"prone":0.5655,"getup":0.514,"dodge_roll":0.599,"dodge_air":0.599,"ledge":0.6314}},
-  "fenrir": {"base":0.4861, "states":{"fall":0.5111,"jump":0.5415,"hover":0.5914,"prone":0.5288,"getup":0.5336,"dodge_roll":0.6579,"dodge_air":0.6579,"ledge":0.5455,"crouch":0.5091,"land":0.5183}},
-  "frogger": {"base":0.5385, "states":{"fall":0.601,"jump":0.5712,"dizzy":0.5087,"prone":0.4431,"getup":0.4297,"ledge":0.5753,"crouch":0.3985,"land":0.4699}},
-  "glacier": {"base":0.4887, "states":{"fall":0.5543,"jump":0.53,"hover":0.5837,"hurt":0.5218,"prone":0.3833,"getup":0.4055,"dodge_roll":0.5357,"dodge_air":0.5357,"crouch":0.4543,"land":0.4485}},
-  "inferno": {"base":0.4933, "states":{"fall":0.5401,"jump":0.5269,"hover":0.5734,"hurt":0.5428,"dizzy":0.5518,"getup":0.5205,"dodge_roll":0.5659,"dodge_air":0.5659,"ledge":0.5465,"land":0.4719}},
-  "jerry": {"base":0.5394, "states":{"fall":0.6423,"jump":0.6119,"hover":0.6404,"hurt":0.609,"dizzy":0.61,"getup":0.5756,"dodge_roll":0.6546,"dodge_air":0.6546,"ledge":0.6246,"crouch":0.4716}},
-  "konga": {"base":0.4857, "states":{"fall":0.5712,"jump":0.5763,"hover":0.5748,"hurt":0.544,"dizzy":0.5551,"prone":0.4564,"dodge_roll":0.556,"dodge_air":0.556,"ledge":0.568,"land":0.4461}},
-  "nullbot": {"base":0.4849, "states":{"fall":0.5903,"jump":0.5211,"hurt":0.5271,"dizzy":0.5294,"prone":0.3717,"getup":0.436,"dodge_roll":0.5056,"dodge_air":0.5056,"ledge":0.4626,"crouch":0.4641,"land":0.4537}},
-  "rhino": {"base":0.4918, "states":{"fall":0.5641,"jump":0.5593,"hover":0.5312,"hurt":0.4674,"dizzy":0.4563,"prone":0.4505,"getup":0.4315,"dodge_roll":0.5499,"dodge_air":0.5499,"crouch":0.4715}},
-  "saurion": {"base":0.5712, "states":{"hover":0.6236,"prone":0.4951,"getup":0.4705,"dodge_roll":0.5471,"dodge_air":0.5471,"ledge":0.5502,"crouch":0.4138,"land":0.4117}},
-  "tempest": {"base":0.4764, "states":{"fall":0.5877,"jump":0.5513,"hurt":0.499,"prone":0.3865,"getup":0.4249,"crouch":0.4404,"land":0.4424}},
-  "titanus": {"base":0.4727, "states":{"fall":0.5435,"jump":0.5154,"hover":0.5742,"hurt":0.5181,"dizzy":0.526,"prone":0.5344,"getup":0.5312,"dodge_roll":0.546,"dodge_air":0.546,"ledge":0.5198}},
-  "tritone": {"base":0.4899, "states":{"fall":0.6285,"jump":0.6137,"hover":0.6144,"hurt":0.4384,"dizzy":0.4353,"prone":0.4594,"getup":0.4516,"dodge_roll":0.568,"dodge_air":0.568,"ledge":0.5722}},
-  "viper": {"base":0.4876, "states":{"fall":0.515,"jump":0.531,"hover":0.5933,"hurt":0.5394,"dizzy":0.5514,"getup":0.5126,"dodge_roll":0.589,"dodge_air":0.589,"ledge":0.5496}},
-  "vulcan": {"base":0.4877, "states":{"jump":0.5139,"hover":0.5716,"hurt":0.5293,"dizzy":0.5359,"getup":0.5185,"dodge_roll":0.524,"dodge_air":0.524}},
-  "wraith": {"base":0.5354, "states":{"fall":0.5873,"jump":0.614,"hover":0.6482,"hurt":0.598,"dizzy":0.6131,"prone":0.4762,"dodge_roll":0.6777,"dodge_air":0.6777,"ledge":0.6512,"crouch":0.569}},
+  "colossus": 0.4367,
+  "cranky": 0.4968,
+  "fenrir": 0.4969,
+  "frogger": 0.5418,
+  "glacier": 0.4848,
+  "inferno": 0.5038,
+  "jerry": 0.5095,
+  "konga": 0.48,
+  "nullbot": 0.4876,
+  "rhino": 0.5009,
+  "saurion": 0.4972,
+  "tempest": 0.5137,
+  "titanus": 0.477,
+  "tritone": 0.5114,
+  "viper": 0.5197,
+  "vulcan": 0.508,
+  "wraith": 0.5524,
 };
 
 // Fingerprint of everything the measurement above is a function of.
 // `--check` fails while this file is stale.
 export const COM_INPUTS = {
   "manifest": "70cedc89d726",
-  "poses": "81edb5ccb298",
+  "poses": "403490365fff",
   "models": {
     "colossus": "4897362b6b45",
     "cranky": "44b516436434",

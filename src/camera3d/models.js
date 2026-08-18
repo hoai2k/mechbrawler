@@ -89,7 +89,7 @@ export function makeModels() {
     const delay = f.action?.move?.delay;
     const beat = typeof delay === "number" && f.action.anim === f.animKey ? delay : undefined;
     const posed = adapter.poseInstance(inst, charKey, f.animKey, f.animTime, {
-      facing: f.facingVis, aim, x: f.x, chestY: f.y - onScreenPx * comFrac(charKey, f.animKey), beat,
+      facing: f.facingVis, aim, x: f.x, chestY: f.y - onScreenPx * comFrac(charKey), beat,
       prevAnim: f.prevAnim,
     });
     if (!posed) return false;
@@ -140,33 +140,33 @@ export function makeModels() {
     // turn instead. (Scale stays foot-anchored on purpose: squash keeps the feet
     // planted.)
     //
-    // MEASURED FOR THIS MECH IN THIS STATE — body_points.comFrac, off
-    // config_model_com.js. It matters that it is one number from one function:
-    // an earlier version took the pivot from a roster-wide constant and the
-    // airborne anchor from a chest bone, and correcting between two different
-    // points on the body left a mech hanging in the air for as long as it was
-    // off the ground. Same call, same answer, nothing to disagree.
-    const com = onScreenPx * comFrac(charKey, f.animKey) * S * (m.scaleY ?? 1);
+    // THE LIVE CENTRE OF MASS, carried by the hip bone (pose.comLocalY): weighed
+    // off this mech's own body once and stored as a fixed offset from the hips,
+    // so it follows whatever the clip is doing — a tuck raises it, a sprawl drops
+    // it — for one matrix transform a frame.
+    //
+    // The measured FRACTION (body_points.comFrac, off config_model_com.js) is the
+    // fallback for a body not yet weighed, and it is the same measurement taken
+    // offline, so the two cannot disagree about where a mech's mass is.
+    const standCom = onScreenPx * comFrac(charKey) * S * (m.scaleY ?? 1);
+    const localY = adapter.comLocalY?.(inst) ?? null;
+    const com = localY != null ? localY * s * (m.scaleY ?? 1) : standCom;
     const baseX = worldX(f.x + (m.offsetX || 0));
-    const baseY = worldY(f.y + (m.offsetY || 0));
+    let baseY = worldY(f.y + (m.offsetY || 0));
 
-    // NOT ANCHORED TO THE MASS AIRBORNE — deliberately, for now.
+    // AIRBORNE, HANG FROM THE MASS RATHER THAN THE FEET.
     //
-    // The rig's origin is on the floor between the feet, so an airborne body is
-    // still hung by its soles here, and the clip's own movement of the mass
-    // reads as the mech bobbing. Hanging it from the mass instead needs to know
-    // where the mass is AS THE CLIP PLAYS, and a per-state number cannot follow
-    // that: measured against a roll, shifting the body by the state's own
-    // fraction moved the drawn centre MORE than leaving it alone did
-    // (tools/smoke_roll_axis.mjs measures both). Tracking it frame by frame
-    // needs a runtime centre of mass, and neither rig family here gives one
-    // cheaply — the hand-rigged mechs would answer off their skin weights, the
-    // auto-rigged five bind to bones that all sit at the origin.
+    // The rig's origin is on the floor between them, so planting it at `f.y`
+    // anchors the drawing by its soles. That is right on the ground and wrong in
+    // the air: a body mid-somersault has no feet on anything for the anchor to
+    // mean, and anchoring there turns the clip's own movement of the mass into
+    // the whole mech bobbing.
     //
-    // So the honest state is: the PIVOT is this mech's own measured centre, and
-    // the ANCHOR is still the feet. That is strictly better than the pair
-    // disagreeing, which is what shipped before and what left a mech shoved
-    // vertically for as long as it was off the ground.
+    // So airborne the body is shifted until its mass sits where the SIM believes
+    // the mass is — a fixed fraction of drawn height above the fighter's point —
+    // and the feet go wherever the pose puts them. Grounded, the feet win and
+    // standOnGround keeps them on the deck.
+    if (!f.grounded && localY != null) baseY += standCom - com;
 
     root.position.set(baseX + Math.sin(rot) * com, baseY + (1 - Math.cos(rot)) * com, 0);
     // Outline width is authored in blitted pixels, and the ink shader spends

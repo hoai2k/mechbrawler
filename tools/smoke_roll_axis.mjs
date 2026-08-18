@@ -96,7 +96,7 @@ const r = await page.evaluate(async (want) => {
   // pivot nothing else in the game shares.
   const rigged = [];
   for (const key of CHARACTER_KEYS) {
-    const measured = MODEL_COM[key]?.base ?? null;
+    const measured = typeof MODEL_COM[key] === "number" ? MODEL_COM[key] : null;
     if (measured !== null) rigged.push({ key, measured, resolved: +comFrac(key).toFixed(4) });
   }
   return {
@@ -105,8 +105,7 @@ const r = await page.evaluate(async (want) => {
     fixedAt60: headAfterRoll("ZYX", 60, 45),
     rigged,
     rosterSize: CHARACTER_KEYS.length,
-    statesMeasured: Object.values(MODEL_COM).reduce((n, m) => n + Object.keys(m.states || {}).length, 0),
-    wantMeasured: MODEL_COM[want]?.base ?? null,
+    wantMeasured: typeof MODEL_COM[want] === "number" ? MODEL_COM[want] : null,
   };
 }, WANT);
 
@@ -134,11 +133,6 @@ check(!mismatched.length,
   mismatched.length
     ? mismatched.slice(0, 3).map((x) => `${x.key} measured ${x.measured} but got ${x.resolved}`).join("; ")
     : `all ${r.rigged.length} agree`);
-// A pose moves the mass, and the states that move it are the airborne ones —
-// which is where an anchor that disagrees with its pivot used to show.
-check(r.statesMeasured > 0,
-  "...and the states that move the mass carry their own centre",
-  `${r.statesMeasured} state override(s) across the roster`);
 
 // ---------------------------------------------------------------- the shipped path
 //
@@ -190,14 +184,78 @@ check(Math.abs(live.rollRad) > 0.01 && Math.abs(live.yawRad) > 0.01,
   "...on a mech that is really both rolling and turned",
   `roll ${live.rollRad} rad, yaw ${live.yawRad} rad, motion says ${live.motionRot}`);
 
-// NOTE ON WHAT IS NOT CHECKED HERE. An airborne body is still hung by its feet
-// (src/camera3d/models.js says why), so there is no "the mass holds still
-// through a roll" invariant to assert yet — an earlier version of this file
-// checked exactly that against an implementation that tracked a chest bone, and
-// tracking the chest is what left a mech floating. When a runtime centre of mass
-// exists for both rig families, the check to add back is that the drawn body's
-// centre moves LESS than its origin across a swept roll; measured today it moves
-// more, which is the honest reason the anchor is not wired up.
+// AIRBORNE, THE MASS HOLDS STILL. The rig's origin is on the floor between the
+// feet, so anchoring there turns the clip's own movement of the mass into the
+// whole mech bobbing — and mid-somersault there are no feet on anything for the
+// anchor to mean. Sweep a roll and watch where the body's centre goes.
+//
+// The BODY's centre is sampled off the DRAWN vertices rather than read from a
+// named bone. An earlier version read the spine, which was fair while the centre
+// of mass was a bone's height and is not now that it is weighed off the body — and
+// tracking the chest instead of the mass is what left a mech floating.
+const drift = await page.evaluate(async () => {
+  const { state } = await import("/src/state.js");
+  const rigs = await import("/render3d/src/loader.js");
+  const THREE = await import("/vendor/three/three.module.js");
+  const a = state.fighters[0];
+  const main = state.platforms.find((p) => p.kind === "main");
+  const inst = rigs.acquireInstance(a.charKey, a.id);
+  const centres = [];
+  const origins = [];
+  const pin = (t) => {
+    Object.assign(a, { x: 640, y: main.y - 260, vx: 300, vy: 0, grounded: false,
+      hitstun: 0, dead: false, respawnTimer: 0, invuln: 0 });
+    a.action = { kind: "dodge", t, dur: 0.4, anim: "dodge_roll", lockMovement: true };
+  };
+  // The mean height of the drawn body — a stand-in for its centroid that costs
+  // one pass over a sample of the skinned vertices. `applyBoneTransform` takes
+  // the base position IN the vector, so it is seeded first.
+  const SAMPLES = 1500;
+  const bodyCentreY = () => {
+    inst.root.updateMatrixWorld(true);
+    const v = new THREE.Vector3();
+    let sum = 0, n = 0;
+    inst.root.traverse((o) => {
+      const pos = o.isMesh && !o.userData.isOutline && o.geometry?.attributes?.position;
+      if (!pos) return;
+      const stride = Math.max(1, Math.floor(pos.count / SAMPLES));
+      for (let i = 0; i < pos.count; i += stride) {
+        v.fromBufferAttribute(pos, i);
+        if (o.isSkinnedMesh && o.applyBoneTransform) o.applyBoneTransform(i, v);
+        o.localToWorld(v);
+        sum += v.y; n++;
+      }
+    });
+    return n ? sum / n : null;
+  };
+  for (let i = 0; i <= 8; i++) {
+    // Re-pinned on both sides of the frame: gravity would otherwise carry the
+    // mech down between them and the fall would be measured as pose drift.
+    pin((i / 8) * 0.4);
+    await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
+    pin((i / 8) * 0.4);
+    await new Promise((res) => requestAnimationFrame(res));
+    const c = bodyCentreY();
+    if (c === null) return null;
+    centres.push(c);
+    origins.push(inst.root.position.y);
+  }
+  const span = (v) => Math.max(...v) - Math.min(...v);
+  return { comSpan: +span(centres).toFixed(4), originSpan: +span(origins).toFixed(4) };
+});
+
+if (drift === null) {
+  check(false, "airborne, the body's centre holds still through a whole roll",
+    "nothing drawn to measure");
+} else {
+  // The pair is the point: it is not that the centre is perfectly still — the
+  // fixture shares its mech with the live loop, so gravity lands between each pin
+  // and its render — but that the ORIGIN is now the thing doing the moving, which
+  // is what "hung from the mass rather than the feet" means.
+  check(drift.originSpan > drift.comSpan,
+    "airborne, the origin moves and the body's centre holds still",
+    `origin moved ${drift.originSpan} against the centre's ${drift.comSpan}`);
+}
 
 await browser.close();
 console.log(failed ? `\n${failed} check(s) failed` : "\nall roll-axis checks passed");
