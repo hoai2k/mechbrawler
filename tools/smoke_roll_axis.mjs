@@ -9,10 +9,13 @@
 //      the result — so the roll axis was the body's local Z carried round by the
 //      yaw. At the angles this game presents a travel state at, almost all of a
 //      45° roll became DEPTH: the mech swung toward the lens instead of tipping.
-//   2. THE PIVOT. `comFrac` (src/body_points.js) is a fraction of the DRAWN
-//      height, placed by eye. A rig is a different body — an ordinary biped's
-//      spine sits around 0.58 — so the model turned about a point that was not
-//      its centre.
+//   2. THE PIVOT. Every mech turned about a roster-wide 0.55 of drawn height,
+//      because src/config_body_points.js is empty and that was the only answer
+//      body_points.comFrac had. It is measured per mech and per state now
+//      (tools/derive_com.mjs), and the checks below hold the game to answering
+//      with the measurement — a pivot that is not the number body_points hands
+//      out is a pivot nothing else in the game shares, which is exactly how an
+//      airborne mech ended up anchored to one point and rotated about another.
 //
 // Needs playwright + Chromium (CHROMIUM_PATH to override) and the game served:
 //   node server.mjs   then:  node tools/smoke_roll_axis.mjs [baseUrl]
@@ -72,8 +75,8 @@ await page.waitForTimeout(8000);
 // a regression is told apart from a fixture that simply stopped working.
 const r = await page.evaluate(async (want) => {
   const THREE = await import("/vendor/three/three.module.js");
-  const rigs = await import("/render3d/src/loader.js");
   const { comFrac } = await import("/src/body_points.js");
+  const { MODEL_COM } = await import("/src/config_model_com.js");
   const { CHARACTER_KEYS } = await import("/src/characters.js");
 
   // The composition, exactly as src/camera3d/models.js builds it: a yaw from the
@@ -88,17 +91,22 @@ const r = await page.evaluate(async (want) => {
     return { x: +v.x.toFixed(3), y: +v.y.toFixed(3), z: +v.z.toFixed(3) };
   };
 
+  // Every mech's measured centre, and what the game answers with for it — the
+  // two must agree, because a pivot that is not what body_points hands out is a
+  // pivot nothing else in the game shares.
   const rigged = [];
   for (const key of CHARACTER_KEYS) {
-    const measured = rigs.rigComFrac(key);
-    if (measured !== null) rigged.push({ key, measured, authored: +comFrac(key).toFixed(3) });
+    const measured = MODEL_COM[key]?.base ?? null;
+    if (measured !== null) rigged.push({ key, measured, resolved: +comFrac(key).toFixed(4) });
   }
   return {
     depthAt80: headAfterRoll("XYZ", 80, 45),
     fixedAt80: headAfterRoll("ZYX", 80, 45),
     fixedAt60: headAfterRoll("ZYX", 60, 45),
     rigged,
-    wantMeasured: rigs.rigComFrac(want),
+    rosterSize: CHARACTER_KEYS.length,
+    statesMeasured: Object.values(MODEL_COM).reduce((n, m) => n + Object.keys(m.states || {}).length, 0),
+    wantMeasured: MODEL_COM[want]?.base ?? null,
   };
 }, WANT);
 
@@ -113,19 +121,24 @@ check(Math.abs(r.depthAt80.z) > 0.5,
   "(the old order really did send the roll into depth — the fault is reproduced here)",
   `XYZ at yaw 80° put the head at z=${r.depthAt80.z}, against 0`);
 
-check(r.rigged.length > 0, "the rigs report a measured centre of mass",
-  `${r.rigged.length} of the roster`);
-check(r.rigged.every((x) => x.measured > 0.3 && x.measured < 0.8),
-  "...and every one of them is somewhere a torso could be",
+check(r.rigged.length === r.rosterSize,
+  "EVERY mech has a measured centre of mass, not just the ones a bone search understood",
+  `${r.rigged.length} of ${r.rosterSize}`);
+check(r.rigged.every((x) => x.measured > 0.35 && x.measured < 0.7),
+  "...and every one of them is somewhere a centre of mass could be",
   r.rigged.slice(0, 4).map((x) => `${x.key} ${x.measured}`).join(", "));
-// The authored fractions are all still the roster default (config_body_points.js
-// BODY_POINTS is empty), so measuring off the spine has to move the pivot for
-// most of the roster — otherwise the measurement is not being used.
-const moved = r.rigged.filter((x) => Math.abs(x.measured - x.authored) > 0.05);
-check(moved.length > 0,
-  "...and it is not just the authored number again where the two bodies differ",
-  `${moved.length} mech(s) differ, e.g. ${moved.slice(0, 3)
-    .map((x) => `${x.key} rig ${x.measured} vs authored ${x.authored}`).join("; ")}`);
+// The measurement is only worth having if the game actually answers with it.
+const mismatched = r.rigged.filter((x) => Math.abs(x.measured - x.resolved) > 0.0005);
+check(!mismatched.length,
+  "...and body_points.comFrac hands out the measured number, not the 0.55 default",
+  mismatched.length
+    ? mismatched.slice(0, 3).map((x) => `${x.key} measured ${x.measured} but got ${x.resolved}`).join("; ")
+    : `all ${r.rigged.length} agree`);
+// A pose moves the mass, and the states that move it are the airborne ones —
+// which is where an anchor that disagrees with its pivot used to show.
+check(r.statesMeasured > 0,
+  "...and the states that move the mass carry their own centre",
+  `${r.statesMeasured} state override(s) across the roster`);
 
 // ---------------------------------------------------------------- the shipped path
 //
@@ -177,61 +190,14 @@ check(Math.abs(live.rollRad) > 0.01 && Math.abs(live.yawRad) > 0.01,
   "...on a mech that is really both rolling and turned",
   `roll ${live.rollRad} rad, yaw ${live.yawRad} rad, motion says ${live.motionRot}`);
 
-// AIRBORNE, THE MASS HOLDS STILL. The rig's origin is on the floor between the
-// feet, so anchoring there makes the clip's own movement of the hips read as the
-// whole mech bobbing — and mid-somersault there are no feet on anything for the
-// anchor to mean. Sweep a roll and watch where the centre goes.
-const drift = await page.evaluate(async () => {
-  const { state } = await import("/src/state.js");
-  const rigs = await import("/render3d/src/loader.js");
-  const a = state.fighters[0];
-  const main = state.platforms.find((p) => p.kind === "main");
-  const inst = rigs.acquireInstance(a.charKey, a.id);
-  const bones = {};
-  inst.root.traverse((o) => { if (o.isBone) bones[o.name] = o; });
-  // Same order pose.js COM_BONES searches in, so this reads the bone the shipped
-  // code actually anchored to.
-  const spine = bones.torso || bones.hips || bones.Spine || bones.mixamorigSpine
-    || bones.Spine1 || bones.Hips || bones.mixamorigHips;
-  if (!spine) return null;
-  const origins = [];
-  const centres = [];
-  const pin = (t) => {
-    Object.assign(a, { x: 640, y: main.y - 260, vx: 300, vy: 0, grounded: false,
-      hitstun: 0, dead: false, respawnTimer: 0, invuln: 0 });
-    a.action = { kind: "dodge", t, dur: 0.4, anim: "dodge_roll", lockMovement: true };
-  };
-  for (let i = 0; i <= 8; i++) {
-    // Re-pinned on both sides of the frame: gravity would otherwise carry the
-    // mech down between them and the fall would be measured as pose drift.
-    pin((i / 8) * 0.4);
-    await new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(res)));
-    pin((i / 8) * 0.4);
-    await new Promise((res) => requestAnimationFrame(res));
-    inst.root.updateMatrixWorld(true);
-    centres.push(spine.matrixWorld.elements[13]);
-    origins.push(inst.root.position.y);
-  }
-  const span = (v) => Math.max(...v) - Math.min(...v);
-  return { comSpan: +span(centres).toFixed(4), originSpan: +span(origins).toFixed(4) };
-});
-
-if (drift === null) {
-  check(false, "airborne, the centre of mass holds still through a whole roll",
-    "this mech's rig has no COM bone to measure");
-} else {
-  // 0.08, not the ~0.001 the mechanism itself measures: the fixture shares its
-  // mech with the live loop, so up to two sim steps of gravity land between each
-  // pin and its render and read as drift. A foot-anchored rig measured an order
-  // of magnitude more, with the ORIGIN steadier than the centre, so the pair of
-  // checks still separates cleanly.
-  check(drift.comSpan < 0.08,
-    "airborne, the centre of mass holds still through a whole roll",
-    `centre moved ${drift.comSpan} world units across the turn`);
-  check(drift.originSpan > drift.comSpan,
-    "...which is the origin doing the moving instead, as it should be",
-    `origin moved ${drift.originSpan} against the centre's ${drift.comSpan}`);
-}
+// NOTE ON WHAT IS NOT CHECKED HERE. An airborne body is still hung by its feet
+// (src/camera3d/models.js says why), so there is no "the mass holds still
+// through a roll" invariant to assert yet — an earlier version of this file
+// checked exactly that against an implementation that tracked a chest bone, and
+// tracking the chest is what left a mech floating. When a runtime centre of mass
+// exists for both rig families, the check to add back is that the drawn body's
+// centre moves LESS than its origin across a swept roll; measured today it moves
+// more, which is the honest reason the anchor is not wired up.
 
 await browser.close();
 console.log(failed ? `\n${failed} check(s) failed` : "\nall roll-axis checks passed");

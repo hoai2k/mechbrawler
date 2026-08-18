@@ -16,15 +16,50 @@
 import { BODY_POINTS, HURTBOX_FIT } from "./config_body_points.js";
 // Measured from the rigs (tools/derive_muzzles.mjs) — MM's own anchor nodes.
 import { MODEL_MUZZLES } from "./config_model_muzzles.js";
+// Measured from the drawings (tools/derive_com.mjs) — the alpha-weighted centre
+// of each mech as the game renders it, per state.
+import { MODEL_COM } from "./config_model_com.js";
 import { COM_BODY_FRAC } from "./config_tuning.js";
 import { HEIGHT_BASE_PX } from "./config_tuning.js";
 
-/** Centre of mass as a fraction of drawn height — the pivot a tumble turns
- *  about, the point the 3D rig rotates about in-scene, the chest line an aim
- *  solves from, and the centre the airborne prone box hangs off. */
-export function comFrac(charKey) {
-  const v = BODY_POINTS[charKey]?.com;
-  return typeof v === "number" && v > 0.2 && v < 0.9 ? v : COM_BODY_FRAC;
+/**
+ * CENTRE OF MASS as a fraction of drawn height — the pivot a tumble turns about,
+ * the point the 3D rig rotates about in-scene, the anchor an airborne body hangs
+ * from, the chest line an aim solves from, and the centre the airborne prone box
+ * hangs off. It is the one point on a fighter that should hold STILL while
+ * everything else moves around it, which is why it has this many callers.
+ *
+ * Three answers, in this order — the same precedence muzzlePoint uses below:
+ *
+ *   1. A PINNED CENTRE (config_body_points.js): somebody looked at the machine
+ *      and said where its mass is. Decisions outrank measurement.
+ *   2. THE MEASURED CENTRE (config_model_com.js), read off the mech as the game
+ *      actually draws it by tools/derive_com.mjs.
+ *   3. COM_BODY_FRAC, the roster-wide 0.55 — which is what every mech got for
+ *      all seventeen of them before the measurement existed, from Saurion's long
+ *      low body to Titanus's top-heavy one.
+ *
+ * `animKey` asks for the centre IN THAT STATE, because a pose moves the mass: a
+ * fall tucks the legs and carries it up around a tenth of a body height, a
+ * knockdown puts it on the floor. States are stored only where they differ from
+ * the stance, so an unlisted one correctly answers with the base. Callers that
+ * do not know or care about the state omit it and get the standing answer.
+ *
+ * A caller that needs the pivot and a caller that needs the anchor MUST get the
+ * same number for the same fighter in the same state — an anchor that disagrees
+ * with its pivot is a body shoved vertically for as long as it is airborne,
+ * which is exactly how this last went wrong. That is the reason this is one
+ * function rather than a convention.
+ */
+export function comFrac(charKey, animKey = null) {
+  const pinned = BODY_POINTS[charKey]?.com;
+  if (typeof pinned === "number" && pinned > 0.2 && pinned < 0.9) return pinned;
+  const measured = MODEL_COM[charKey];
+  if (measured) {
+    const v = (animKey && measured.states?.[animKey]) ?? measured.base;
+    if (typeof v === "number" && v > 0.2 && v < 0.9) return v;
+  }
+  return COM_BODY_FRAC;
 }
 
 /**

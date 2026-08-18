@@ -58,19 +58,6 @@ export function makeModels() {
   let litFor = null;   // stage key the lights were derived for
   let drawn = 0;
 
-  /** The pivot a roll turns about, as a fraction of the drawn height.
-   *
-   *  The MODEL's own centre when the backend can measure it — the body being
-   *  turned here is the rig, and `comFrac` is a fraction of the DRAWN height,
-   *  placed by eye. They are not the same body: an ordinary biped's spine sits
-   *  around 0.58 while a hand-placed value sits nearer 0.5. The authored value
-   *  stays the fallback, which is what a mech with no rig (or a rig built to
-   *  some other convention) gets. */
-  const modelComFrac = (charKey) => {
-    const adapter = sceneAdapter();
-    return adapter?.comFrac?.(charKey) ?? comFrac(charKey);
-  };
-
   /** Sim pixels -> world units, the same mapping makeSimGroup applies, done
    *  by hand because this group must not inherit that group's -Y flip. */
   const worldX = (x) => (x - C.originX) * S;
@@ -102,7 +89,7 @@ export function makeModels() {
     const delay = f.action?.move?.delay;
     const beat = typeof delay === "number" && f.action.anim === f.animKey ? delay : undefined;
     const posed = adapter.poseInstance(inst, charKey, f.animKey, f.animTime, {
-      facing: f.facingVis, aim, x: f.x, chestY: f.y - onScreenPx * comFrac(charKey), beat,
+      facing: f.facingVis, aim, x: f.x, chestY: f.y - onScreenPx * comFrac(charKey, f.animKey), beat,
       prevAnim: f.prevAnim,
     });
     if (!posed) return false;
@@ -145,33 +132,43 @@ export function makeModels() {
     const rot = -(m.rotation || 0);
     root.rotation.z = rot;
 
-    // THE CENTRE OF MASS IS THE ANCHOR, not the feet.
+    // THE CENTRE OF MASS IS WHAT THE ROLL TURNS ABOUT.
     //
-    // The rig's origin is on the floor between them (delivery spec), so planting
-    // the origin at `f.y` anchors the drawing by the soles. That is right on the
-    // ground and wrong in the air: a body has no feet on anything mid-somersault,
-    // and anchoring there makes the pose's own movement of the hips read as the
-    // whole mech bobbing. What should hold still is the mass, and everything
-    // else should hang off it.
+    // The rig's origin is on the floor between the feet (delivery spec), so
+    // rotating in place would swing the body like a felled tree. Displacing the
+    // origin by where the roll carries it is what keeps the mass fixed under the
+    // turn instead. (Scale stays foot-anchored on purpose: squash keeps the feet
+    // planted.)
     //
-    // So: put the COM where the sim says the COM is, then — only when the mech is
-    // standing on something — leave the feet where standOnGround (pose.js) put
-    // them. Grounded, the two agree and the ground wins; airborne, the mass holds
-    // and the limbs move around it.
-    const com = onScreenPx * modelComFrac(charKey) * S * (m.scaleY ?? 1);
+    // MEASURED FOR THIS MECH IN THIS STATE — body_points.comFrac, off
+    // config_model_com.js. It matters that it is one number from one function:
+    // an earlier version took the pivot from a roster-wide constant and the
+    // airborne anchor from a chest bone, and correcting between two different
+    // points on the body left a mech hanging in the air for as long as it was
+    // off the ground. Same call, same answer, nothing to disagree.
+    const com = onScreenPx * comFrac(charKey, f.animKey) * S * (m.scaleY ?? 1);
     const baseX = worldX(f.x + (m.offsetX || 0));
     const baseY = worldY(f.y + (m.offsetY || 0));
-    // Rotating about the COM rather than the origin: displace the origin by where
-    // the roll carries it, which is what keeps the mass fixed under the turn
-    // instead of swinging the body like a felled tree.
+
+    // NOT ANCHORED TO THE MASS AIRBORNE — deliberately, for now.
+    //
+    // The rig's origin is on the floor between the feet, so an airborne body is
+    // still hung by its soles here, and the clip's own movement of the mass
+    // reads as the mech bobbing. Hanging it from the mass instead needs to know
+    // where the mass is AS THE CLIP PLAYS, and a per-state number cannot follow
+    // that: measured against a roll, shifting the body by the state's own
+    // fraction moved the drawn centre MORE than leaving it alone did
+    // (tools/smoke_roll_axis.mjs measures both). Tracking it frame by frame
+    // needs a runtime centre of mass, and neither rig family here gives one
+    // cheaply — the hand-rigged mechs would answer off their skin weights, the
+    // auto-rigged five bind to bones that all sit at the origin.
+    //
+    // So the honest state is: the PIVOT is this mech's own measured centre, and
+    // the ANCHOR is still the feet. That is strictly better than the pair
+    // disagreeing, which is what shipped before and what left a mech shoved
+    // vertically for as long as it was off the ground.
+
     root.position.set(baseX + Math.sin(rot) * com, baseY + (1 - Math.cos(rot)) * com, 0);
-    // Where the POSED mass actually is, which the clip moves and the fraction
-    // above does not know about — a tuck carries it up, a crouch carries it down.
-    // Airborne, correct for the difference so the mass stays put.
-    if (!f.grounded) {
-      const posed = adapter.posedComWorldY?.(inst) ?? null;
-      if (posed !== null) root.position.y += (baseY + com) - posed;
-    }
     // Outline width is authored in blitted pixels, and the ink shader spends
     // it in view space — so it takes world units per blitted pixel. One sim
     // pixel is S world units; the size dial rides along because a rig drawn

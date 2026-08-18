@@ -76,7 +76,7 @@ export function hurtbox(f) {
   // about the centre of mass — the point the spin pivots on.
   if (!f.grounded && Math.abs(Math.sin(f.spinAngle || 0)) > 0.7) {
     const bh = H * HURTBOX.proneH;
-    const cy = f.y - H * comFrac(key);
+    const cy = f.y - H * comFrac(key, f.animKey);
     return fit({ x: f.x - H * HURTBOX.proneW / 2, y: cy - bh / 2,
                  w: H * HURTBOX.proneW, h: bh }, "prone");
   }
