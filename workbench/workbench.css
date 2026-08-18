@@ -786,3 +786,116 @@ button.primary { border-color: rgba(98, 220, 255, 0.5); color: var(--cyan); }
   .split--cards > .rail--cards { flex: 0 0 auto; max-height: 44%; border-top: 1px solid var(--line); }
   .rail--picker { flex: 0 0 auto; }
 }
+
+/* ---------- the toon tool's palette and knobs ----------
+
+   The rail carries two very different things — a row of colours to judge, and
+   a column of numbers to tune — so they are given opposite weights. The
+   swatches are large and quiet (the colour is the content, everything else is
+   a caption); the knobs are dense and labelled, because a slider with no name
+   is a slider nobody touches. */
+
+.rail--toon { padding: 16px; overflow-y: auto; }
+.rail-note { line-height: 1.6; margin-bottom: 12px; }
+
+.palette { margin-bottom: 22px; }
+.palette-tex { margin: 14px 0 6px; }
+.palette-tex code { color: var(--cyan); word-break: break-all; }
+
+.swatches { display: flex; flex-direction: column; gap: 6px; }
+
+.swatch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid transparent;
+}
+/* A pinned fill is one somebody chose by hand rather than one the grade
+   picked, and that difference is the whole state of an edit — so it is marked
+   on the row, not only by the revert button going live. */
+.swatch.is-pinned { border-color: rgba(98, 220, 255, 0.45); }
+
+/* The colour input stripped back to the colour: browsers wrap it in a bevel
+   and a swatch inset by default, and both read as chrome sitting on top of
+   the thing being judged. */
+.swatch-dot {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.swatch-dot::-webkit-color-swatch-wrapper { padding: 0; }
+.swatch-dot::-webkit-color-swatch { border: 0; border-radius: 5px; }
+.swatch-dot::-moz-color-swatch { border: 0; border-radius: 5px; }
+.swatch-dot:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
+.swatch-body { flex: 1 1 auto; min-width: 0; }
+.swatch-head { display: flex; align-items: baseline; gap: 8px; }
+.swatch-head strong { font-size: 12px; letter-spacing: 0.03em; }
+.swatch-pct { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.swatch-meta { display: flex; gap: 8px; font-size: 11px; margin-top: 1px; }
+.swatch-meta code { color: var(--cyan); text-transform: uppercase; }
+.swatch-auto { color: var(--dim); }
+
+.swatch-revert {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+.swatch-revert:disabled { opacity: 0.25; cursor: default; }
+
+.knobgroup { margin-bottom: 20px; }
+.knobgroup h3 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.knobgroup-note { line-height: 1.55; margin-bottom: 12px; }
+
+.knob { margin-bottom: 14px; }
+.knob-head { display: flex; align-items: center; gap: 8px; }
+.knob-head label { font-size: 12px; flex: 1 1 auto; }
+.knob-head output {
+  font-size: 12px;
+  color: var(--cyan);
+  font-variant-numeric: tabular-nums;
+}
+.knob-reset {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1;
+}
+.knob-reset:disabled { opacity: 0.25; cursor: default; }
+/* A knob off the roster default is the other half of "what is edited here",
+   and the marker is on the VALUE rather than the row so a scan down the rail
+   reads as a list of numbers with a few of them claimed. */
+.knob.is-set .knob-head label { color: var(--text); }
+.knob.is-set .knob-head output { font-weight: 700; }
+.knob input[type="range"] { width: 100%; margin: 4px 0 2px; }
+.knob-help { line-height: 1.5; }
+
+#status.is-bad { color: var(--red); }
+
+/* A mech with edits, marked in the phone's roster list the same way the effect
+   tool marks a touched drawing. */
+.pick.is-dirty { border-left: 3px solid var(--cyan); }
+
+@media (max-width: 1100px) {
+  .split--pose { grid-template-columns: minmax(0, 1fr) 320px; }
+}

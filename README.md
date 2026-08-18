@@ -33,6 +33,18 @@ about where that pose came from printed beside it. A state that resolves to no
 clip says so in red, which is the failure it exists to find. The URL carries the
 mech and the state, so a bad pose can be pasted into a bug report as a link.
 
+<http://127.0.0.1:5174/workbench/?edit=toon> — the **toon workbench**: one mech
+under the toon render style, with the **cel palette** the analysis chose for it
+listed beside it — every flat fill, and how much of the texture wears it. That
+readout is half the point: "inferno is two reds and a brown" was previously
+only knowable by squinting at a render. Every swatch is a colour picker and
+every knob that decides which region gets which fill is a slider, and both
+repaint the live rig's actual texture rather than a preview. Undo/redo is
+Ctrl+Z / Ctrl+Shift+Z. **Export JSON** gives each edited mech's `toon.cel`
+block for `render3d/assets/manifest.json`; the roster defaults it is measured
+against live in `render3d/src/cel_palette.js`. The page forces `?render=toon`
+on itself, because the render style is fixed for a page's life.
+
 <http://127.0.0.1:5174/workbench/?edit=cards> — the **card workbench**: where
 each mech's painted card gets cropped. The UI squeezes one 3:4 painting into
 eight differently-shaped holes — a 52px square beside the damage, the 3:4 select
@@ -43,12 +55,12 @@ every one of those eight holes re-crops beside it as it moves, at its real size.
 `CARD_FOCUS` in `src/config_cards.js`. A card nobody has tuned crops at the top,
 exactly as the whole roster did before the tool existed.
 
-The first two are built for a phone as well as a desk: below 820px (or on a
-short landscape handset) the viewer takes the whole screen and everything else —
-the roster, the state list, the grid of drawings, the parameters, the toolbar —
-moves behind the buttons along the bottom, one bottom sheet at a time. Drag to
-orbit, pinch to zoom. The card tool stacks instead: the strip of cards, the
-painting, then the holes.
+All but the card tool are built for a phone as well as a desk: below 820px (or
+on a short landscape handset) the viewer takes the whole screen and everything
+else — the roster, the state list, the grid of drawings, the palette, the
+parameters, the toolbar — moves behind the buttons along the bottom, one bottom
+sheet at a time. Drag to orbit, pinch to zoom. The card tool stacks instead: the
+strip of cards, the painting, then the holes.
 
 ## Controls
 

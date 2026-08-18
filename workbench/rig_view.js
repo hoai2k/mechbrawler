@@ -31,6 +31,7 @@ import { headHeightTarget } from "../src/heights.js";
 
 let loader = null;   // render3d/src/loader.js, once the engine has booted
 let scene = null;    // render3d/src/scene.js
+let THREE = null;    // the vendored three, the same instance the backend booted
 let bootPromise = null;
 
 /**
@@ -46,7 +47,8 @@ export async function bootRenderer() {
     // that just booted, not fresh empty copies.
     loader = await import("../render3d/src/loader.js");
     scene = await import("../render3d/src/scene.js");
-    return { ready: render3d.modelCount() >= 0 };
+    THREE = await import("../vendor/three/three.module.js");
+    return { ready: render3d.modelCount() >= 0, style: render3d.renderStyle() };
   })();
   return bootPromise;
 }
@@ -121,6 +123,32 @@ export function resolution(charKey, state) {
 /** Is this mech's rig in memory and posable right now? */
 export function rigReady(charKey) {
   return !!loader?.hasRig?.(charKey);
+}
+
+/** The scene graph of a mech's loaded rig — what a tool that edits MATERIALS
+ *  rather than poses has to reach. Null until the rig lands. */
+export function rigRoot(charKey) {
+  return loader?.getRig?.(charKey)?.root || null;
+}
+
+/** The mech's manifest entry, as delivered — where a tool that art-directs a
+ *  character reads what is already set for them. */
+export function rigEntry(charKey) {
+  return loader?.rigManifest?.()?.characters?.[charKey] || null;
+}
+
+/** The vendored three, the same module instance the renderer booted with.
+ *  A second copy would build materials the renderer's own passes do not
+ *  recognise, so tools take this one rather than importing it themselves. */
+export function three() {
+  return THREE;
+}
+
+/** Drop every cached pose. A tool that changes how a mech is PAINTED has to:
+ *  the cache holds already-rendered pixels, and without this the viewer keeps
+ *  serving the pre-edit fighter however many times it redraws. */
+export function clearPoseCache() {
+  scene?.clearCache?.();
 }
 
 /** Start this mech's rig loading (idempotent, de-duped by the loader). Rigs are

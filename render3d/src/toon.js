@@ -45,7 +45,7 @@
  *  lights and cache tag — read one constant and cannot disagree mid-session. */
 export { RENDER_STYLE } from "./style.js";
 import { RENDER_STYLE } from "./style.js";
-import { celTexture } from "./cel_palette.js";
+import { celTexture, recelTexture, celPlanOf } from "./cel_palette.js";
 
 export const TOON_STYLE = RENDER_STYLE === "toon";
 
@@ -188,7 +188,9 @@ export function makeToonMaterial(THREE, src, overrides = {}) {
     // brightened fills (cel_palette.js) — the difference between "3D model
     // under a toon shader" and a coloured drawing. Alpha (cutout or the
     // shade-bias map below) passes through the flattening untouched.
-    map: celTexture(THREE, src?.map) || null,
+    // `p.cel` is this character's manifest `toon.cel` block: the grade's knobs
+    // and any hand-picked palette, art-directed in the toon workbench.
+    map: celTexture(THREE, src?.map, p.cel || {}) || null,
     transparent: !!src?.transparent,
     opacity: src?.opacity ?? 1,
     side: src?.side ?? THREE.FrontSide,
@@ -326,6 +328,45 @@ export function clearToonFor(root, keys) {
       WRITERS[key](mat.userData.uniforms, TOON[key]);
     }
   });
+}
+
+// ------------------------------------------------------- the cel palette
+//
+// The other half of a character's look, and the half that is about the
+// TEXTURE rather than the lighting: which flat colours this body is painted
+// in. The knobs live in the same manifest block (`toon.cel`), are applied at
+// load (makeToonMaterial above), and are edited live here by the toon
+// workbench — same shape as the ramp dials, same reason.
+
+/** Every distinct cel-flattened texture under `root`, in traversal order —
+ *  what the workbench lists palettes for. A rig usually has exactly one. */
+export function celTexturesOf(root) {
+  const seen = new Set();
+  const out = [];
+  root.traverse((o) => {
+    const mat = o.material;
+    if (!mat?.userData?.toonified || !mat.map || seen.has(mat.map)) return;
+    if (!celPlanOf(mat.map)) return;
+    seen.add(mat.map);
+    out.push(mat.map);
+  });
+  return out;
+}
+
+/** Repaint every cel texture on this character with `opts` (a `toon.cel`
+ *  block). Returns one `{ name, plan }` per texture — `name` is the SOURCE
+ *  texture's name, which is the key a per-texture palette is written under
+ *  (cel_palette.paletteFor), and the plan is what the workbench reads its
+ *  swatches off.
+ *
+ *  Textures are painted in place, so materials need no re-pointing; the
+ *  CALLER must drop the pose cache, because those pixels are already
+ *  rendered (scene.clearCache). */
+export function recelFor(THREE, root, opts = {}) {
+  return celTexturesOf(root).map((tex) => ({
+    name: tex.userData.cel.source.name || "",
+    plan: recelTexture(THREE, tex, opts),
+  }));
 }
 
 /** The stage speaks: scene.js derives a rim color from the stage's tint and

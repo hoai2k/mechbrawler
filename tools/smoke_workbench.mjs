@@ -196,15 +196,33 @@ await page.waitForTimeout(9000);
 check(await slide("dx", 90), "a handler-painted drawing takes an X nudge");
 check(await slide("rotationDeg", 40), "a handler-painted drawing takes a tilt");
 
-// The pose tool, and both tools at phone size: a layout that throws on boot is
+// The pose tool, and every tool at phone size: a layout that throws on boot is
 // the one failure that makes every other check meaningless.
 await page.goto(`${BASE}/workbench/?edit=pose`);
 await page.waitForTimeout(6000);
 check(!!(await page.$("#poseCanvas")), "the pose workbench boots");
 
+// The toon tool has one boot step the others do not: it only means anything
+// under the toon render style, and the style is fixed at page load, so the
+// router REDIRECTS to `?render=toon` before importing a renderer module. If
+// that ever stops happening the tool comes up drawing PBR mechs with an empty
+// palette rail — which looks like a broken analysis rather than a broken URL.
+await page.goto(`${BASE}/workbench/?edit=toon&mech=titanus`);
+await page.waitForTimeout(2000);
+check(new URL(page.url()).searchParams.get("render") === "toon",
+  `the toon workbench forces the toon style (${page.url()})`);
+await page.waitForSelector(".swatch", { timeout: 90000 }).catch(() => {});
+const swatches = (await page.$$(".swatch")).length;
+check(swatches > 1, `the toon workbench reads a palette off the live rig (${swatches} fills)`);
+// Ordered by coverage, biggest first — the promise a manifest `palette` block
+// is keyed on, since its entries name fills by index.
+const pcts = await page.$$eval(".swatch-pct", (els) => els.map((e) => parseFloat(e.textContent)));
+check(pcts.every((v, i) => i === 0 || pcts[i - 1] >= v),
+  `its palette is ordered by coverage (${pcts.map((p) => `${p}%`).join(" ")})`);
+
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 phone.on("pageerror", (e) => errors.push(`phone: ${String(e).slice(0, 200)}`));
-for (const url of [`${BASE}/workbench/`, `${BASE}/workbench/?edit=pose`]) {
+for (const url of [`${BASE}/workbench/`, `${BASE}/workbench/?edit=pose`, `${BASE}/workbench/?edit=toon`]) {
   await phone.goto(url);
   await phone.waitForTimeout(6000);
   const m = await phone.evaluate(() => ({
