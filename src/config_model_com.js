@@ -47,7 +47,7 @@ export const MODEL_COM = {
 // `--check` fails while this file is stale.
 export const COM_INPUTS = {
   "manifest": "70cedc89d726",
-  "poses": "403490365fff",
+  "poses": "a2c1a6113a23",
   "models": {
     "colossus": "4897362b6b45",
     "cranky": "44b516436434",

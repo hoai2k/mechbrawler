@@ -18,25 +18,24 @@
 
 export const MODEL_MUZZLES = {
   "cranky": {"x":39,"y":-114,"anchor":"muzzleL","clip":"glb:shootLow"},
-  "fenrir": {"x":64,"y":-105,"anchor":"muzzleR","clip":"glb:shoot"},
+  "fenrir": {"x":64,"y":-106,"anchor":"muzzleR","clip":"glb:shoot"},
   "frogger": {"x":32,"y":-43,"anchor":"muzzleR","clip":"glb:spray"},
-  "glacier": {"x":80,"y":-105,"anchor":"muzzleL","clip":"glb:shootLoopL"},
+  "glacier": {"x":80,"y":-107,"anchor":"muzzleL","clip":"glb:shootLoopL"},
   "inferno": {"x":91,"y":-120,"anchor":"muzzleR","clip":"glb:shootLoop"},
   "jerry": {"x":27,"y":-134,"anchor":"muzzleR","clip":"glb:shootLoop"},
   "konga": {"x":23,"y":-146,"anchor":"muzzleR","clip":"glb:kongaLob"},
   "rhino": {"x":54,"y":-35,"anchor":"muzzleR","clip":"glb:shoot"},
-  "saurion": {"x":118,"y":-54,"anchor":"muzzleR","clip":"glb:saurionQuillFan"},
   "tempest": {"x":57,"y":-38,"anchor":"muzzleR","clip":"glb:shoot"},
-  "titanus": {"x":65,"y":-156,"anchor":"muzzleR","clip":"glb:fistLaunch"},
-  "tritone": {"x":127,"y":-67,"anchor":"muzzleR","clip":"glb:tritoneBrace"},
-  "viper": {"x":47,"y":-106,"anchor":"muzzleR","clip":"glb:shoot"},
+  "titanus": {"x":65,"y":-162,"anchor":"muzzleR","clip":"glb:fistLaunch"},
+  "tritone": {"x":127,"y":-78,"anchor":"muzzleR","clip":"glb:tritoneBrace"},
+  "viper": {"x":47,"y":-105,"anchor":"muzzleR","clip":"glb:shoot"},
   "vulcan": {"x":74,"y":-124,"anchor":"muzzleR","clip":"glb:gatlingLoop"},
-  "wraith": {"x":102,"y":-103,"anchor":"muzzleR","clip":"glb:shoot"},
+  "wraith": {"x":102,"y":-102,"anchor":"muzzleR","clip":"glb:shoot"},
 };
 
 export const MUZZLE_INPUTS = {
   "manifest": "70cedc89d726",
-  "poses": "807e71d69b2d",
+  "poses": "c6743bfb4bf6",
   "models": {
     "colossus": "4897362b6b45",
     "cranky": "44b516436434",
