@@ -39,26 +39,21 @@ import { HEIGHT_BASE_PX } from "./config_tuning.js";
  *      all seventeen of them before the measurement existed, from Saurion's long
  *      low body to Titanus's top-heavy one.
  *
- * `animKey` asks for the centre IN THAT STATE, because a pose moves the mass: a
- * fall tucks the legs and carries it up around a tenth of a body height, a
- * knockdown puts it on the floor. States are stored only where they differ from
- * the stance, so an unlisted one correctly answers with the base. Callers that
- * do not know or care about the state omit it and get the standing answer.
- *
- * A caller that needs the pivot and a caller that needs the anchor MUST get the
- * same number for the same fighter in the same state — an anchor that disagrees
- * with its pivot is a body shoved vertically for as long as it is airborne,
- * which is exactly how this last went wrong. That is the reason this is one
- * function rather than a convention.
+ * THE STANDING ANSWER, one number per mech. A pose does move the mass, but this
+ * is not where that is handled: a per-state table of fractions is a sprite's
+ * answer to it, and a constant per state cannot follow the mass THROUGH a clip.
+ * The renderer carries the centre as a fixed offset from the hip bone instead
+ * (render3d/src/pose.js), so it follows the pose exactly and for one matrix
+ * transform. This is what the SIMULATION uses, which needs an answer
+ * synchronously and before any rig has been drawn, and it is what the renderer
+ * falls back to for a body it has not weighed yet — the same measurement either
+ * way, so the two cannot disagree about where a mech's mass is.
  */
-export function comFrac(charKey, animKey = null) {
+export function comFrac(charKey) {
   const pinned = BODY_POINTS[charKey]?.com;
   if (typeof pinned === "number" && pinned > 0.2 && pinned < 0.9) return pinned;
   const measured = MODEL_COM[charKey];
-  if (measured) {
-    const v = (animKey && measured.states?.[animKey]) ?? measured.base;
-    if (typeof v === "number" && v > 0.2 && v < 0.9) return v;
-  }
+  if (typeof measured === "number" && measured > 0.2 && measured < 0.9) return measured;
   return COM_BODY_FRAC;
 }
 

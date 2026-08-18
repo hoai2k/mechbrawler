@@ -401,6 +401,7 @@ export function initPose(three) {
   _vScale = new THREE.Vector3();
   _v4 = new THREE.Vector3();
   _v5 = new THREE.Vector3();
+  initComScratch(three);
 }
 
 /**
@@ -883,6 +884,223 @@ function measureSoleDelta(root) {
   // bone's own height is its negation.
   const boneMin = -groundOffset(bones, root);
   return meshMin - boneMin;
+}
+
+// ------------------------------------------------- the centre of mass
+//
+// WHERE A MECH'S MASS IS — the one point that should hold STILL while everything
+// else moves around it: the pivot a tumble turns about, the anchor an airborne
+// body hangs from, and the centre the sim hangs a launched hurtbox on.
+//
+// MEASURED ONCE, THEN CARRIED BY A BONE. The centre is weighed off the body's own
+// triangles at bind (the area-weighted centroid of the mesh, which is the centre
+// of mass of a uniform shell — the honest reading of "where is this machine's
+// mass" for a hollow game model), and then stored as a fixed OFFSET IN THE HIP
+// BONE'S LOCAL SPACE. Reading it back is one matrix transform, so the live centre
+// costs nothing per frame and follows the pose for free: a tuck carries the hips
+// up and the centre rides with them, a sprawl carries it down.
+//
+// WHY A HIP OFFSET rather than a per-state table of fractions. A fraction of
+// drawn height per animation state is a sprite's answer — it is a constant per
+// state, so it cannot follow the mass THROUGH a clip, and shifting a body by one
+// measured worse than not shifting it at all. The offset is a fact about the
+// body, not about a pose, so one measurement covers every frame of every clip.
+//
+// WHY NOT A BONE'S POSITION, which is the obvious cheap answer and is what an
+// earlier version of this did. A `torso`/`Spine` bone is the CHEST — 0.60 to 0.74
+// of body height across the twelve rigs that have such a bone — and the other
+// five here are auto-rigged with no name to search for. All seventeen do carry a
+// `hips`, so that is the handle; but the hip JOINT is not the centre of mass
+// either, which is exactly why what is stored is the offset from it rather than
+// the bone itself.
+
+// Triangles to weigh per mesh. The centroid converges long before a mech's full
+// 140-220k, and this runs once per rig at registration, so the stride keeps a
+// heavy delivery from costing a visible hitch. By stride rather than by chunk, so
+// the sample stays spread over the whole body.
+const COM_TRI_BUDGET = 8000;
+
+// The hip bone, best first. Every mech in this roster carries `hips`; the rest
+// are here so a rig imported from elsewhere still measures.
+const HIP_BONES = ["hips", "Hips", "mixamorigHips", "pelvis"];
+
+let _comA, _comB, _comC, _comAB, _comAC, _comCross, _comAcc, _comOut, _comMat;
+
+function initComScratch(three) {
+  _comA = new three.Vector3();
+  _comB = new three.Vector3();
+  _comC = new three.Vector3();
+  _comAB = new three.Vector3();
+  _comAC = new three.Vector3();
+  _comCross = new three.Vector3();
+  _comAcc = new three.Vector3();
+  _comOut = new three.Vector3();
+  _comMat = new three.Matrix4();
+}
+
+/** Is this object part of the BODY? Same filter measureSoleDelta uses: an outline
+ *  is a doubled shell of the mesh it wraps, and props and chains hang off the
+ *  machine rather than being it. */
+function isBodyMesh(o) {
+  if (!o.isMesh || o.userData.isOutline) return false;
+  for (let p = o; p; p = p.parent) {
+    if (/^(Prop_|Chain_)/.test(p.name || "")) return false;
+  }
+  return true;
+}
+
+/** This rig's hip bone, found by name once and cached. Instances are clones with
+ *  their own bone objects, so this resolves per rig rather than being copied. */
+function hipBone(rig) {
+  if (rig._comHips !== undefined) return rig._comHips;
+  let bone = null;
+  for (const name of HIP_BONES) {
+    const b = rig.root.getObjectByName(name);
+    if (b) { bone = b; break; }
+  }
+  rig._comHips = bone;
+  return bone;
+}
+
+/** One vertex of `o` in WORLD space, through the skin.
+ *
+ *  A SkinnedMesh's geometry is authored in bind space and its object transform is
+ *  usually identity — the scale and placement live on the BONES — so reading a
+ *  vertex through `o.matrixWorld` alone lands it in a different space from the
+ *  skeleton. `applyBoneTransform` is three's own skinning of a single vertex
+ *  (`boneTransform` before r151; both are tried), and it needs the skinning
+ *  palette, which the RENDERER fills once a frame — hence the `skeleton.update()`
+ *  at the call site, since nothing has drawn yet at registration. */
+function comVertex(o, pos, i, out) {
+  // Seeded FIRST: applyBoneTransform takes the base position in `out` and
+  // transforms it in place — it does not read the geometry itself. Calling it on
+  // an unseeded vector silently skins whatever was left in the scratch, which
+  // weighs the body at nothing.
+  out.fromBufferAttribute(pos, i);
+  if (o.isSkinnedMesh) {
+    const fn = o.applyBoneTransform || o.boneTransform;
+    // Returns the vertex in the mesh's own space, so the object transform still
+    // has to be applied on top.
+    if (typeof fn === "function") return fn.call(o, i, out).applyMatrix4(o.matrixWorld);
+  }
+  return out.applyMatrix4(o.matrixWorld);
+}
+
+/**
+ * Weigh this rig's body and pin its centre of mass to the hip bone.
+ *
+ * Called from measureBindMetrics, so the body is in the pose that DEFINES it —
+ * the offset is meant to be a fact about the machine, and taking it from whatever
+ * pose the workbench last left the skeleton in would bake that pose into it.
+ *
+ * Sets `_comOffset` (the centre, in hip-local space) and returns the centre as a
+ * fraction of the body's own height, which is what the sim wants for the things
+ * that scale by drawn height. Both come from the same measurement, so nothing
+ * downstream can hold two different opinions about where the mass is.
+ */
+function measureCom(rig, root) {
+  rig._comOffset = null;
+  if (!THREE || !_comAcc) return null;
+  const hips = hipBone(rig);
+  if (!hips) return null;
+
+  const box = new THREE.Box3();
+  let area = 0;
+  _comAcc.set(0, 0, 0);
+  root.traverse((o) => {
+    if (!isBodyMesh(o)) return;
+    const geom = o.geometry;
+    const pos = geom?.attributes?.position;
+    if (!pos) return;
+    // The skinning palette is computed by the renderer, once a frame. Nothing has
+    // drawn yet at registration, so without this every skinned vertex collapses
+    // onto the origin and the whole body weighs in at nothing.
+    if (o.isSkinnedMesh && o.skeleton) { try { o.skeleton.update(); } catch { /* unskinned fallback */ } }
+    const index = geom.index;
+    const count = index ? index.count : pos.count;
+    const tris = Math.floor(count / 3);
+    if (tris <= 0) return;
+    const stride = Math.max(1, Math.ceil(tris / COM_TRI_BUDGET));
+    for (let t = 0; t < tris; t += stride) {
+      const i = t * 3;
+      const i0 = index ? index.getX(i) : i;
+      const i1 = index ? index.getX(i + 1) : i + 1;
+      const i2 = index ? index.getX(i + 2) : i + 2;
+      comVertex(o, pos, i0, _comA);
+      comVertex(o, pos, i1, _comB);
+      comVertex(o, pos, i2, _comC);
+      // The BOUNDS come off the sampled triangles too, so the fraction below is a
+      // ratio of two numbers measured the same way.
+      box.expandByPoint(_comA); box.expandByPoint(_comB); box.expandByPoint(_comC);
+      _comAB.subVectors(_comB, _comA);
+      _comAC.subVectors(_comC, _comA);
+      // AREA-WEIGHTED, not a plain vertex average: tessellation is not uniform,
+      // and a finely-modelled head would drag a vertex average up into it.
+      const a = _comCross.crossVectors(_comAB, _comAC).length() * 0.5;
+      if (!(a > 0) || !Number.isFinite(a)) continue;
+      area += a;
+      _comAcc.x += a * (_comA.x + _comB.x + _comC.x) / 3;
+      _comAcc.y += a * (_comA.y + _comB.y + _comC.y) / 3;
+      _comAcc.z += a * (_comA.z + _comB.z + _comC.z) / 3;
+    }
+  });
+  if (!(area > 0)) return null;
+  const height = box.max.y - box.min.y;
+  if (!(height > 0)) return null;
+  _comAcc.divideScalar(area);
+  const frac = (_comAcc.y - box.min.y) / height;
+  // A centre outside the body is a measurement that went wrong, not a machine
+  // built oddly; leave the offset null and let the caller fall back.
+  if (!(frac > 0.1 && frac < 0.9)) return null;
+  hips.updateWorldMatrix(true, false);
+  rig._comOffset = hips.worldToLocal(_comAcc.clone());
+  return +frac.toFixed(4);
+}
+
+/**
+ * Weigh this rig once, the first time it is posed to its STANCE.
+ *
+ * Not at registration, which is where every other per-rig constant in this file
+ * is taken, and the exception is worth stating. Skinning happens on the GPU: the
+ * palette three needs to place a vertex through the skeleton (`boneMatrices`) is
+ * filled by the RENDERER, once a frame. Nothing has drawn at registration, so
+ * `applyBoneTransform` there returns NaN and the whole body weighs in at nothing
+ * — `skeleton.update()` does not rescue it. So the measurement waits for the
+ * first frame the rig is actually drawn in.
+ *
+ * GATED ON `idle` so it is still one deterministic answer rather than whatever
+ * state the rig happened to be caught in: the offset is meant to be a fact about
+ * the machine, and measuring it mid-swing would bake that swing into it. Until
+ * then `comWorldPoint` answers null and callers fall back to the measured
+ * fraction (src/config_model_com.js), which is the same measurement from the
+ * offline pass.
+ */
+export function ensureCom(rig, animKey) {
+  if (!rig || rig._comFrac !== undefined) return;
+  if (clipNameFor(animKey) !== "idle") return;
+  rig._comFrac = measureCom(rig, rig.root);
+}
+
+/** The live centre of mass in WORLD space — the stored offset carried by the hip
+ *  bone wherever the clip has put it. One matrix transform. Null for a rig that
+ *  could not be measured. */
+export function comWorldPoint(rig, out) {
+  const offset = rig?._comOffset;
+  if (!offset) return null;
+  const hips = hipBone(rig);
+  if (!hips) return null;
+  hips.updateWorldMatrix(true, false);
+  return hips.localToWorld((out || _comOut).copy(offset));
+}
+
+/** …and its height in the RIG'S OWN frame, which is what a placement layer wants:
+ *  root-local, so neither where the body is standing nor which way it has been
+ *  rolled can leak into the answer — only what the clip has done to the hips.
+ *  Multiply by the rig's drawn scale to get world units above its feet. */
+export function comLocalY(rig) {
+  const p = comWorldPoint(rig, _comOut);
+  if (!p) return null;
+  return rig.root.worldToLocal(p).y;
 }
 
 /**

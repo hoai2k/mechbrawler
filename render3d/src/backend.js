@@ -338,6 +338,14 @@ export const scene3d = {
   releaseExcept(live) {
     if (ready) rigs.releaseInstancesExcept(live);
   },
+  /** This instance's LIVE centre of mass, as a height in the rig's own frame —
+   *  the offset measured once, carried by the hip bone wherever the clip has put
+   *  it, so a tuck raises it and a sprawl lowers it. Null for a body not yet
+   *  weighed, and the caller falls back to the measured fraction
+   *  (src/body_points.js). */
+  comLocalY(inst) {
+    return ready ? pose.comLocalY(inst) : null;
+  },
   /** Pose an instance for this frame. `opts` carries facing and the aim
    *  point, exactly as drawCharFrame receives them. */
   poseInstance(inst, charKey, animKey, animTime, opts = {}) {
@@ -387,6 +395,9 @@ export const scene3d = {
       // No `presentMirror`: ±¾ IS the mirror here, exactly and by
       // construction. See pose.facingYaw.
     });
+    // Weigh this instance's body once, now that it is really posed — the
+    // skinning palette is only valid after a frame (pose.ensureCom).
+    pose.ensureCom(inst, animKey);
     return true;
   },
   /** The stage-derived key/rim colours, so the camera's own light rig agrees
@@ -422,11 +433,14 @@ export function drawCharFrame(ctx, charKey, frameKey, x, y, opts = {}) {
     const rig = rigs.getRig(charKey);
     const resolved = rigs.resolveClip(charKey, animKey);
     const entry = scene.renderPose(charKey, animKey, animTime, rig, resolved, layers);
+    // Weigh the body once, now that a frame has been drawn and the skinning
+    // palette is real — pose.ensureCom says why it cannot happen at registration.
+    pose.ensureCom(rig, animKey);
     // The centre of mass this pose turns about, resolved HERE because this is
     // where the state is known — the token carries it, the blit does not. One
     // call to body_points.comFrac, so the flat blit turns about exactly the point
     // the in-scene layer does.
-    if (entry) return blit.blitPose(ctx, entry, charKey, x, y, { comFrac: comFrac(charKey, animKey), ...opts });
+    if (entry) return blit.blitPose(ctx, entry, charKey, x, y, { comFrac: comFrac(charKey), ...opts });
   } catch (err) {
     warnOnce(`render:${charKey}`, `render3d: rendering ${charKey}/${animKey} failed (${err.message}) — drawing the placeholder body.`);
   }
