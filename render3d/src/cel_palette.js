@@ -42,9 +42,16 @@
 //
 // WHO SETS THE KNOBS. `CEL` below is the roster default. A character's
 // manifest entry may override any of them (and hand-pick the palette itself)
-// in its `toon.cel` block — art-directed in the toon workbench
-// (/workbench/?edit=toon), which edits a live rig through `recelRig` and
-// exports that block, never hard-coded per fighter in engine code.
+// in its `toon.cel` block, never hard-coded per fighter in engine code. Two
+// things write that block:
+//
+//   * `tools/derive_cel_from_canonical.mjs`, which pins each fill to the
+//     colour the fighter's own concept drawing (docs/canonical/) paints that
+//     region. The grade below is a guess from the albedo; the drawing is the
+//     answer, and every mech on the roster has one.
+//   * the toon workbench (/workbench/?edit=toon), which edits a live rig
+//     through `recelRig` and exports the same block — for anything the
+//     derivation gets wrong, and for anything without a drawing.
 
 /** The cartoon grade, in one place. Every knob here may be overridden per
  *  character by the manifest entry's `toon.cel` block. */

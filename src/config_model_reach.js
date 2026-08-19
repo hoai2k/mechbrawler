@@ -34,7 +34,7 @@ export const MODEL_REACH = {
 };
 
 export const ENVELOPE_INPUTS = {
-  "manifest": "70cedc89d726",
+  "manifest": "f67f0a1f5ea9",
   "sprites": "missing",
   "poses": "82fa840ca19b",
   "models": {

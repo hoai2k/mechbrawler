@@ -34,7 +34,7 @@ export const MODEL_MUZZLES = {
 };
 
 export const MUZZLE_INPUTS = {
-  "manifest": "70cedc89d726",
+  "manifest": "f67f0a1f5ea9",
   "poses": "c6743bfb4bf6",
   "models": {
     "colossus": "4897362b6b45",

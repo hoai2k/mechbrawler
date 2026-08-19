@@ -21,11 +21,21 @@ the mannequin and a generated test delivery. What it waits on now is art
 (src/render_backend.js). The backend NAME is `3d`; the directory is
 `render3d/` only to avoid a leading digit.
 
+**The toon pass is painted from the concept art.** Each fighter's canonical
+drawing (`docs/canonical/mech_<id>.png`) is the source of truth for what they
+look like, and `tools/derive_cel_from_canonical.mjs` reads it into that
+fighter's `toon` block in `render3d/assets/manifest.json`: a `cel.palette`
+pinning every flat fill the cel pass makes to the colour the drawing paints
+that region, and a `shadeTint` measured from the drawing's own lit/shadow
+pairs. Without it the cel grade guesses from the PBR albedo, and on these
+deliveries — dark bodies with saturated accents — it guesses badly enough to
+render rhino brown and viper olive. Re-run the tool after replacing a drawing.
+
 **`?shade=roster`** turns per-character shade grading off. Every fighter's
-shadow colour is measured from their own DI3 palette sheet
-(`tools/derive_toon_from_shade.py` → the `shadeTint` in
-`render3d/assets/manifest.json`); this flag puts the whole roster back on the
-one shared default it used before, so the change is one URL apart to judge.
+shadow colour is measured from their own art (the tool above; before the mech
+roster, from the DI3 palette sheets via `tools/derive_toon_from_shade.py` —
+same `shadeTint` field); this flag puts the whole roster back on the one shared
+default it used before, so the change is one URL apart to judge.
 It affects only the MEASURED tint — art direction somebody dialled by hand in
 the workbench still applies — and it reaches the workbench too, which is where
 you would actually be looking closely.

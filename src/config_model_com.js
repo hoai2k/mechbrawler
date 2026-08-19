@@ -46,7 +46,7 @@ export const MODEL_COM = {
 // Fingerprint of everything the measurement above is a function of.
 // `--check` fails while this file is stale.
 export const COM_INPUTS = {
-  "manifest": "70cedc89d726",
+  "manifest": "f67f0a1f5ea9",
   "poses": "a2c1a6113a23",
   "models": {
     "colossus": "4897362b6b45",
