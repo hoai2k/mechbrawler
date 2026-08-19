@@ -52,7 +52,22 @@ if yours is elsewhere).
 ## Pipelines
 
 - `mech_intake.mjs` — mechs/*.glb into render3d's manifest (see
-  mechs/PROVENANCE.md; `mechs/` is generated, never hand-edited).
+  mechs/PROVENANCE.md; `mechs/` is generated, never hand-edited). Each entry's
+  `toon` block is art direction rather than a derivation and is carried across
+  a regeneration; everything else in the manifest is rebuilt.
+- `key_canonical.py` — cuts the chroma-key magenta card out of the canonical
+  concept art in `docs/canonical/`, writing RGBA cutouts in place and archiving
+  the delivered originals under `docs/canonical/originals/`. Coverage comes from
+  the card's own chroma inside a trimap, not from a distance threshold, because
+  a half-covered texel on a black ink outline is 175 units from the card and a
+  threshold keeps it. Dry-runs without `--apply`. Needs Pillow, numpy, scipy.
+- `derive_cel_from_canonical.mjs` — paints every rig the colours its canonical
+  drawing is painted: reads each fighter's cel plan out of the live renderer and
+  the drawing's palette through the same `cel_palette` analysis, pairs the
+  drawing's lit fills with their painted shadows, matches the rig's fills to
+  those paints, and writes `characters.<id>.toon` (a `cel.palette` and a
+  measured `shadeTint`) into render3d/assets/manifest.json. Dry-runs without
+  `--apply`. Needs the server on :5174 and a Chromium.
 - `sfx_intake.mjs`, `generate_sfx.py`, `generate_voice.py` — audio intake and
   generation (K2 rewires these to the Mech Mayhem bank).
 - `derive_attack_envelopes.mjs` — measures per-mech attack reach from the

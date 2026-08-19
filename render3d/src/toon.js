@@ -64,11 +64,14 @@ export function applyNativeMaterials(root) {
 
 /** Per-character shading, and the switch that turns it off.
  *
- *  A DI3 shade sheet says what a fighter's own art shades LIKE — the painted
- *  shadow beside the lit fill, per region — and `tools/derive_toon_from_shade.py`
- *  turns that into the `shadeTint` in their manifest entry. Before those sheets
- *  existed every rig used the roster default below, which is cooler and darker
- *  than most of the roster actually paints.
+ *  A fighter's own art says what they shade LIKE — the painted shadow beside
+ *  the lit fill — and that ratio is the `shadeTint` in their manifest entry.
+ *  For the mech roster it is measured from their canonical drawing by
+ *  `tools/derive_cel_from_canonical.mjs`, which is reading the same pairs it
+ *  reads the cel palette from; for the JJK roster it came from the DI3 palette
+ *  sheets via `tools/derive_toon_from_shade.py`. Before either existed every
+ *  rig used the roster default below, which is cooler and darker than most of
+ *  the roster actually paints.
  *
  *  `?shade=roster` puts every fighter back on that default, which is the
  *  comparison this is worth having: one flag, whole roster, no rebuild. Other
